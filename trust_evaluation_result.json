@@ -1,0 +1,265 @@
+{
+    "trust_score": 2.2,
+    "pillar_score": {
+        "fairness": 2.4,
+        "accountability": 3.2,
+        "sustainability": 1.0
+    },
+    "details": {
+        "fairness": {
+            "underfitting": 4,
+            "overfitting": 5,
+            "class_balance": 1,
+            "statistical_parity_difference": 1,
+            "disparate_impact": 5,
+            "equal_opportunity_difference": 2,
+            "average_odds_difference": 3,
+            "accuracy_parity": 2,
+            "predictive_parity": 5,
+            "treatment_equality": 1,
+            "calibration": 1,
+            "well_calibration": 1,
+            "theil_index": 2,
+            "coefficient_variation": 1,
+            "consistency": 1,
+            "class_imbalance": 5,
+            "kl_divergence": 1,
+            "smoothed_edf": 1,
+            "bias_amplification": 1,
+            "cohens_d": 2
+        },
+        "accountability": {
+            "train_test_split": 5,
+            "missing_data": 5,
+            "normalization": 1,
+            "regularization": 0,
+            "factsheet_completeness": 5
+        },
+        "sustainability": {
+            "energy_consumed": 1,
+            "carbon_intensity": 1,
+            "emissions": 1
+        }
+    },
+    "properties": {
+        "fairness": {
+            "underfitting": {
+                "Metric Description": "Compares the models achieved test accuracy against a baseline.",
+                "Depends on": "Model, Test Data",
+                "Test Accuracy": "94.06%",
+                "Conclusion": "Model well fitted"
+            },
+            "overfitting": {
+                "Metric Description": "Overfitting is present if the training accuracy is significantly higher than the test accuracy",
+                "Depends on": "Model, Training Data, Test Data",
+                "Training Accuracy": "94.08%",
+                "Test Accuracy": "94.06%",
+                "Train Test Accuracy Difference": "0.02%",
+                "Conclusion": "Model is not overfitting"
+            },
+            "class_balance": {
+                "Metric Description": "Measures how well the training data is balanced or unbalanced",
+                "Depends on": "Training Data",
+                "P-Value": "0.0000",
+                "Conclusion": "Classes are imbalanced"
+            },
+            "statistical_parity_difference": {
+                "Metric Description": "The spread between the percentage of observations from the majority group receiving a favorable outcome compared to the protected group.",
+                "Depends on": "Training Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "|{{x|x is not protected, y_true is favorable}}|": "4732",
+                "|{{x|x is not protected}}|": "23927",
+                "Favored Majority (Unprotected Group) Ratio": "P(y_true=favorable|protected=False) = 19.78%",
+                "|{{x|x is protected, y_true is favorable}}|": "13774",
+                "|{{x|x is protected}}|": "24073",
+                "Favored Minority (Protected Group) Ratio": "P(y_true=favorable|protected=True) = 57.22%",
+                "Formula": "Favored Majority Ratio - Favored Minority Ratio",
+                "Statistical Parity Difference": "37.44%",
+                "Statistical Parity Difference AIF360": "0.3744"
+            },
+            "disparate_impact": {
+                "Metric Description": "Is quotient of the ratio of samples from the protected group receiving a favorable prediction divided by the ratio of samples from the unprotected group",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "|{{x|x is protected, y_pred is favorable}}|": "3475",
+                "|{{x|x is protected}}|": "6021",
+                "Protected Favored Ratio": "P(y_hat=favorable|protected=True) = 57.71%",
+                "|{{x|x is unprotected, y_pred is favorable}}|": "1264",
+                "|{{x|x is unprotected}}|": "5979",
+                "Unprotected Favored Ratio": "P(y_hat=favorable|protected=False) = 21.14%",
+                "Formula": "Disparate Impact = Protected Favored Ratio / Unprotected Favored Ratio",
+                "Disparate Impact": "2.73",
+                "Disparate Impact AIF360": "2.7300"
+            },
+            "equal_opportunity_difference": {
+                "Metric Description": "Difference in true positive rates between protected and unprotected group.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "TPR Unprotected Group": "97.07%",
+                "TPR Protected Group": "86.13%",
+                "Formula": "Equal Opportunity Difference = TPR Protected Group - TPR Unprotected Group",
+                "Equal Opportunity Difference": "-10.94%",
+                "Equal Opportunity Difference AIF360": "-0.1094"
+            },
+            "average_odds_difference": {
+                "Metric Description": "Is the average of difference in false positive rates and true positive rates between the protected and unprotected group",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "FPR Unprotected Group": "4.01%",
+                "FPR Protected Group": "0.20%",
+                "TPR Unprotected Group": "97.07%",
+                "TPR Protected Group": "86.13%",
+                "Formula": "0.5*(TPR Protected - TPR Unprotected) + 0.5*(FPR Protected - FPR Unprotected)",
+                "Average Odds Difference": "-7.38%",
+                "Average Odds Difference AIF360": "-0.0738"
+            },
+            "accuracy_parity": {
+                "Metric Description": "Measures whether prediction accuracy is equal across protected and unprotected groups.",
+                "Depends on": "Model, Test Data, Factsheet",
+                "Accuracy Unprotected Group": "96.22%",
+                "Accuracy Protected Group": "91.91%",
+                "Formula": "Accuracy Parity = Accuracy Protected - Accuracy Unprotected",
+                "Accuracy Parity Difference": "-4.31%"
+            },
+            "predictive_parity": {
+                "Metric Description": "Checks equality of PPV and NPV between protected and unprotected groups.",
+                "Depends on": "Model, Test Data, Factsheet",
+                "PPV Unprotected": "86.65%",
+                "PPV Protected": "99.83%",
+                "NPV Unprotected": "99.19%",
+                "NPV Protected": "84.06%",
+                "Formula": "0.5 * (PPV Protected - PPV Unprotected) + 0.5 * (NPV Protected - NPV Unprotected)",
+                "Predictive Parity Difference": "-0.98%"
+            },
+            "treatment_equality": {
+                "Metric Description": "Measures equality of the ratio between false negatives and false positives across groups.",
+                "Depends on": "Model, Test Data, Factsheet",
+                "FN Unprotected": 37.0,
+                "FP Unprotected": 189.0,
+                "FN Protected": 482.0,
+                "FP Protected": 5.0,
+                "FN/FP Unprotected": "0.1958",
+                "FN/FP Protected": "96.4000",
+                "Formula": "(FN/FP)_Protected - (FN/FP)_Unprotected",
+                "Treatment Equality Difference": "96.2042"
+            },
+            "calibration": {
+                "Metric Description": "Checks whether individuals with the same predicted score have the same outcome probability across groups. If the model is fair, in a bin where the probability is 0.7, both groups should have approximately 70\\% actual positive cases.",
+                "Depends on": "Model, Test Data, Probabilistic Scores",
+                "Mean Calibration Gap": "0.1288",
+                "Bins Used": 10
+            },
+            "well_calibration": {
+                "Metric Description": "Checks whether predicted probabilities match empirical outcome frequencies.",
+                "Depends on": "Model, Test Data, Probabilistic Scores",
+                "Mean Calibration Error": "0.1622",
+                "Bins Used": 10
+            },
+            "theil_index": {
+                "Metric Description": "Measures inequality in the distribution of benefits (correct predictions).",
+                "Depends on": "Model, Test Data",
+                "Alpha": 1,
+                "Benefit Definition": "b_i = 1 if prediction is correct, 0 otherwise",
+                "Generalized Entropy (AIF360)": "0.050492",
+                "Conclusion": "Prediction benefits unequally distributed"
+            },
+            "coefficient_variation": {
+                "Metric Description": "Measures dispersion (instability) in prediction benefits.",
+                "Depends on": "Model, Test Data",
+                "Coefficient of Variation": "0.248990",
+                "Coefficient of Variation (AIF360)": "0.248990",
+                "Formula": "CV = sigma / mu"
+            },
+            "consistency": {
+                "Metric Description": "Measures whether similar individuals receive similar predictions.",
+                "Depends on": "Model, Test Data",
+                "k Neighbors": 5,
+                "Consistency Score": "0.9309",
+                "Consistency Score (AIF360)": "0.9062",
+                "Formula": "Consistency = 1 - average(|y_hat_i - mean(y_hat_neighbors)|)"
+            },
+            "class_imbalance": {
+                "Metric Description": "Measures imbalance between privileged and unprivileged samples.",
+                "Depends on": "Dataset",
+                "CI (manual)": "-0.0030",
+                "CI (AIF360)": "0.0030",
+                "Interpretation": "0 indicates perfect balance"
+            },
+            "kl_divergence": {
+                "Metric Description": "Measures divergence between label distributions across groups.",
+                "Depends on": "Dataset",
+                "KL Divergence": "0.279153"
+            },
+            "smoothed_edf": {
+                "Metric Description": "Smoothed Equality of Distributions Fairness",
+                "Depends on": "Model, Probabilities",
+                "Alpha": 1.0,
+                "Epsilon": 0.1,
+                "EDF Log-Ratio": "0.1935",
+                "EDF (AIF360)": "1.0043"
+            },
+            "bias_amplification": {
+                "Metric Description": "Measures whether model amplifies dataset bias.",
+                "Bias Dataset": "0.3744",
+                "Bias Predictions": "0.2706",
+                "Bias Amplification": "-0.1038"
+            },
+            "cohens_d": {
+                "Metric Description": "Effect size between protected groups.",
+                "Cohen's D": "0.5626",
+                "Formula": "(mu1 - mu2) / sigma_pooled"
+            }
+        },
+        "accountability": {
+            "train_test_split": {
+                "Depends on": "Training and Testing Data",
+                "Train/Test split": "80/20"
+            },
+            "missing_data": {
+                "Depends on": "Training and Test Data",
+                "Null values count": 0,
+                "Conclusion": "No missing values"
+            },
+            "normalization": {
+                "Depends on": "Training and Testing Data",
+                "Training mean": "14485.76",
+                "Training std": "30729.60",
+                "Test mean": "14544.39",
+                "Test std": "30826.78",
+                "Conclusion": "No normalization detected"
+            },
+            "regularization": {
+                "Depends on": "Factsheet",
+                "Regularization technique": "Not specified"
+            },
+            "factsheet_completeness": {
+                "Depends on": "Factsheet",
+                "Fields present": "23/24",
+                "Completeness": "95.83%",
+                "Missing fields": [
+                    "general.contact_information"
+                ]
+            }
+        },
+        "sustainability": {
+            "energy_consumed": {
+                "Metric Description": "Total energy consumed (CPU + GPU + RAM).",
+                "Energy Consumed (kWh)": "0.000020",
+                "CPU Energy (kWh)": "0.000007",
+                "GPU Energy (kWh)": "0.000012",
+                "RAM Energy (kWh)": "0.000002"
+            },
+            "carbon_intensity": {
+                "Metric Description": "Carbon intensity (kgCO2/kWh). Based on the type of energy used and location.",
+                "Carbon Intensity": "0.1740",
+                "Country": "Spain"
+            },
+            "emissions": {
+                "Metric Description": "Total CO2 emissions during training (Energy consumed * Carbon Intensity).",
+                "Emissions (kgCO2)": "0.000003",
+                "Other metadata": {
+                    "Duration (s)": "0.55",
+                    "Dataset Size": "48000 samples",
+                    "PUE": "1.0",
+                    "WUE": "0.0"
+                }
+            }
+        }
+    }
+}
