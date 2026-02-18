@@ -2,6 +2,7 @@
     "pillars": {
         "fairness": 0.25,
         "explainability": 0.25,
+        "privacy": 0.25,
         "robustness": 0.25,
         "accountability": 0.25,
         "sustainability": 0.25
@@ -38,6 +39,13 @@
             "correlated_features": 0.15,
             "model_size": 0.15,
             "feature_relevance": 0.15
+        },
+        "privacy": {
+            "epsilon": 0.5,
+            "epsilon_star": 0.5,
+            "shapr_score": 0.5,
+            "attribute_inference_score": 0.5,
+            "accuracy_ratio_score": 0.5
         },
         "robustness": {
             "confidence_score": 0.2,
@@ -432,6 +440,68 @@
                     "value": 0,
                     "description": "The penalty that should be applied if the the number of outliers in the feature importance distribution is equal or greater than the #threshold_outlier. For example if this value is 0.5 it would mean if the the theshold is reached 0.5 points will be substacted from score. If the number is set to 0 no penalty will be applied",
                     "label": "Penalty for outliers"
+                }
+            }
+        },
+        "privacy": {
+            "score_epsilon": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.5,
+                        1,
+                        2
+                    ],
+                    "description": "Thresholds of how to map the value of epsilon to a score from 1-5. Example if the first number is 0.1 it means that a model with epsilon value of 0.1 or less would get the best score(5) and if 10 was the last number it would mean that a model with epsilon value of 10 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_epsilon_star": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.5,
+                        1,
+                        2
+                    ],
+                    "description": "Thresholds of how to map the value of epsilon score to a score from 1-5. Example if the first number is 0.1 it means that a model with epsilon score value of 0.1 or less would get the best score(5) and if 10 was the last number it would mean that a model with epsilon score value of 10 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_shapr_score": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.3,
+                        0.5,
+                        0.7
+                    ],
+                    "description": "Thresholds of how to map the SHAPR score to a score from 1-5. Example if the first number is 0.1 it means that a model with SHAPR score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with SHAPR score of 0.7 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_attribute_inference_score": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.3,
+                        0.5,
+                        0.7
+                    ],
+                    "description": "Thresholds of how to map the attribute inference attack score to a score from 1-5. Example if the first number is 0.1 it means that a model with attribute inference attack score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with attribute inference attack score of 0.7 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_accuracy_ratio_score": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.3,
+                        0.5,
+                        0.7
+                    ],
+                    "description": "Thresholds of how to map the accuracy ratio attack score to a score from 1-5. Example if the first number is 0.1 it means that a model with accuracy ratio attack score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with accuracy ratio attack score of 0.7 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
                 }
             }
         },

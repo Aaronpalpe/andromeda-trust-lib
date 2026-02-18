@@ -51,7 +51,7 @@ def run_with_tracker(model, train_data, project_name="ML_Project"):
 
 # === MAIN ANALYSE ===
 
-def analyse(model, train_data, test_data, factsheet, config):
+def analyse(context, config):
     """
     Analiza la sostenibilidad del modelo usando CodeCarbon y calcula las métricas.
     """
@@ -59,20 +59,14 @@ def analyse(model, train_data, test_data, factsheet, config):
     def get_thresh(key):
         return config.get(key, {}).get("thresholds", {}).get("value", [])
 
-    # Thresholds
-    th_emissions = get_thresh("score_emissions")
-    th_energy = get_thresh("score_energy")
-    th_ci = get_thresh("score_carbon_intensity")
-    # th_eff = get_thresh("score_energy_efficiency")
-
     # Run training
-    run = run_with_tracker(model, train_data)
+    run = run_with_tracker(context.model, context.train_data)
 
     output = {
-        "energy_consumed": energy_score(run, th_energy),
-        "carbon_intensity": carbon_intensity_score(run, th_ci),
-        "emissions": emissions_score(run, train_data, th_emissions),
-        # "energy_efficiency": efficiency_score(run, th_eff), #NUEVA
+        "energy_consumed": energy_score(run, get_thresh("score_energy")),
+        "carbon_intensity": carbon_intensity_score(run, get_thresh("score_carbon_intensity")),
+        "emissions": emissions_score(run, context.train_data, get_thresh("score_emissions")),
+        # "energy_efficiency": efficiency_score(run, get_thresh("score_energy_efficiency")), #NUEVA
     }
 
     scores = {k: v.score for k, v in output.items()}

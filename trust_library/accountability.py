@@ -13,27 +13,23 @@ info = collections.namedtuple('info', 'description value')
 
 # === MAIN ANALYSE ===
 
-def analyse(model, training_dataset, test_dataset, factsheet, methodology_config):
-
-    train_test_split_mapping = methodology_config["score_train_test_split"]["mappings"]["value"]
-    missing_data_mapping = methodology_config["score_missing_data"]["mappings"]["value"]
-    normalization_mapping = methodology_config["score_normalization"]["mappings"]["value"]
+def analyse(context, methodology_config):
 
     output = {
         "train_test_split": train_test_split_score(
-            model, training_dataset, test_dataset, factsheet, train_test_split_mapping
+            context, methodology_config["score_train_test_split"]["mappings"]["value"]
         ),
         "missing_data": missing_data_score(
-            model, training_dataset, test_dataset, factsheet, missing_data_mapping
+            context, methodology_config["score_missing_data"]["mappings"]["value"]
         ),
         "normalization": normalization_score(
-            model, training_dataset, test_dataset, factsheet, normalization_mapping
+            context, methodology_config["score_normalization"]["mappings"]["value"]
         ),
         "regularization": regularization_score(
-            model, training_dataset, test_dataset, factsheet, methodology_config
+            context, None
         ),
         "factsheet_completeness": factsheet_completeness_score(
-            model, training_dataset, test_dataset, factsheet, methodology_config
+            context, None
         )
     }
 
@@ -44,10 +40,10 @@ def analyse(model, training_dataset, test_dataset, factsheet, methodology_config
 
 # === NORMALIZATION ===
 
-def normalization_score(model, train_data, test_data, factsheet, mappings):
+def normalization_score(context, mappings):
     try:
-        X_train = train_data.iloc[:, :-1]
-        X_test = test_data.iloc[:, :-1]
+        X_train = context.X_train
+        X_test = context.X_test
 
         train_mean = np.mean(X_train.values)
         train_std = np.std(X_train.values)
@@ -92,11 +88,11 @@ def normalization_score(model, train_data, test_data, factsheet, mappings):
 
 # === MISSING DATA ===
 
-def missing_data_score(model, training_dataset, test_dataset, factsheet, mappings):
+def missing_data_score(context, mappings):
     try:
         missing_values = (
-            training_dataset.isna().sum().sum() +
-            test_dataset.isna().sum().sum()
+            context.train_data.isna().sum().sum() +
+            context.test_data.isna().sum().sum()
         )
 
         score = (
@@ -121,10 +117,10 @@ def missing_data_score(model, training_dataset, test_dataset, factsheet, mapping
 
 # === TRAIN / TEST SPLIT ===
 
-def train_test_split_score(model, training_dataset, test_dataset, factsheet, mappings):
+def train_test_split_score(context, mappings):
     try:
-        n_train = len(training_dataset)
-        n_test = len(test_dataset)
+        n_train = len(context.train_data)
+        n_test = len(context.test_data)
         total = n_train + n_test
 
         train_ratio = round(n_train / total * 100)
@@ -150,9 +146,9 @@ def train_test_split_score(model, training_dataset, test_dataset, factsheet, map
 
 # === REGULARIZATION ===
 
-def regularization_score(model, training_dataset, test_dataset, factsheet, methodology_config): 
+def regularization_score(context, mappings):
     try:
-        reg = factsheet.get("methodology", {}).get("regularization", None)
+        reg = context.factsheet.get("methodology", {}).get("regularization", None)
 
         mapping = {
             "elasticnet_regression": 5,
@@ -180,13 +176,7 @@ def regularization_score(model, training_dataset, test_dataset, factsheet, metho
 def is_present(value):
     return value not in (None, "", [], {})
 
-def factsheet_completeness_score(
-    model,
-    training_dataset,
-    test_dataset,
-    factsheet,
-    methodology_config
-):
+def factsheet_completeness_score(context, mappings):
     """
     Analiza la completitud de la factsheet verificando si los campos tienen
     un valor asignado en su clave 'value'.    
@@ -196,7 +186,7 @@ def factsheet_completeness_score(
         present = 0
         missing_fields_log = []
 
-        for section, fields in factsheet.items():
+        for section, fields in context.factsheet.items():
             for field_key, field_data in fields.items():
                 total += 1
                 value = field_data.get("value")

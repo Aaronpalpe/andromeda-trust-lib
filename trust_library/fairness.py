@@ -17,8 +17,10 @@ try:
 except ImportError:
     TF_AVAILABLE = False
 
+from holisticai.bias.metrics import classification_bias_metrics
 
-
+import warnings
+warnings.filterwarnings("ignore")
 # === CONFIG & AIF360 HELPERS ====
 
 def load_fairness_config(factsheet):
@@ -88,34 +90,40 @@ def convert_to_aif360_dataset(df, target_column, protected_feature, protected_va
 
     return dataset, privileged_groups, unprivileged_groups
 
-def get_aif360_metrics(model, test_dataset, factsheet):
+def get_aif360_metrics(test_data, y_pred, factsheet):
     protected_feature, protected_values, target_column, favorable_outcomes = load_fairness_config(factsheet)
 
-    # 1. Ground Truth
     dataset_true, priv, unpriv = convert_to_aif360_dataset(
-        test_dataset, target_column, protected_feature, protected_values, favorable_outcomes
+        test_data, target_column, protected_feature, protected_values, favorable_outcomes
     )
-    
-    # 2. Predicciones
-    X_test = test_dataset.drop(target_column, axis=1)
-    
-    if TF_AVAILABLE and isinstance(model, tf.keras.Sequential):
-        y_pred = np.argmax(model.predict(X_test), axis=1)
-    else:
-        y_pred = model.predict(X_test)
-        if hasattr(y_pred, 'flatten'):
-            y_pred = y_pred.flatten()
-
-    # 3. Dataset Predicciones
     dataset_pred = dataset_true.copy()
     dataset_pred.labels = y_pred.reshape(-1, 1)
     
     return ClassificationMetric(dataset_true, dataset_pred, unprivileged_groups=unpriv, privileged_groups=priv)
 
+def compute_holistic_metrics(context, group_col="Group", target_col="Target"):
+    df = context.test_data.copy()
+    return {
+        'group': classification_bias_metrics(
+            group_a = df[group_col] == 1,
+            group_b = df[group_col] == 0,
+            y_true = df[target_col],
+            y_pred = context.y_pred_test,
+            metric_type='group'
+        ),
+        'individual': classification_bias_metrics(
+            group_a = df[group_col] == 1,
+            group_b = df[group_col] == 0,
+            y_true = df[target_col],
+            y_pred = context.y_pred_test,
+            metric_type='individual'
+        )
+    }
+
 
 # === MAIN ANALYSE ===
 
-def analyse(model, training_dataset, test_dataset, factsheet, config): 
+def analyse(context, config): 
     # Helper seguro para extraer thresholds
     def get_thresh(key):
         val = config.get(key, {}).get("thresholds", {}).get("value")
@@ -124,95 +132,54 @@ def analyse(model, training_dataset, test_dataset, factsheet, config):
             print(f"Warning: Missing thresholds for {key} in config. Using default [0.1, 0.2, 0.3, 0.4].")
             return [0.1, 0.2, 0.3, 0.4] 
         return val
-
-    # Extraemos umbrales
-    th_under = get_thresh("score_underfitting")
-    th_over = get_thresh("score_overfitting")
-    th_stat = get_thresh("score_statistical_parity_difference")
-    th_eq_opp = get_thresh("score_equal_opportunity_difference")
-    th_avg_odds = get_thresh("score_average_odds_difference")
-    th_disp = get_thresh("score_disparate_impact")
-
-    th_ap = get_thresh("score_accuracy_parity")
-    th_ppv = get_thresh("score_predictive_parity") 
-    th_te = get_thresh("score_treatment_equality")
-    th_cal = get_thresh("score_calibration")
-    th_wellcal = get_thresh("score_well_calibration")
-
-    th_theil = get_thresh("score_theil_index")
-    th_coeff_var = get_thresh("score_coefficient_variation")
-    th_consistency = get_thresh("score_consistency")
-
-    th_kl_divergence = get_thresh("score_kl_divergence")
-    # th_conditional_dp = get_thresh("score_conditional_dp")
-    th_smoothed_edf = get_thresh("score_smoothed_edf")
-    th_bias_amplification = get_thresh("score_bias_amplification")
-    # th_between_group_ge = get_thresh("score_between_group_ge")
-    th_cohens_d = get_thresh("score_cohens_d")
     
     # Calculamos
     output = {
-        "underfitting": underfitting_score(model, test_dataset, factsheet, th_under),
-        "overfitting": overfitting_score(model, training_dataset, test_dataset, factsheet, th_over),
-        "class_balance": class_balance_score(training_dataset, factsheet),
-        "statistical_parity_difference": stat_parity_score(training_dataset, factsheet, th_stat),
-        "disparate_impact": disparate_impact_score(model, test_dataset, factsheet, th_disp),
-        "equal_opportunity_difference": eq_opp_score(model, test_dataset, factsheet, th_eq_opp),
-        "average_odds_difference": avg_odds_score(model, test_dataset, factsheet, th_avg_odds),
+        "underfitting": underfitting_score(context, get_thresh("score_underfitting")),
+        "overfitting": overfitting_score(context, get_thresh("score_overfitting")),
+        "class_balance": class_balance_score(context, None),
+        "statistical_parity_difference": stat_parity_score(context, get_thresh("score_statistical_parity_difference")),
+        "disparate_impact": disparate_impact_score(context, get_thresh("score_disparate_impact")),
+        "equal_opportunity_difference": eq_opp_score(context, get_thresh("score_equal_opportunity_difference")),
+        "average_odds_difference": avg_odds_score(context, get_thresh("score_average_odds_difference")),
 
-        "accuracy_parity": accuracy_parity_score(model, test_dataset, factsheet, th_ap),
-        "predictive_parity": predictive_parity_score(model, test_dataset, factsheet, th_ppv),
-        "treatment_equality": treatment_equality_score(model, test_dataset, factsheet, th_te),
-        "calibration": calibration_score(model, test_dataset, factsheet, th_cal),
-        "well_calibration": well_calibration_score(model, test_dataset, factsheet, th_wellcal),
+        "accuracy_parity": accuracy_parity_score(context, get_thresh("score_accuracy_parity")),
+        "predictive_parity": predictive_parity_score(context, get_thresh("score_predictive_parity")),
+        "treatment_equality": treatment_equality_score(context, get_thresh("score_treatment_equality")),
+        "calibration": calibration_score(context, get_thresh("score_calibration"), 10),
+        "well_calibration": well_calibration_score(context, get_thresh("score_well_calibration"), 10),
 
-        #"generalized_entropy": generalized_entropy_score(model, test_dataset, factsheet, get_thresh("score_generalized_entropy"), alpha=1),
-        "theil_index": theil_index_score(model, test_dataset, factsheet, th_theil),
-        "coefficient_variation": coefficient_variation_score(model, test_dataset, factsheet, th_coeff_var),
-        "consistency": consistency_score(model, test_dataset, factsheet, th_consistency),
-        "class_imbalance": class_imbalance_score(training_dataset, factsheet),
-        "kl_divergence": kl_divergence_score(model, test_dataset, factsheet, th_kl_divergence),
-        # "conditional_dp": conditional_dp_score(model, test_dataset, factsheet, th_conditional_dp),
-        "smoothed_edf": smoothed_edf_score(model, test_dataset, factsheet, th_smoothed_edf),
-        "bias_amplification": bias_amplification_score(model, training_dataset, factsheet, th_bias_amplification), #REV
-        #"between_group_ge": between_group_ge_score(model, test_dataset, factsheet, th_between_group_ge),
-        "cohens_d": cohens_d_score(model, test_dataset, factsheet, th_cohens_d),
-        # "two_sd_rule": two_sd_rule_score(model, test_dataset, factsheet)
+        "generalized_entropy": generalized_entropy_score(context, get_thresh("score_generalized_entropy"), alpha=2),
+        "theil_index": theil_index_score(context, get_thresh("score_theil_index")),
+        "coefficient_variation": coefficient_variation_score(context, get_thresh("score_coefficient_variation")),
+        "consistency": consistency_score(context, get_thresh("score_consistency")),
+        "class_imbalance": class_imbalance_score(context, get_thresh("score_class_imbalance")),
+        "kl_divergence": kl_divergence_score(context, get_thresh("score_kl_divergence")),
+        # "conditional_dp": conditional_dp_score(model, test_data, factsheet, th_conditional_dp),
+        "smoothed_edf": smoothed_edf_score(context, get_thresh("score_smoothed_edf")),
+        "bias_amplification": bias_amplification_score(context, get_thresh("score_bias_amplification")), #REV
+        #"between_group_ge": between_group_ge_score(model, test_data, factsheet, th_between_group_ge),
+        "cohens_d": cohens_d_score(context, get_thresh("score_cohens_d")),
+        # "two_sd_rule": two_sd_rule_score(model, test_data, factsheet)
     }
     
     scores = {k: v.score for k, v in output.items()}
     properties = {k: v.properties for k, v in output.items()}
 
+    # Holistic
+    # Imprimirmos las dos métricas holísticas de HolisticAI, aunque no las incluimos en el score global
+    holistic_metrics = compute_holistic_metrics(context)
+    print("HolisticAI Group Fairness Metrics:", holistic_metrics['group'])
+    print("HolisticAI Individual Fairness Metrics:", holistic_metrics['individual'])
 
     return Result(score=scores, properties=properties)
 
 
 # === METRIC FUNCTIONS ===
 
-def compute_accuracy(model, dataset, factsheet):
-    protected_feature, _, target_column, _ = load_fairness_config(factsheet)
-    X = dataset.drop(target_column, axis=1)
-    y_true = dataset[target_column].values.flatten()
-    
-    if TF_AVAILABLE and isinstance(model, tf.keras.Sequential):
-        y_pred = np.argmax(model.predict(X), axis=1)
-    else:
-        y_pred = model.predict(X)
-        if hasattr(y_pred, 'flatten'): y_pred = y_pred.flatten()
-
-    # from holisticai.bias.metrics import statistical_parity_difference, disparate_impact_ratio, equal_opportunity_difference
-
-    # spd = statistical_parity_difference(y_true, y_pred, protected_feature, privileged_groups=[1], unprivileged_groups=[0])
-    # di = disparate_impact_ratio(y_true, y_pred, protected_feature, privileged_groups=[1], unprivileged_groups=[0])
-    # eqopp = equal_opportunity_difference(y_true, y_pred, protected_feature, privileged_groups=[1], unprivileged_groups=[0])
-
-    # print("EYYYYY", spd, di, eqopp)
-
-    return metrics.accuracy_score(y_true, y_pred)
-
-def underfitting_score(model, test_dataset, factsheet, thresholds):
+def underfitting_score(context, thresholds):
     try:
-        acc = compute_accuracy(model, test_dataset, factsheet)
+        acc = metrics.accuracy_score(context.y_test, context.y_pred_test)
         score = calculate_score(acc, thresholds)
 
         props = {
@@ -231,11 +198,11 @@ def underfitting_score(model, test_dataset, factsheet, thresholds):
         return Result(np.nan, {"Error": str(e)})
 
 
-def overfitting_score(model, train_dataset, test_dataset, factsheet, thresholds):
+def overfitting_score(context, thresholds):
     try:
         # 1. Verificar primero si hay underfitting (Test Acc > 0.6 o un umbral razonable)
-        test_acc = compute_accuracy(model, test_dataset, factsheet)
-        train_acc = compute_accuracy(model, train_dataset, factsheet)
+        test_acc = metrics.accuracy_score(context.y_test, context.y_pred_test)
+        train_acc = metrics.accuracy_score(context.y_train, context.y_pred_train)
         
         if test_acc < 0.6: # Si el modelo es muy malo, no medimos overfitting
              return Result(np.nan, {"Info": "Test accuracy too low (<60%) to measure overfitting"})
@@ -261,10 +228,10 @@ def overfitting_score(model, train_dataset, test_dataset, factsheet, thresholds)
     except Exception as e:
         return Result(np.nan, {"Error": str(e)})
 
-def class_balance_score(training_dataset, factsheet):
+def class_balance_score(context, thresholds=None):
     try:
-        _, _, target, _ = load_fairness_config(factsheet)
-        counts = training_dataset[target].value_counts().sort_index().to_numpy()
+        _, _, target, _ = load_fairness_config(context.factsheet)
+        counts = context.train_data[target].value_counts().sort_index().to_numpy()
         p_val = chisquare(counts).pvalue
         score = 5 if p_val >= 0.05 else 1
 
@@ -283,11 +250,16 @@ def class_balance_score(training_dataset, factsheet):
         return Result(np.nan, {"Error": str(e)})
     
 
-def stat_parity_score(train_dataset, factsheet, thresholds):
+def stat_parity_score(context, thresholds): # IMPORANTE: TEST
     try:
         # Cargar configuración de fairness
-        prot, vals, target, fav = load_fairness_config(factsheet)
-        ds, priv, unpriv = convert_to_aif360_dataset(train_dataset, target, prot, vals, fav)
+        prot, vals, target, fav = load_fairness_config(context.factsheet)
+
+        #Añadimos al test_data una columna con las predicciones del modelo
+        dataset = context.test_data.copy()
+        dataset[target] = context.y_pred_test
+
+        ds, priv, unpriv = convert_to_aif360_dataset(dataset, target, prot, vals, fav)
 
         # Crear métrica
         m = BinaryLabelDatasetMetric(ds, unprivileged_groups=unpriv, privileged_groups=priv)
@@ -315,12 +287,12 @@ def stat_parity_score(train_dataset, factsheet, thresholds):
         "Depends on": (
             "Training Data, Factsheet (Definition of Protected Group and Favorable Outcome)"
         ),
-        "|{{x|x is not protected, y_true is favorable}}|": f"{count_unprot_fav}",
-        "|{{x|x is not protected}}|": f"{count_unprot_total}",
-        "Favored Majority (Unprotected Group) Ratio": f"P(y_true=favorable|protected=False) = {ratio_unprot:.2f}%",
-        "|{{x|x is protected, y_true is favorable}}|": f"{count_prot_fav}",
+        "|{{x|x is protected, y_pred is favorable}}|": f"{count_prot_fav}",
         "|{{x|x is protected}}|": f"{count_prot_total}",
-        "Favored Minority (Protected Group) Ratio": f"P(y_true=favorable|protected=True) = {ratio_prot:.2f}%",
+        "Favored Minority (Protected Group) Ratio": f"P(y_hat=favorable|protected=True) = {ratio_prot:.2f}%",
+        "|{{x|x is not protected, y_pred is favorable}}|": f"{count_unprot_fav}",
+        "|{{x|x is not protected}}|": f"{count_unprot_total}",
+        "Favored Majority (Unprotected Group) Ratio": f"P(y_hat=favorable|protected=False) = {ratio_unprot:.2f}%",
         "Formula": (
             "Favored Majority Ratio - Favored Minority Ratio"
         ),
@@ -335,18 +307,18 @@ def stat_parity_score(train_dataset, factsheet, thresholds):
         return Result(np.nan, {"Error": str(e)})
 
 
-def disparate_impact_score(model, test_dataset, factsheet, thresholds):
+def disparate_impact_score(context, thresholds):
     try:
-        # Configuración fairness
-        prot, vals, target, fav = load_fairness_config(factsheet)
-        ds, priv, unpriv = convert_to_aif360_dataset(test_dataset, target, prot, vals, fav)
+        prot, vals, target, fav = load_fairness_config(context.factsheet)
+
+        #Añadimos al test_data una columna con las predicciones del modelo
+        dataset = context.test_data.copy()
+        dataset[target] = context.y_pred_test
+
+        ds, priv, unpriv = convert_to_aif360_dataset(dataset, target, prot, vals, fav)
 
         # Métrica AIF360
-        m = BinaryLabelDatasetMetric(
-            ds,
-            unprivileged_groups=unpriv,
-            privileged_groups=priv
-        )
+        m = BinaryLabelDatasetMetric(ds,unprivileged_groups=unpriv,privileged_groups=priv)
 
         # Datos manuales
         labels = ds.labels.flatten()
@@ -395,9 +367,9 @@ def disparate_impact_score(model, test_dataset, factsheet, thresholds):
         return Result(np.nan, {"Error": str(e)})
 
 
-def eq_opp_score(model, test_dataset, factsheet, thresholds):
+def eq_opp_score(context, thresholds):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
 
         # # Verdaderos positivos
         # tp_prot = ((protected_attr == 1) & (y_true == 1) & (y_pred == 1)).sum()
@@ -441,9 +413,9 @@ def eq_opp_score(model, test_dataset, factsheet, thresholds):
         print(str(e))
         return Result(np.nan, {"Error": str(e)})
 
-def avg_odds_score(model, test_dataset, factsheet, thresholds):
+def avg_odds_score(context, thresholds):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
 
         tpr_unprot = m.true_positive_rate(privileged=True)
         tpr_prot   = m.true_positive_rate(privileged=False)
@@ -498,11 +470,9 @@ def avg_odds_score(model, test_dataset, factsheet, thresholds):
 
 
 
-
-
-def accuracy_parity_score(model, test_dataset, factsheet, thresholds):
+def accuracy_parity_score(context, thresholds):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
 
         acc_unprot = m.accuracy(privileged=True)
         acc_prot   = m.accuracy(privileged=False)
@@ -529,9 +499,9 @@ def accuracy_parity_score(model, test_dataset, factsheet, thresholds):
         return Result(np.nan, {"Error": str(e)})
 
 
-def predictive_parity_score(model, test_dataset, factsheet, thresholds):
+def predictive_parity_score(context, thresholds):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
 
         ppv_unprot = m.positive_predictive_value(privileged=True)
         ppv_prot   = m.positive_predictive_value(privileged=False)
@@ -567,9 +537,9 @@ def predictive_parity_score(model, test_dataset, factsheet, thresholds):
         return Result(np.nan, {"Error": str(e)})
 
 
-def treatment_equality_score(model, test_dataset, factsheet, thresholds):
+def treatment_equality_score(context, thresholds):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
 
         fn_unprot = m.num_false_negatives(privileged=True)
         fp_unprot = m.num_false_positives(privileged=True)
@@ -606,26 +576,23 @@ def treatment_equality_score(model, test_dataset, factsheet, thresholds):
         return Result(np.nan, {"Error": str(e)})
 
 
-def calibration_score(model, test_dataset, factsheet, thresholds, n_bins=10):
+def calibration_score(context, thresholds, n_bins=10):
     try:
-        if not hasattr(model, "predict_proba"):
+        if not hasattr(context.model, "predict_proba"):
             return Result(np.nan, {
                 "Info": "Model does not provide probabilistic scores (predict_proba required)"
             })
 
-        prot, vals, target, _ = load_fairness_config(factsheet)
-        X = test_dataset.drop(target, axis=1)
-        y = test_dataset[target].values
-        s = model.predict_proba(X)[:, 1]
+        prot, vals, target, _ = load_fairness_config(context.factsheet)
 
-        df = test_dataset.copy()
-        df["score"] = s
-        df["y"] = y
+        df_test = context.test_data.copy()
+        df_test["score"] = context.y_prob_test[:, 1]  # Solo la clase positiva
+        df_test["y"] = context.y_test
 
-        df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop")
+        df_test["bin"] = pd.qcut(df_test["score"], n_bins, duplicates="drop")
 
         cal = (
-            df.groupby([prot, "bin"])
+            df_test.groupby([prot, "bin"])
               .apply(lambda g: g["y"].mean())
               .unstack(level=0)
         )
@@ -648,25 +615,22 @@ def calibration_score(model, test_dataset, factsheet, thresholds, n_bins=10):
         return Result(np.nan, {"Error": str(e)})
 
 
-def well_calibration_score(model, test_dataset, factsheet, thresholds, n_bins=10):
+def well_calibration_score(context, thresholds, n_bins=10):
     try:
-        if not hasattr(model, "predict_proba"):
+        if not hasattr(context.model, "predict_proba"):
             return Result(np.nan, {
                 "Info": "Model does not provide probabilistic scores (predict_proba required)"
             })
 
-        prot, vals, target, _ = load_fairness_config(factsheet)
-        X = test_dataset.drop(target, axis=1)
-        y = test_dataset[target].values
-        s = model.predict_proba(X)[:, 1]
+        prot, vals, target, _ = load_fairness_config(context.factsheet)
 
-        df = test_dataset.copy()
-        df["score"] = s
-        df["y"] = y
-        df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop")
+        df_test = context.test_data.copy()
+        df_test["score"] = context.y_prob_test[:, 1]  # Solo la clase positiva
+        df_test["y"] = context.test_data[target].values
+        df_test["bin"] = pd.qcut(df_test["score"], n_bins, duplicates="drop")
 
         err = (
-            df.groupby("bin")
+            df_test.groupby("bin")
               .apply(lambda g: abs(g["y"].mean() - g["score"].mean()))
               .mean()
         )
@@ -688,9 +652,9 @@ def well_calibration_score(model, test_dataset, factsheet, thresholds, n_bins=10
         return Result(np.nan, {"Error": str(e)})
 
 
-def generalized_entropy_score(model, test_dataset, factsheet, thresholds, alpha=1):
+def generalized_entropy_score(context, thresholds, alpha=2):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
 
         val = m.generalized_entropy_index(alpha=alpha)
         score = calculate_score(val, thresholds)
@@ -714,14 +678,14 @@ def generalized_entropy_score(model, test_dataset, factsheet, thresholds, alpha=
     except Exception as e:
         return Result(np.nan, {"Error": str(e)})
 
-def theil_index_score(model, test_dataset, factsheet, thresholds):
+def theil_index_score(context, thresholds):
     return generalized_entropy_score(
-        model, test_dataset, factsheet, thresholds, alpha=1
+        context, thresholds, alpha=1
     )
 
-def coefficient_variation_score(model, test_dataset, factsheet, thresholds):
+def coefficient_variation_score(context, thresholds):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
         val = np.sqrt(2*m.generalized_entropy_index(alpha=2))
         score = calculate_score(val, thresholds)
 
@@ -743,24 +707,19 @@ def coefficient_variation_score(model, test_dataset, factsheet, thresholds):
 
 from sklearn.neighbors import NearestNeighbors
 
-def consistency_score(model, test_dataset, factsheet, thresholds, k=5):
+def consistency_score(context, thresholds, k=5):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
-        prot, _, target, _ = load_fairness_config(factsheet)
-        X = test_dataset.drop(target, axis=1).values
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
+        prot, _, target, _ = load_fairness_config(context.factsheet)
+        X_test = context.X_test.copy()
 
-        if hasattr(model, "predict_proba"):
-            y_hat = model.predict_proba(X)[:, 1]    
-        else:
-            y_hat = model.predict(X).flatten()
-
-        nn = NearestNeighbors(n_neighbors=k+1).fit(X)
-        _, idx = nn.kneighbors(X)
+        nn = NearestNeighbors(n_neighbors=k+1).fit(X_test)
+        _, idx = nn.kneighbors(X_test)
 
         diffs = []
-        for i in range(len(X)):
+        for i in range(len(X_test)):
             neigh = idx[i][1:]
-            diffs.append(abs(y_hat[i] - np.mean(y_hat[neigh])))
+            diffs.append(abs(context.y_pred_test[i] - np.mean(context.y_pred_test[neigh])))
 
         val = 1 - np.mean(diffs)
         score = calculate_score(val, thresholds)
@@ -788,8 +747,10 @@ def consistency_score(model, test_dataset, factsheet, thresholds, k=5):
 
 from aif360.sklearn.metrics import class_imbalance
 
-def class_imbalance_score(dataset, factsheet):
+def class_imbalance_score(context, thresholds):
     try:
+        dataset = context.test_data
+        factsheet = context.factsheet
         prot, vals, target, fav = load_fairness_config(factsheet)
 
         # Favorable label (por defecto 1 si no se indica)
@@ -839,13 +800,13 @@ def class_imbalance_score(dataset, factsheet):
 
 from scipy.stats import entropy
 
-def kl_divergence_score(model, test_dataset, factsheet, thresholds):
+def kl_divergence_score(context, thresholds):
     try:
-        #m = get_aif360_metrics(model, test_dataset, factsheet)
-        prot, vals, target, _ = load_fairness_config(factsheet)
+        #m = get_aif360_metrics(model, test_data, factsheet)
+        prot, vals, target, _ = load_fairness_config(context.factsheet)
 
-        y = test_dataset[target]
-        prot_mask = test_dataset[prot].isin(vals)
+        y = context.test_data[target]
+        prot_mask = context.test_data[prot].isin(vals)
 
         Pp = y[~prot_mask].value_counts(normalize=True).sort_index()
         Pu = y[prot_mask].value_counts(normalize=True).sort_index()
@@ -907,17 +868,17 @@ def kl_divergence_score(model, test_dataset, factsheet, thresholds):
 #     except Exception as e:
 #         return Result(np.nan, {"Error": str(e)})
 
-def smoothed_edf_score(model, test_dataset, factsheet, thresholds, alpha=1.0, epsilon=0.1):
+def smoothed_edf_score(context, thresholds, alpha=1.0, epsilon=0.1):
     try:
-        m = get_aif360_metrics(model, test_dataset, factsheet)
-        if not hasattr(model, "predict_proba"):
+        m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
+        if not hasattr(context.model, "predict_proba"):
             return Result(np.nan, {"Info": "predict_proba required"})
 
-        prot, vals, target, _ = load_fairness_config(factsheet)
-        X = test_dataset.drop(target, axis=1)
-        probs = model.predict_proba(X)[:, 1]
+        prot, vals, target, _ = load_fairness_config(context.factsheet)
+        X = context.test_data.drop(target, axis=1)
+        probs = context.model.predict_proba(X)[:, 1]
 
-        df = test_dataset.copy()
+        df = context.test_data.copy()
         df["p"] = probs
 
         groups = df.groupby(prot)["p"].mean() + alpha
@@ -940,16 +901,16 @@ def smoothed_edf_score(model, test_dataset, factsheet, thresholds, alpha=1.0, ep
     except Exception as e:
         return Result(np.nan, {"Error": str(e)})
 
-def bias_amplification_score(model, dataset, factsheet, thresholds):
+def bias_amplification_score(context, thresholds):
     try:
-        #m = get_aif360_metrics(model, dataset, factsheet)
-        prot, vals, target, _ = load_fairness_config(factsheet)
+        #m = get_aif360_metrics(context.test_data, context.y_pred_test, context.factsheet)
+        prot, vals, target, _ = load_fairness_config(context.factsheet)
 
-        y = dataset[target]
-        y_hat = model.predict(dataset.drop(target, axis=1))
+        y = context.test_data[target]
+        y_hat = context.model.predict(context.test_data.drop(target, axis=1))
 
-        bias_y = abs(y[dataset[prot].isin(vals)].mean() - y[~dataset[prot].isin(vals)].mean())
-        bias_yhat = abs(y_hat[dataset[prot].isin(vals)].mean() - y_hat[~dataset[prot].isin(vals)].mean())
+        bias_y = abs(y[context.test_data[prot].isin(vals)].mean() - y[~context.test_data[prot].isin(vals)].mean())
+        bias_yhat = abs(y_hat[context.test_data[prot].isin(vals)].mean() - y_hat[~context.test_data[prot].isin(vals)].mean())
 
         val = bias_yhat - bias_y
         score = calculate_score(val, thresholds)
@@ -967,9 +928,9 @@ def bias_amplification_score(model, dataset, factsheet, thresholds):
     except Exception as e:
         return Result(np.nan, {"Error": str(e)})
 
-# def between_group_ge_score(model, test_dataset, factsheet, thresholds, alpha=1):
+# def between_group_ge_score(model, test_data, factsheet, thresholds, alpha=1):
 #     try:
-#         m = get_aif360_metrics(model, test_dataset, factsheet)
+#         m = get_aif360_metrics(model, test_data, factsheet)
 #         val = m.between_group_generalized_entropy_index(alpha=alpha)
 #         score = calculate_score(val, thresholds)
 
@@ -987,13 +948,13 @@ def bias_amplification_score(model, dataset, factsheet, thresholds):
 #         return Result(np.nan, {"Error": str(e)})
 
 
-def cohens_d_score(model, test_dataset, factsheet, thresholds):
+def cohens_d_score(context, thresholds):
     try:
-        prot, vals, target, _ = load_fairness_config(factsheet)
-        y_hat = model.predict(test_dataset.drop(target, axis=1))
+        prot, vals, target, _ = load_fairness_config(context.factsheet)
+        y_hat = context.model.predict(context.test_data.drop(target, axis=1))
 
-        g1 = y_hat[test_dataset[prot].isin(vals)]
-        g2 = y_hat[~test_dataset[prot].isin(vals)]
+        g1 = y_hat[context.test_data[prot].isin(vals)]
+        g2 = y_hat[~context.test_data[prot].isin(vals)]
 
         mu1, mu2 = g1.mean(), g2.mean()
         sigma = np.sqrt((g1.var() + g2.var()) / 2)
@@ -1013,13 +974,13 @@ def cohens_d_score(model, test_dataset, factsheet, thresholds):
         return Result(np.nan, {"Error": str(e)})
 
 
-def two_sd_rule_score(model, test_dataset, factsheet):
+def two_sd_rule_score(context):
     try:
-        prot, vals, target, _ = load_fairness_config(factsheet)
-        y_hat = model.predict(test_dataset.drop(target, axis=1))
+        prot, vals, target, _ = load_fairness_config(context.factsheet)
+        y_hat = context.model.predict(context.test_data.drop(target, axis=1))
 
-        g1 = y_hat[test_dataset[prot].isin(vals)]
-        g2 = y_hat[~test_dataset[prot].isin(vals)]
+        g1 = y_hat[context.test_data[prot].isin(vals)]
+        g2 = y_hat[~context.test_data[prot].isin(vals)]
 
         mu_diff = abs(g1.mean() - g2.mean())
         sigma = np.std(y_hat)

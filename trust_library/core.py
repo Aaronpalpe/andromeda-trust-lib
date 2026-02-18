@@ -1,8 +1,7 @@
 import json
 import os
 
-from trust_library import accountability, sustainability
-from . import fairness, utils
+from trust_library import accountability, privacy, sustainability, fairness, utils
 
 class TrustEvaluator:
     def __init__(self, model, train_data, test_data, factsheet, config_path="trust_library/configs.json"):
@@ -37,19 +36,59 @@ class TrustEvaluator:
         
         pillars = {
             "fairness": fairness,
+            "privacy": privacy,
             "accountability": accountability,
             "sustainability": sustainability,
         }
+
+        target = self.factsheet["general"]["target_column"]["value"]
+        if target not in self.train_data.columns or target not in self.test_data.columns:
+            raise ValueError(f"Target column '{target}' no encontrada en los datasets.")
+        
+        X_train = self.train_data.drop(columns=[target])
+        y_train = self.train_data[target].values.flatten()
+        X_test = self.test_data.drop(columns=[target])
+        y_test = self.test_data[target].values.flatten()
+        
+        # Hacemos las predicciones para el train y test 
+        try:
+            y_pred_train = self.model.predict(X_train)
+            y_pred_test = self.model.predict(X_test)
+
+            if hasattr(y_pred_train, 'flatten'): 
+                y_pred_train = y_pred_train.flatten()
+            if hasattr(y_pred_test, 'flatten'):
+                y_pred_test = y_pred_test.flatten()
+            # Calcular probabilidades si el modelo lo soporta 
+            y_prob_train = None
+            if hasattr(self.model, "predict_proba"):
+                y_prob_train = self.model.predict_proba(X_train)
+            y_prob_test = None
+            if hasattr(self.model, "predict_proba"):
+                y_prob_test = self.model.predict_proba(X_test)
+
+        except Exception as e:
+            raise RuntimeError(f"Error en la predicción del modelo: {e}")
+
+        context = utils.EvaluationContext(
+            model=self.model,
+            train_data=self.train_data,
+            test_data=self.test_data,
+            X_train=X_train, y_train=y_train,
+            X_test=X_test, y_test=y_test,
+            y_pred_train=y_pred_train,
+            y_pred_test=y_pred_test,
+            y_prob_train=y_prob_train,
+            y_prob_test=y_prob_test,
+            factsheet=self.factsheet
+        )
 
         for pillar_name, pillar_module in pillars.items():
             print(f"Calculando métricas de {pillar_name.capitalize()}...")
             
             self.results_per_pillar[pillar_name] = pillar_module.analyse(
-                self.model,
-                self.train_data,
-                self.test_data,
-                self.factsheet,
-                mappings.get(pillar_name)
+                context,
+                mappings.get(pillar_name), 
             )
 
         # 2. Calcular Scores Ponderados

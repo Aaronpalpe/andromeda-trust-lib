@@ -62,3 +62,21 @@ def calculate_score(value, thresholds):
         
     # Asegurar que el score nunca exceda 5 ni baje de 1
     return int(np.clip(score, 1, 5))
+
+from dataclasses import dataclass
+import pandas as pd
+
+@dataclass
+class EvaluationContext:
+    model: object
+    train_data: pd.DataFrame
+    test_data: pd.DataFrame
+    X_train: pd.DataFrame
+    y_train: np.ndarray
+    X_test: pd.DataFrame
+    y_test: np.ndarray
+    y_pred_train: np.ndarray
+    y_pred_test: np.ndarray
+    y_prob_train: np.ndarray = None # Opcional, para métricas que necesitan probabilidades
+    y_prob_test: np.ndarray = None # Opcional, para métricas que necesitan probabilidades
+    factsheet: dict = None

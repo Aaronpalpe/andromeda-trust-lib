@@ -12,7 +12,7 @@ from trust_library.factsheet import (
 import json
 
 from trust_library.utils import to_json_safe
-
+import plotly.express as px
 
 if __name__ == "__main__":
     # factsheet = create_factsheet_interactive()
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # })
     # save_factsheet(fs, "factsheet.json")
 
-    factsheet = load_factsheet("factsheet.json")
+    factsheet = load_factsheet_default() #load_factsheet("factsheet.json")
 
     with open("model.pkl", "rb") as f:
         loaded_model = pickle.load(f)
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         config_path="trust_library/configs.json"
     )
 
-    results = evaluator.compute()
+    #results = evaluator.compute()
 
     # print("\n=== RESULTADOS FINAL ===")
     # print(f"Global Trust Score: {results['trust_score']}")
@@ -56,3 +56,76 @@ if __name__ == "__main__":
     #     "\nPropiedades calculadas:\n" +
     #     json.dumps(to_json_safe(results['properties']), indent=4)
     # )
+
+
+    # with open("trust_evaluation_result.json", "r") as f:
+    #     trust_results = json.load(f)
+    # pillar_scores = trust_results["pillar_score"]
+
+    # df_pillars = pd.DataFrame(
+    #     list(pillar_scores.items()),
+    #     columns=["Pillar", "Score"]
+    # )
+
+    # plt.figure(figsize=(8, 5))
+    # sns.barplot(data=df_pillars, x="Pillar", y="Score")
+    # plt.title("Trust Pillar Scores")
+    # plt.ylim(0, 5)
+    # plt.tight_layout()
+    # plt.show()
+
+    # details = trust_results["details"]
+
+    # for pillar, metrics in details.items():
+    #     df = pd.DataFrame(
+    #         list(metrics.items()),
+    #         columns=["Metric", "Score"]
+    #     )
+
+    #     plt.figure(figsize=(10, 6))
+    #     sns.barplot(data=df, x="Score", y="Metric")
+    #     plt.title(f"{pillar.capitalize()} Metrics")
+    #     plt.xlim(0, 5)
+    #     plt.tight_layout()
+    #     plt.show()
+
+    # === Cargar datos ===
+    with open("trust_evaluation_result.json", "r") as f:
+        trust_results = json.load(f)
+
+    pillar_scores = trust_results["pillar_score"]
+    details = trust_results["details"]
+
+    # === Gráfico de barras de pilares ===
+    df_pillars = pd.DataFrame(list(pillar_scores.items()), columns=["Pillar", "Score"])
+    fig_pillars = px.bar(
+        df_pillars,
+        x="Pillar",
+        y="Score",
+        text="Score",
+        color="Score",
+        color_continuous_scale="Viridis",
+        range_y=[0, 5],
+        title="Trust Pillar Scores"
+    )
+    fig_pillars.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+    fig_pillars.show()  # Esto abre un navegador con el gráfico interactivo
+
+    # === Gráficos por métricas individuales de cada pilar ===
+    for pillar, metrics in details.items():
+        df_metrics = pd.DataFrame(list(metrics.items()), columns=["Metric", "Score"])
+        df_metrics = df_metrics.sort_values("Score")  # Para que las barras horizontales estén ordenadas
+        fig = px.bar(
+            df_metrics,
+            x="Score",
+            y="Metric",
+            orientation="h",
+            text="Score",
+            color="Score",
+            color_continuous_scale="Cividis",
+            range_x=[0, 5],
+            title=f"{pillar.capitalize()} Metrics"
+        )
+        fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+        fig.show()  # Abre cada gráfico en una ventana o pestaña del navegador
+

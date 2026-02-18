@@ -40,6 +40,21 @@
         "favorable_outcomes": {"description": "Valoresque identifican el éxito o resultado favorable", "value": [1]}
     },
 
+    "privacy": {
+        "epsilon": {
+            "description": "Parámetro de privacidad diferencial epsilon",
+            "value": 1.0
+        },
+        "quasi_identifiers": {
+            "description": "Lista de identificadores que pueden reidentificar individuos",
+            "value": ["Own_Housing", "Own_Car"]
+        },
+        "sensitive_attribute": {
+            "description": "Atributo sensible que se protege",
+            "value": ["Group"]
+        }
+    },
+
     "governance": {
         "roles_and_responsibilities": {
             "description": "Roles y responsabilidades en el ciclo de vida",
