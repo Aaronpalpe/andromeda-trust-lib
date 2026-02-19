@@ -1,7 +1,8 @@
 import json
 import os
 
-from trust_library import accountability, privacy, sustainability, fairness, utils
+from trust_library import accountability, privacy, sustainability, utils
+from trust_library.fairness import fairness
 
 class TrustEvaluator:
     def __init__(self, model, train_data, test_data, factsheet, config_path="trust_library/configs.json"):

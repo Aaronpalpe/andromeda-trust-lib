@@ -1,5 +1,9 @@
 import collections
+from typing import Any, Optional
 import numpy as np
+
+from dataclasses import dataclass
+import pandas as pd
 
 # Estructura de resultados
 Result = collections.namedtuple('result', 'score properties')
@@ -63,20 +67,80 @@ def calculate_score(value, thresholds):
     # Asegurar que el score nunca exceda 5 ni baje de 1
     return int(np.clip(score, 1, 5))
 
-from dataclasses import dataclass
-import pandas as pd
+
+def load_fairness_config(factsheet: dict) -> tuple:
+    fairness_section = factsheet.get("fairness", {})
+    general_section  = factsheet.get("general", {})
+
+    def _get(section, field, default):
+        return section.get(field, {}).get("value") or default
+
+    protected_feature = _get(fairness_section, "protected_feature", "")
+
+    raw = fairness_section.get("protected_values", {}).get("value")
+    if raw is None:
+        protected_values = []
+    elif isinstance(raw, list):
+        protected_values = raw
+    else:
+        protected_values = [raw]
+
+    favorable_outcomes = _get(fairness_section, "favorable_outcomes", []) or []
+    target_column      = _get(general_section, "target_column", "")
+
+    if not protected_feature or not target_column:
+        raise ValueError(
+            f"Configuración incompleta: falta 'protected_feature' o 'target_column'.\n"
+            f"  protected_feature = '{protected_feature}'\n"
+            f"  target_column     = '{target_column}'"
+        )
+
+    return protected_feature, protected_values, target_column, favorable_outcomes
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EvaluationContext
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class EvaluationContext:
-    model: object
+    model: Any
     train_data: pd.DataFrame
     test_data: pd.DataFrame
     X_train: pd.DataFrame
-    y_train: np.ndarray
     X_test: pd.DataFrame
+    y_train: np.ndarray
     y_test: np.ndarray
-    y_pred_train: np.ndarray
-    y_pred_test: np.ndarray
-    y_prob_train: np.ndarray = None # Opcional, para métricas que necesitan probabilidades
-    y_prob_test: np.ndarray = None # Opcional, para métricas que necesitan probabilidades
-    factsheet: dict = None
+    y_pred_train: np.ndarray | pd.DataFrame
+    y_pred_test: np.ndarray | pd.DataFrame
+    y_prob_train: np.ndarray | pd.DataFrame | None
+    y_prob_test: np.ndarray | pd.DataFrame | None
+    factsheet: dict[str, Any]
+
+    @property
+    def group_mask(self) -> np.ndarray:
+        prot, vals, _, _ = load_fairness_config(self.factsheet)
+        return self.X_test[prot].isin(vals).to_numpy()
+
+    @property
+    def protected_feature(self) -> str:
+        return load_fairness_config(self.factsheet)[0]
+
+    @property
+    def protected_values(self) -> list[Any]:
+        return load_fairness_config(self.factsheet)[1]
+
+    @property
+    def target_column(self) -> str:
+        return load_fairness_config(self.factsheet)[2]
+
+    @property
+    def favorable_outcomes(self) -> list[Any]:
+        return load_fairness_config(self.factsheet)[3]
+
+    @property
+    def y_prob_positive(self) -> np.ndarray | None:
+        if self.y_prob_test is None:
+            return None
+        return np.asarray(self.y_prob_test)[:, 1]
