@@ -1,0 +1,70 @@
+# -------------------------------------------------
+# Python (bytecode, caches)
+# -------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# -------------------------------------------------
+# Virtual environments
+# -------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# -------------------------------------------------
+# Build / packaging
+# -------------------------------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# -------------------------------------------------
+# Tests / coverage
+# -------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.pyre/
+.ruff_cache/
+
+# -------------------------------------------------
+# IDEs / editors / OS
+# -------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+
+# -------------------------------------------------
+# Jupyter
+# -------------------------------------------------
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# (Optional) If you do NOT want to version notebooks at all, uncomment:
+# *.ipynb
+
+# -------------------------------------------------
+# Project data / artifacts (specific files you listed)
+# -------------------------------------------------
+emissions.csv
+trust_evaluation_result.json
+
+# If you generate more artifacts like these, uncomment:
+# *.json
+# *.csv
+
+# -------------------------------------------------
+# Explicit ignores from your list (redundant but clear)
+# -------------------------------------------------
+.ipynb_checkpoints/main-checkpoint.ipynb
+trust_library/__pycache__/
+trust_library/fairness/__pycache__/
