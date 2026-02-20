@@ -41,8 +41,7 @@ if __name__ == "__main__":
         model=loaded_model,
         train_data=train_loaded,
         test_data=test_loaded,
-        factsheet=factsheet,
-        config_path="trust_library/configs.json"
+        factsheet=factsheet
     )
 
     #results = evaluator.compute()

@@ -9,7 +9,7 @@ from trust_library.fairness import FairnessPillar
 from trust_library.accountability import AccountabilityPillar
 from trust_library.privacy import PrivacyPillar
 from trust_library.sustainability import SustainabilityPillar
-
+from importlib import resources
 
 
 
@@ -18,12 +18,15 @@ from trust_library.sustainability import SustainabilityPillar
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_config(config_path: str) -> dict:
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Configuration not found at: {config_path}")
-    with open(config_path) as f:
-        return json.load(f)
-
-
+    if config_path is None:
+        # Cargar config interna del paquete
+        with resources.files("trust_library").joinpath("configs.json").open("r") as f:
+            config = json.load(f)
+    else:
+        # Cargar config externa proporcionada por usuario
+        with open(config_path, "r") as f:
+            config = json.load(f)
+    return config
 # ─────────────────────────────────────────────────────────────────────────────
 # Context preparation
 # ─────────────────────────────────────────────────────────────────────────────
@@ -144,10 +147,10 @@ def evaluate(
     train_data,
     test_data,
     factsheet,
-    config_path: str = "trust_library/configs.json",
+    config_path: str | None = None,
     output_path: str = "trust_evaluation_result.json",
 ) -> dict:
-
+    
     config  = load_config(config_path)
     context = build_context(model, train_data, test_data, factsheet)
 
@@ -191,18 +194,16 @@ class TrustEvaluator:
     Contains no internal logic: delegates everything to the module-level functions.
     """
 
-    def __init__(self, model, train_data, test_data, factsheet,
-                 config_path="trust_library/configs.json"):
+    def __init__(self, model, train_data, test_data, factsheet):
         self.model       = model
         self.train_data  = train_data
         self.test_data   = test_data
         self.factsheet   = factsheet
-        self.config_path = config_path
         self.result: dict | None = None
 
     def compute(self) -> dict:
         self.result = evaluate(
             self.model, self.train_data, self.test_data,
-            self.factsheet, self.config_path,
+            self.factsheet
         )
         return self.result
