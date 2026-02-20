@@ -1,5 +1,5 @@
 """
-metrics_core.py
+fairness_metrics_core.py
 ===============
 Pure mathematical implementations of all fairness metrics.
 Zero dependency on AIF360, HolisticAI, or any fairness-specific library.
@@ -15,7 +15,7 @@ import numpy as np
 from scipy.stats import entropy as scipy_entropy, chisquare
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import accuracy_score
-
+import pandas as pd
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -261,7 +261,6 @@ def calibration_gap(
 
     Ideal value: 0
     """
-    import pandas as pd
 
     df = pd.DataFrame({
         "y": y_true,
@@ -295,7 +294,6 @@ def well_calibration_error(
 
     Ideal value: 0
     """
-    import pandas as pd
 
     df = pd.DataFrame({"y": y_true, "score": y_prob})
     df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop")
@@ -375,7 +373,6 @@ def kl_divergence(
     KL(P_privileged || P_protected)
     Ideal value: 0  (identical distributions)
     """
-    import pandas as pd
 
     Pp = pd.Series(y_true[~group_mask]).value_counts(normalize=True).sort_index()
     Pu = pd.Series(y_true[group_mask]).value_counts(normalize=True).sort_index()

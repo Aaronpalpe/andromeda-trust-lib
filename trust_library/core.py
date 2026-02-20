@@ -1,122 +1,208 @@
+# core.py
+
+from __future__ import annotations
 import json
 import os
 
-from trust_library import accountability, privacy, sustainability, utils
-from trust_library.fairness import fairness
+from trust_library import utils
+from trust_library.fairness import FairnessPillar
+from trust_library.accountability import AccountabilityPillar
+from trust_library.privacy import PrivacyPillar
+from trust_library.sustainability import SustainabilityPillar
+
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+def load_config(config_path: str) -> dict:
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Configuration not found at: {config_path}")
+    with open(config_path) as f:
+        return json.load(f)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Context preparation
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_context(model, train_data, test_data, factsheet) -> utils.EvaluationContext:
+    """Extracts features/labels and generates predictions to build the evaluation context."""
+    target = factsheet["general"]["target_column"]["value"]
+
+    if target not in train_data.columns or target not in test_data.columns:
+        raise ValueError(f"Target column '{target}' not found in the datasets.")
+
+    X_train = train_data.drop(columns=[target])
+    y_train = train_data[target].values.flatten()
+    X_test  = test_data.drop(columns=[target])
+    y_test  = test_data[target].values.flatten()
+
+    try:
+        y_pred_train = _predict(model, X_train)
+        y_pred_test  = _predict(model, X_test)
+        y_prob_train = _predict_proba(model, X_train)
+        y_prob_test  = _predict_proba(model, X_test)
+    except Exception as e:
+        raise RuntimeError(f"Error during model prediction: {e}")
+
+    return utils.EvaluationContext(
+        model=model,
+        train_data=train_data,
+        test_data=test_data,
+        X_train=X_train, y_train=y_train,
+        X_test=X_test,   y_test=y_test,
+        y_pred_train=y_pred_train,
+        y_pred_test=y_pred_test,
+        y_prob_train=y_prob_train,
+        y_prob_test=y_prob_test,
+        factsheet=factsheet,
+    )
+
+
+def _predict(model, X):
+    result = model.predict(X)
+    return result.flatten() if hasattr(result, "flatten") else result
+
+
+def _predict_proba(model, X):
+    if hasattr(model, "predict_proba"):
+        return model.predict_proba(X)
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pillar registry
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PILLARS = {
+    "fairness": FairnessPillar(),
+    "accountability": AccountabilityPillar(),
+    "privacy": PrivacyPillar(),
+    "sustainability": SustainabilityPillar(),
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pillar execution
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run_pillars(context: utils.EvaluationContext, config: dict) -> dict:
+    """Executes analyse() for each pillar and returns a Result per pillar."""
+    results = {}
+    for name, pillar in _PILLARS.items():
+        print(f"Computing {name.capitalize()} metrics...")
+        results[name] = pillar.analyse(
+            context,
+            config.get("mappings", {}).get(name),
+        )
+    return results
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Score computation
+# ─────────────────────────────────────────────────────────────────────────────
+
+def compute_pillar_scores(context: utils.EvaluationContext, config: dict) -> dict:
+    """Delegates aggregated score computation to each pillar."""
+
+    results = {}
+
+    for name, pillar in _PILLARS.items():
+        aggregated_score, result_obj = pillar.score(context, config)
+
+        results[name] = {
+            "score": aggregated_score,
+            "metrics": result_obj.score,
+            "properties": result_obj.properties,
+        }
+
+    return results
+
+
+def compute_trust_score(pillar_scores: dict, pillar_weights: dict) -> float:
+    return utils.calculate_weighted_score(pillar_scores, pillar_weights)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Serialization
+# ─────────────────────────────────────────────────────────────────────────────
+
+def save_result(result: dict, path: str = "trust_evaluation_result.json") -> None:
+    with open(path, "w") as f:
+        json.dump(utils.to_json_safe(result), f, indent=4)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main entry point
+# ─────────────────────────────────────────────────────────────────────────────
+
+def evaluate(
+    model,
+    train_data,
+    test_data,
+    factsheet,
+    config_path: str = "trust_library/configs.json",
+    output_path: str = "trust_evaluation_result.json",
+) -> dict:
+
+    config  = load_config(config_path)
+    context = build_context(model, train_data, test_data, factsheet)
+
+    pillar_results = compute_pillar_scores(context, config)
+
+    # Extract only aggretated scores
+    pillar_scores = {
+        name: data["score"]
+        for name, data in pillar_results.items()
+    }
+
+    trust_score = compute_trust_score(
+        pillar_scores,
+        config.get("pillars", {})
+    )
+
+    output = {
+        "trust_score": trust_score,
+        "pillar_score": pillar_scores,
+        "details": {
+            name: data["metrics"]
+            for name, data in pillar_results.items()
+        },
+        "properties": {
+            name: data["properties"]
+            for name, data in pillar_results.items()
+        },
+    }
+
+    save_result(output, output_path)
+    return output
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Optional facade — preserves compatibility with existing code
+# ─────────────────────────────────────────────────────────────────────────────
 
 class TrustEvaluator:
-    def __init__(self, model, train_data, test_data, factsheet, config_path="trust_library/configs.json"):
-        """
-        Inicializa el evaluador.
-        Args:
-            model: Modelo cargado (sklearn/keras/pkl).
-            train_data: DataFrame de entrenamiento.
-            test_data: DataFrame de test.
-            factsheet: Diccionario con metadatos (protected_feature, target, etc).
-            config_path: Ruta al json de configuración.
-        """
-        self.model = model
-        self.train_data = train_data
-        self.test_data = test_data
-        self.factsheet = factsheet
-        
-        # Cargar Configuración
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                self.config = json.load(f)
-        else:
-            raise FileNotFoundError(f"Configuración no encontrada en: {config_path}")
-            
-        self.results_per_pillar = {}
-        self.pillar_score = {}
-        self.final_trust_score = 0
+    """
+    Thin wrapper around `evaluate()` for users already relying on the class-based API.
+    Contains no internal logic: delegates everything to the module-level functions.
+    """
 
-    def compute(self):
-        """Ejecuta los cálculos de los pilares."""
-        mappings = self.config.get("mappings", {})
-        
-        pillars = {
-            "fairness": fairness,
-            "privacy": privacy,
-            "accountability": accountability,
-            "sustainability": sustainability,
-        }
+    def __init__(self, model, train_data, test_data, factsheet,
+                 config_path="trust_library/configs.json"):
+        self.model       = model
+        self.train_data  = train_data
+        self.test_data   = test_data
+        self.factsheet   = factsheet
+        self.config_path = config_path
+        self.result: dict | None = None
 
-        target = self.factsheet["general"]["target_column"]["value"]
-        if target not in self.train_data.columns or target not in self.test_data.columns:
-            raise ValueError(f"Target column '{target}' no encontrada en los datasets.")
-        
-        X_train = self.train_data.drop(columns=[target])
-        y_train = self.train_data[target].values.flatten()
-        X_test = self.test_data.drop(columns=[target])
-        y_test = self.test_data[target].values.flatten()
-        
-        # Hacemos las predicciones para el train y test 
-        try:
-            y_pred_train = self.model.predict(X_train)
-            y_pred_test = self.model.predict(X_test)
-
-            if hasattr(y_pred_train, 'flatten'): 
-                y_pred_train = y_pred_train.flatten()
-            if hasattr(y_pred_test, 'flatten'):
-                y_pred_test = y_pred_test.flatten()
-            # Calcular probabilidades si el modelo lo soporta 
-            y_prob_train = None
-            if hasattr(self.model, "predict_proba"):
-                y_prob_train = self.model.predict_proba(X_train)
-            y_prob_test = None
-            if hasattr(self.model, "predict_proba"):
-                y_prob_test = self.model.predict_proba(X_test)
-
-        except Exception as e:
-            raise RuntimeError(f"Error en la predicción del modelo: {e}")
-
-        context = utils.EvaluationContext(
-            model=self.model,
-            train_data=self.train_data,
-            test_data=self.test_data,
-            X_train=X_train, y_train=y_train,
-            X_test=X_test, y_test=y_test,
-            y_pred_train=y_pred_train,
-            y_pred_test=y_pred_test,
-            y_prob_train=y_prob_train,
-            y_prob_test=y_prob_test,
-            factsheet=self.factsheet
+    def compute(self) -> dict:
+        self.result = evaluate(
+            self.model, self.train_data, self.test_data,
+            self.factsheet, self.config_path,
         )
-
-        for pillar_name, pillar_module in pillars.items():
-            print(f"Calculando métricas de {pillar_name.capitalize()}...")
-            
-            self.results_per_pillar[pillar_name] = pillar_module.analyse(
-                context,
-                mappings.get(pillar_name), 
-            )
-
-        # 2. Calcular Scores Ponderados
-        metrics_and_scores_per_pillar = {k: v.score for k, v in self.results_per_pillar.items()}
-        metrics_properties_per_pillar = {k: v.properties for k, v in self.results_per_pillar.items()}
-
-        weights_config_per_pillar = self.config.get("weights", {})
-        
-        for pillar, metrics_and_scores_in_pillar in self.results_per_pillar.items():
-            weights_in_pillar = weights_config_per_pillar.get(pillar, {})
-            self.pillar_score[pillar] = utils.calculate_weighted_score(metrics_and_scores_in_pillar.score, weights_in_pillar)
-            
-        # 3. Calcular Trust Score Global
-        pillar_weights = self.config.get("pillars", {})
-        self.final_trust_score = utils.calculate_weighted_score(self.pillar_score, pillar_weights)
-        
-        res = {
-            "trust_score": self.final_trust_score,
-            "pillar_score": self.pillar_score,
-            "details": metrics_and_scores_per_pillar,
-            "properties": metrics_properties_per_pillar 
-        }
-
-        #convertimos a json
-        json_res = utils.to_json_safe(res)
-
-        # Guardamos el resultado en un json
-        with open("trust_evaluation_result.json", 'w') as f:
-            json.dump(json_res, f, indent=4)
-        return res
+        return self.result
