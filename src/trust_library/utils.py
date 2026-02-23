@@ -2,7 +2,7 @@ import collections
 from typing import Any, Optional
 import numpy as np
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import pandas as pd
 
 # Estructura de resultados
@@ -117,6 +117,7 @@ class EvaluationContext:
     y_prob_train: np.ndarray | pd.DataFrame | None
     y_prob_test: np.ndarray | pd.DataFrame | None
     factsheet: dict[str, Any]
+    extras: dict[str, Any] = field(default_factory=dict)
 
     @property
     def group_mask(self) -> np.ndarray:

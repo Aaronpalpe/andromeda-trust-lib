@@ -86,18 +86,6 @@ class BaseMetric(ABC):
             "or provide score_config_key."
         )
 
-    # def _get_thresholds(self, config: dict | None):
-    #     if config is None:
-    #         return _DEFAULT_THRESHOLDS
-
-    #     thresholds = (
-    #         config.get(self.score_config_key, {})
-    #         .get("thresholds", {})
-    #         .get("value")
-    #     )
-
-    #     return thresholds if thresholds is not None else _DEFAULT_THRESHOLDS
-
     def _get_thresholds(self, config: dict | None):
         if config is None:
             warnings.warn("Config is None. Using default thresholds.", RuntimeWarning, stacklevel=2,)

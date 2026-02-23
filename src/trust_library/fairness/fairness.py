@@ -19,7 +19,7 @@ from typing import Any, Dict, List
 import warnings
 warnings.filterwarnings("ignore")
 
-from trust_library.pillar import Pillar
+from trust_library.pillar import BaseMetric, Pillar
 
 from trust_library.utils import Result, EvaluationContext
 from .metrics import (
@@ -58,13 +58,12 @@ class FairnessPillar(Pillar):
     @property
     def pillar_key(self) -> str:
         return "fairness"
+    
+    def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:
+        return
 
-    def analyse(
-        self,
-        context: EvaluationContext,
-        config: Dict[str, Any],
-    ) -> Result:
-        
+
+    def get_metrics(self) -> List[BaseMetric]:
         metrics: List[Any] = [
             UnderfittingMetric(),
             OverfittingMetric(),
@@ -88,12 +87,5 @@ class FairnessPillar(Pillar):
             BiasAmplificationMetric(),
             CohensDMetric(),
         ]
-        
-        scores: Dict[str, float] = {}
-        properties: Dict[str, Dict[str, Any]] = {}
-        
-        for metric in metrics:
-            result = metric.evaluate(context, config)
-            scores[metric.metric_key]     = result.score
-            properties[metric.metric_key] = result.properties
-        return Result(score=scores, properties=properties)
+
+        return metrics

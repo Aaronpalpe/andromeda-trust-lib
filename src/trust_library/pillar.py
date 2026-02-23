@@ -3,13 +3,14 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from trust_library.utils import Result, EvaluationContext, calculate_weighted_score
-from typing import Tuple
+from typing import Any, List, Tuple
+from .base_metric import BaseMetric
 
 
 class Pillar(ABC):
     """
     Base class for all evaluation pillars.
-    Each pillar only implements `analyse()`.
+    Each pillar only implements `get_metrics() and prepare() (if necessary)`.
     `score()` is generic and delegates to `analyse()`.
     """
 
@@ -19,10 +20,28 @@ class Pillar(ABC):
         """Pillar key in the config (e.g., 'fairness', 'privacy')."""
         ...
 
+    # Optional hook to modify EvaluationContext
+    def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:
+        return
+
+    # Method to obtain metrics from each pillar
     @abstractmethod
-    def analyse(self, context: EvaluationContext, config: dict) -> Result:
-        """Executes all metrics and returns scores + properties."""
+    def get_metrics(self) -> List[BaseMetric]:
         ...
+
+    def analyse(self, context: EvaluationContext, config: dict[str, dict]) -> Result:
+        self.prepare(context, config)
+        metrics = self.get_metrics()
+
+        scores: dict[str, float] = {}
+        properties: dict[str, dict[str, Any]] = {}
+
+        for metric in metrics:
+            result = metric.evaluate(context, config)
+            scores[metric.metric_key] = result.score
+            properties[metric.metric_key] = result.properties
+
+        return Result(score=scores, properties=properties)
 
     def score(self, context: EvaluationContext, config: dict) -> Tuple[float, Result]:
         """Computes the aggregated weighted score of the pillar (0–5)."""

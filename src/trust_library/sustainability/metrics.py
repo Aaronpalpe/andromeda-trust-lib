@@ -15,7 +15,8 @@ class EnergyConsumptionMetric(BaseMetric):
     def __init__(self):
         super().__init__("energy_consumed", "score_energy")
 
-    def compute(self, ctx, run_data):
+    def compute(self, ctx):
+        run_data = ctx.extras["run_data"]
         return core.compute_energy_consumption(run_data)
 
     def compute_score(self, raw, config):
@@ -41,7 +42,8 @@ class EmissionsMetric(BaseMetric):
     def __init__(self):
         super().__init__("emissions", "score_emissions")
 
-    def compute(self, ctx, run_data):
+    def compute(self, ctx):
+        run_data = ctx.extras["run_data"]
         return core.compute_emissions(run_data)
 
     def compute_score(self, raw, config):
@@ -67,7 +69,8 @@ class CarbonIntensityMetric(BaseMetric):
     def __init__(self):
         super().__init__("carbon_intensity", "score_carbon_intensity")
 
-    def compute(self, ctx, run_data):
+    def compute(self, ctx):
+        run_data = ctx.extras["run_data"]
         return core.compute_carbon_intensity(run_data)
 
     def compute_score(self, raw, config):
@@ -91,7 +94,8 @@ class EnergyEfficiencyMetric(BaseMetric):
     def __init__(self):
         super().__init__("energy_efficiency", "score_energy_efficiency")
 
-    def compute(self, ctx, run_data):
+    def compute(self, ctx):
+        run_data = ctx.extras["run_data"]
         return core.compute_energy_efficiency(run_data)
 
     def compute_score(self, raw, config):
