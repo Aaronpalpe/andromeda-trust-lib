@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import numpy as np
 from trust_library.utils import Result, calculate_score
+import warnings
 
 _DEFAULT_THRESHOLDS = [0.1, 0.2, 0.3, 0.4]
 
@@ -85,8 +86,21 @@ class BaseMetric(ABC):
             "or provide score_config_key."
         )
 
+    # def _get_thresholds(self, config: dict | None):
+    #     if config is None:
+    #         return _DEFAULT_THRESHOLDS
+
+    #     thresholds = (
+    #         config.get(self.score_config_key, {})
+    #         .get("thresholds", {})
+    #         .get("value")
+    #     )
+
+    #     return thresholds if thresholds is not None else _DEFAULT_THRESHOLDS
+
     def _get_thresholds(self, config: dict | None):
         if config is None:
+            warnings.warn("Config is None. Using default thresholds.", RuntimeWarning, stacklevel=2,)
             return _DEFAULT_THRESHOLDS
 
         thresholds = (
@@ -95,4 +109,7 @@ class BaseMetric(ABC):
             .get("value")
         )
 
-        return thresholds if thresholds is not None else _DEFAULT_THRESHOLDS
+        if thresholds is None:
+            warnings.warn(f"No thresholds configured for '{self.score_config_key}'. Using default thresholds.", RuntimeWarning, stacklevel=2,)
+            return _DEFAULT_THRESHOLDS
+        return thresholds

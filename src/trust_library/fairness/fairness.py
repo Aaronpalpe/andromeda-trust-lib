@@ -15,6 +15,7 @@ fairness.py
 Main entry point for the fairness analysis pipeline.
 """
 
+from typing import Any, Dict, List
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -50,29 +51,7 @@ from .metrics import (
 # Metric registry
 # ─────────────────────────────────────────────────────────────────────────────
 
-_METRICS = [
-    ("underfitting",                  UnderfittingMetric()),
-    ("overfitting",                   OverfittingMetric()),
-    ("class_balance",                 ClassBalanceMetric()),
-    ("statistical_parity_difference", StatisticalParityMetric()),
-    ("disparate_impact",              DisparateImpactMetric()),
-    ("equal_opportunity_difference",  EqualOpportunityMetric()),
-    ("average_odds_difference",       AverageOddsMetric()),
-    ("accuracy_parity",               AccuracyParityMetric()),
-    ("predictive_parity",             PredictiveParityMetric()),
-    ("treatment_equality",            TreatmentEqualityMetric()),
-    ("calibration",                   CalibrationGapMetric(n_bins=10)),
-    ("well_calibration",              WellCalibrationMetric(n_bins=10)),
-    ("generalized_entropy",           GeneralizedEntropyMetric(alpha=2)),
-    ("theil_index",                   TheilIndexMetric()),
-    ("coefficient_variation",         CoefficientVariationMetric()),
-    ("consistency",                   ConsistencyMetric(k=5)),
-    ("class_imbalance",               ClassImbalanceMetric()),
-    ("kl_divergence",                 KLDivergenceMetric()),
-    ("smoothed_edf",                  SmoothedEDFMetric(alpha=1.0)),
-    ("bias_amplification",            BiasAmplificationMetric()),
-    ("cohens_d",                      CohensDMetric()),
-]
+
 
 class FairnessPillar(Pillar):
 
@@ -80,10 +59,41 @@ class FairnessPillar(Pillar):
     def pillar_key(self) -> str:
         return "fairness"
 
-    def analyse(self, context: EvaluationContext, config: dict) -> Result:
-        scores, properties = {}, {}
-        for name, metric in _METRICS:
+    def analyse(
+        self,
+        context: EvaluationContext,
+        config: Dict[str, Any],
+    ) -> Result:
+        
+        metrics: List[Any] = [
+            UnderfittingMetric(),
+            OverfittingMetric(),
+            ClassBalanceMetric(),
+            StatisticalParityMetric(),
+            DisparateImpactMetric(),
+            EqualOpportunityMetric(),
+            AverageOddsMetric(),
+            AccuracyParityMetric(),
+            PredictiveParityMetric(),
+            TreatmentEqualityMetric(),
+            CalibrationGapMetric(n_bins=10),
+            WellCalibrationMetric(n_bins=10),
+            GeneralizedEntropyMetric(alpha=2),
+            TheilIndexMetric(),
+            CoefficientVariationMetric(),
+            ConsistencyMetric(k=5),
+            ClassImbalanceMetric(),
+            KLDivergenceMetric(),
+            SmoothedEDFMetric(alpha=1.0),
+            BiasAmplificationMetric(),
+            CohensDMetric(),
+        ]
+        
+        scores: Dict[str, float] = {}
+        properties: Dict[str, Dict[str, Any]] = {}
+        
+        for metric in metrics:
             result = metric.evaluate(context, config)
-            scores[name]     = result.score
-            properties[name] = result.properties
+            scores[metric.metric_key]     = result.score
+            properties[metric.metric_key] = result.properties
         return Result(score=scores, properties=properties)

@@ -50,12 +50,16 @@ class PrivacyPillar(Pillar):
 
         for metric in metrics:
 
-            raw = metric.compute(context)
-            score = metric.compute_score(raw, config)
-            props = metric.build_properties(raw)
+            # raw = metric.compute(context)
+            # score = metric.compute_score(raw, config)
+            # props = metric.build_properties(raw)
 
-            scores[metric.metric_key] = score
-            properties[metric.metric_key] = props
+            # scores[metric.metric_key] = score
+            # properties[metric.metric_key] = props
+            
+            result = metric.evaluate(context, config)
+            scores[metric.metric_key]     = result.score
+            properties[metric.metric_key] = result.properties
 
         return Result(
             score=scores,

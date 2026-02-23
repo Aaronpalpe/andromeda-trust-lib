@@ -185,7 +185,7 @@ def evaluate(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Optional facade — preserves compatibility with existing code
+# Optional facade - preserves compatibility with existing code
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TrustEvaluator:

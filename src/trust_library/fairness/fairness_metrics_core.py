@@ -8,7 +8,7 @@ All functions operate on raw numpy arrays:
     y_true          : ground-truth labels (0/1)
     y_pred          : predicted labels (0/1)
     y_prob          : predicted probabilities for the positive class (float [0,1])
-    group_mask      : boolean array — True where sample belongs to the *protected* group
+    group_mask      : boolean array - True where sample belongs to the *protected* group
 """
 
 import numpy as np
