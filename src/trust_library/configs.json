@@ -38,7 +38,11 @@
             "algorithm_class": 0.55,
             "correlated_features": 0.15,
             "model_size": 0.15,
-            "feature_relevance": 0.15
+            "feature_relevance": 0.15,
+
+            "sparsity": 0.4,
+            "feature_entropy": 0.2,
+            "topk_concentration": 0.4
         },
         "privacy": {
             "epsilon": 0.5,
@@ -54,7 +58,8 @@
             "clever_score": 0.2,
             "er_fast_gradient_attack": 0.2,
             "er_carlini_wagner_attack": 0.2,
-            "er_deepfool_attack": 0.2
+            "er_deepfool_attack": 0.2,
+            "er_hopskipjump_attack": 0.2
         },
         "accountability": {
             "normalization": 0.2,
@@ -441,6 +446,47 @@
                     "description": "The penalty that should be applied if the the number of outliers in the feature importance distribution is equal or greater than the #threshold_outlier. For example if this value is 0.5 it would mean if the the theshold is reached 0.5 points will be substacted from score. If the number is set to 0 no penalty will be applied",
                     "label": "Penalty for outliers"
                 }
+            },
+
+            "params": {
+                "n_samples": 50,
+                "shap_threshold": 0.001,
+                "top_k": 5,
+                "seed": 42
+            },
+
+            "score_sparsity": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.6,
+                        0.4,
+                        0.2,
+                        0
+                    ]
+                }
+            },
+            "score_feature_entropy": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.6,
+                        0.4,
+                        0.2,
+                        0
+                    ]
+                }
+            },
+            "score_topk_concentration": {
+                "thresholds": {
+                    "value": [
+                        0.2,
+                        0.4,
+                        0.6,
+                        0.8,
+                        1.0
+                    ]
+                }
             }
         },
         "privacy": {
@@ -589,6 +635,27 @@
                     "description": "Thresholds of how to map difference between before-after attack accuracies from 1-5. Example: If the before attack accuracy is 85% and after attack accuracy is again 85% it means model is so robust that attack was not successful at all. The difference is 0 and hence this would result in a score of 5 (best score). However if the before attack accuracy was 100% and after attack accuracy is 0% then the model is not robust. The difference is 100% and it would result in score 0 (worst score)",
                     "label": "Score Thresholds"
                 }
+            },
+             "score_hopskipjump_attack": {
+                "thresholds": {
+                    "value": [
+                        80,
+                        60,
+                        40,
+                        20
+                    ],
+                    "description": "Thresholds to map accuracy drop (percentage points) after ART HopSkipJump attack to a score from 1-5. 0 drop => best score.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "params": {
+                "n_samples": 50,
+                "seed": 42,
+                "max_iter": 10,
+                "max_eval": 1000,
+                "init_eval": 10,
+                "init_size": 10,
+                "norm": 2
             }
         },
         "accountability": {

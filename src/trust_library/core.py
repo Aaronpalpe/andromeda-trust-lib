@@ -9,6 +9,8 @@ from trust_library.fairness import FairnessPillar
 from trust_library.accountability import AccountabilityPillar
 from trust_library.privacy import PrivacyPillar
 from trust_library.sustainability import SustainabilityPillar
+from trust_library.explainability import ExplainabilityPillar
+from trust_library.robustness import RobustnessPillar
 from importlib import resources
 
 
@@ -85,6 +87,8 @@ _PILLARS = {
     "accountability": AccountabilityPillar(),
     "privacy": PrivacyPillar(),
     "sustainability": SustainabilityPillar(),
+    "explainability": ExplainabilityPillar(),
+    "robustness": RobustnessPillar()
 }
 
 
