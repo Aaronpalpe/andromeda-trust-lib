@@ -97,11 +97,35 @@ class AttributeInferenceMetric(BaseMetric):
         return {
             "Metric Description": "Attribute inference risk.",
             "Sensitive Attribute": raw["sensitive"],
-            "Risk Score": (
+            "Risk Score (accuracy)": (
                 f"{raw['value']:.6f}" if raw["value"] is not None else "N/A"
             ),
         }
 
+# =============================================================================
+# Accuracy Ratio (Data Minimization)
+# =============================================================================
+
+class AccuracyRatioMetric(BaseMetric):
+
+    def __init__(self) -> None:
+        super().__init__("accuracy_ratio", "score_accuracy_ratio")
+
+    def compute(self, ctx) -> Dict[str, float]:
+
+        return core.compute_accuracy_ratio(
+            model=ctx.model,
+            X_test=ctx.X_test,
+            y_test=ctx.y_test,
+            y_pred_test=ctx.y_pred_test,
+        )
+
+    def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
+        return {
+            "Metric Description": "Accuracy ratio for data minimization.",
+            "Accuracy Ratio": f"{raw['value']:.6f}",
+            "Interpretation": "Values close to 1 indicate minimal performance loss.",
+        }
 
 # =============================================================================
 # Membership Privacy Risk
@@ -197,8 +221,9 @@ class LDiversityMetric(BaseMetric):
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "Metric Description": "l-Diversity.",
-            "Minimum l": raw["value"],
+            "Quasi Identifiers": raw["quasi_identifiers"],
             "Sensitive Attributes": raw["sensitive_attributes"],
+            "Minimum l": raw["value"],
         }
 
 
@@ -238,5 +263,7 @@ class TClosenessMetric(BaseMetric):
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
             "Metric Description": "t-Closeness.",
+            "Quasi Identifiers": raw["quasi_identifiers"],
+            "Sensitive Attributes": raw["sensitive_attributes"],
             "Maximum t": raw["value"],
         }

@@ -121,6 +121,7 @@ class EvaluationContext:
 
     @property
     def group_mask(self) -> np.ndarray:
+        ''' Returns a boolean mask indicating which samples in the test set belong to the protected group, based on the factsheet configuration. '''
         prot, vals, _, _ = load_fairness_config(self.factsheet)
         return self.X_test[prot].isin(vals).to_numpy()
 

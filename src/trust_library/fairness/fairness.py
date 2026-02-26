@@ -72,20 +72,25 @@ class FairnessPillar(Pillar):
             DisparateImpactMetric(),
             EqualOpportunityMetric(),
             AverageOddsMetric(),
+
             AccuracyParityMetric(),
             PredictiveParityMetric(),
             TreatmentEqualityMetric(),
             CalibrationGapMetric(n_bins=10),
             WellCalibrationMetric(n_bins=10),
+
             GeneralizedEntropyMetric(alpha=2),
             TheilIndexMetric(),
             CoefficientVariationMetric(),
             ConsistencyMetric(k=5),
             ClassImbalanceMetric(),
             KLDivergenceMetric(),
+            #ConditionalDPMetric(),
             SmoothedEDFMetric(alpha=1.0),
             BiasAmplificationMetric(),
+            #BetweenGroupGEMetric(),
             CohensDMetric(),
+            #TwoSDMetric(),
         ]
 
         return metrics

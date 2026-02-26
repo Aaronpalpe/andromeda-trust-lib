@@ -10,6 +10,7 @@ from .metrics import (
     EpsilonStarMetric,
     SHAPRMetric,
     AttributeInferenceMetric,
+    AccuracyRatioMetric,
     PrivacyRiskMetric,
     KAnonymityMetric,
     LDiversityMetric,
@@ -33,9 +34,11 @@ class PrivacyPillar(Pillar):
 
     def get_metrics(self) -> List[BaseMetric]:
         metrics: List[Any] = [
+            #EpsilonMetric(),
             EpsilonStarMetric(),
             SHAPRMetric(),
             AttributeInferenceMetric(),
+            AccuracyRatioMetric(),
             PrivacyRiskMetric(),
             KAnonymityMetric(),
             LDiversityMetric(),

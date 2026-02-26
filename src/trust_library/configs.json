@@ -20,11 +20,11 @@
             "accuracy_parity": 0.1,
             "predictive_parity": 0.1,
             "treatment_equality": 0.1,
-            "calibration": 0.1,
-            "well_calibration": 0.1,
+            "calibration_gap": 0.1,
+            "well_calibration_error": 0.1,
             "theil_index": 0.1,
             "coefficient_variation": 0.1,
-            "consistency": 0.1,
+            "individual_consistency": 0.1,
             "class_imbalance": 0.1,
             "kl_divergence": 0.1,
             "conditional_dp": 0.1,
@@ -204,7 +204,7 @@
                     "label": ""
                 }
             },
-            "score_calibration": {
+            "score_calibration_gap": {
                 "thresholds": {
                     "value": [
                         0.1,
@@ -217,7 +217,7 @@
                     "label": ""
                 }
             },
-            "score_well_calibration": {
+            "score_well_calibration_error": {
                 "thresholds": {
                     "value": [
                         0.1,
@@ -257,7 +257,7 @@
                     "label": ""
                 }
             },
-            "score_consistency": {
+            "score_individual_consistency": {
                 "thresholds": {
                     "value": [
                         0.1,

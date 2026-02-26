@@ -19,6 +19,9 @@ from holisticai.security.metrics import (
 # =============================================================================
 
 def _calculate_losses(model, X, y) -> np.ndarray:
+    """
+    Compute Log Loss (Cross-Entropy) for each instance.
+    """
     probs = model.predict_proba(X)
 
     if hasattr(model, "classes_"):
@@ -44,6 +47,9 @@ def compute_epsilon_star(
     X_test,
     y_test,
 ) -> Dict[str, float]:
+    """
+    Compute empirical epsilon* based on Loss Distribution as Definition 2 of the paper.
+    """
 
     loss_train = _calculate_losses(model, X_train, y_train)
     loss_test  = _calculate_losses(model, X_test, y_test)
@@ -86,7 +92,9 @@ def compute_shapr(
     y_test,
     random_state: int = 42,
 ) -> Dict[str, float]:
-
+    '''
+    Compute an approximate SHAPr score for membership inference risk.
+    '''
     np.random.seed(random_state)
 
     sample_size = min(5000, len(X_train), len(X_test))
@@ -97,6 +105,14 @@ def compute_shapr(
     y_pred_train = model.predict(X_train.iloc[idx_train])
     y_pred_test  = model.predict(X_test.iloc[idx_test])
 
+    # It fits a k-nearest neighbors (KNN) classifier using the training predictions 
+    # as input and the true labels as output. Then, for each batch of test samples, 
+    # it obtains the nearest neighbor indices and calculates binary indicators that 
+    # represent whether the neighbor labels match the test labels. On these indicators, 
+    # a normalized cumulative difference (d_phi_y) and its cumulative sum (phi_y) are computed, 
+    # which are reordered according to the original neighbors; finally, the results from all batches 
+    # are aggregated and normalized to obtain an aggregated value per sample that indicates 
+    # the privacy leakage risk, where higher values ​​indicate higher risk.
     phi = shapr_score(
         y_train[idx_train],
         y_test[idx_test],
@@ -123,16 +139,32 @@ def compute_attribute_inference(
     y_test: pd.Series,
     sensitive_attribute: str,
 ) -> Dict[str, float]:
-
+    '''
+    Compute attribute inference risk for a specified sensitive attribute.
+    The function evaluates how well an attacker can predict the sensitive attribute
+    '''
     if sensitive_attribute not in X_train.columns:
         return {"value": np.nan, "sensitive": sensitive_attribute}
     
+    # The library function 'to_numerical_or_categorical' requires pandas objects to use .astype("category")
     if not isinstance(y_train, pd.Series):
         y_train = pd.Series(y_train)
 
     if not isinstance(y_test, pd.Series):
         y_test = pd.Series(y_test)
 
+    # If an attacker estimator is not provided, it automatically selects a linear regressor
+    # for continuous attributes or a logistic classifier for categorical attributes,
+    # also assigning the appropriate metric function (mean squared error for continuous,
+    # precision or F1 for categorical).
+    # It then creates a BlackBoxAttack object that removes the target attribute from
+    # the training set, adds the label as a new feature, and trains the attacker model.
+    # Subsequently, it uses this model to predict the removed attribute on the test set
+    # and compares the predictions with the actual values using the selected metric
+    # function.
+    # Finally, it returns a numerical value indicating how predictable the attribute
+    # was based on the other features and labels, with higher values indicating a greater
+    # risk of information leakage for that attribute.
     res = attribute_attack_score(
         X_train,
         X_test,
@@ -143,6 +175,7 @@ def compute_attribute_inference(
 
     is_continuous = X_train[sensitive_attribute].dtype.kind in ["i", "u", "f"]
 
+    # If attribute is continous we invert the MSE score to have a consistent interpretation where higher values indicate higher risk
     if is_continuous:
         res = 1 / (1 + res)
 
@@ -181,6 +214,11 @@ def compute_privacy_risk(
     shadow_test  = (y_prob_test, y_test)
     target_train = (y_prob_train, y_train)
 
+    # La métrica calcula qué tan probable es que una muestra haya estado en el conjunto de entrenamiento de un modelo. 
+    # Para ello, transforma las predicciones en entropía modificada que refleja incertidumbre, construye histogramas 
+    # normalizados de entrenamiento y prueba por clase usando un shadow model, y para cada muestra calcula un score 
+    # como la proporción de su probabilidad en entrenamiento sobre la suma de entrenamiento y prueba. Un score alto 
+    # indica que la muestra es más predecible y, por tanto, hay mayor riesgo de un ataque de inferencia de membresía.
     scores = privacy_risk_score(
         shadow_train,
         shadow_test,
@@ -201,7 +239,9 @@ def compute_accuracy_ratio(
     model,
     X_test,
 ) -> Dict[str, float]:
-
+    '''
+    Compute accuracy ratio for data minimization techniques.
+    '''
     X_noisy = X_test + np.random.normal(0, 0.01, X_test.shape)
     y_pred_noisy = model.predict(X_noisy)
 
@@ -215,6 +255,11 @@ def compute_accuracy_ratio(
         }
     ]
 
+    # Evaluate how data or feature reduction affects a model's predictive ability. 
+    # For each version of the minimized model (`y_pred_dm`), the corresponding prediction 
+    # is calculated and compared to the prediction of the full model (`y_pred`) using a relative metric. 
+    # The lowest score among all techniques is selected as the relative performance indicator. 
+    # Values ​​close to 1 indicate that data reduction maintains similar performance to the full model.
     ratio = data_minimization_score(
         y_test,
         y_pred_test,
@@ -232,7 +277,9 @@ def compute_k_anonymity(
     df: pd.DataFrame,
     quasi_identifiers: List[str],
 ) -> Dict[str, float]:
-
+    """
+    Compute k-anonymity for a dataset.
+    """
     counts = k_anonymity(df, quasi_identifiers)
 
     if isinstance(counts, pd.Series):
@@ -255,7 +302,9 @@ def compute_l_diversity(
     quasi_identifiers: List[str],
     sensitive_attributes: List[str],
 ) -> Dict[str, float]:
-
+    """
+    Compute l-diversity for sensitive attributes in a dataset.
+    """
     result = l_diversity(df, quasi_identifiers, sensitive_attributes)
 
     all_vals = []
@@ -269,6 +318,7 @@ def compute_l_diversity(
 
     return {
         "value": float(min_l),
+        "quasi_identifiers": quasi_identifiers,
         "sensitive_attributes": sensitive_attributes,
     }
 
@@ -282,7 +332,9 @@ def compute_t_closeness(
     quasi_identifiers: List[str],
     sensitive_attributes: List[str],
 ) -> Dict[str, float]:
-
+    """
+    Compute t-closeness for sensitive attributes using Earth Mover's Distance (EMD) between local and global distributions.
+    """
     max_t = 0.0
 
     for s in sensitive_attributes:
@@ -296,7 +348,9 @@ def compute_t_closeness(
             local_dist = group[s].value_counts(normalize=True)
 
             aligned = global_dist.index.union(local_dist.index)
-
+            
+            # tvd = 0.5 * np.sum(np.abs(g - l)) # Total Variation Distance.
+            # distances.append(tvd)
             g = global_dist.reindex(aligned, fill_value=0)
             l = local_dist.reindex(aligned, fill_value=0)
 
@@ -306,5 +360,8 @@ def compute_t_closeness(
             emd = float(np.sum(np.abs(g_cdf - l_cdf)))
             max_t = max(max_t, emd)
 
-    return {"value": max_t}
+    return {   
+        "value": max_t, 
+        "quasi_identifiers": quasi_identifiers, 
+        "sensitive_attributes": sensitive_attributes}
 

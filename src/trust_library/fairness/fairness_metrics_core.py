@@ -70,6 +70,39 @@ def _favored_ratio(y_pred: np.ndarray, mask: np.ndarray) -> float:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Model Performance & Fit Metrics (not fairness-specific, but included for context)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def underfitting(y_test: np.ndarray, y_pred_test: np.ndarray) -> dict:
+    """Test accuracy as a proxy for underfitting."""
+    acc = float(accuracy_score(y_test, y_pred_test))
+    return {"value": acc, "test_accuracy": acc}
+
+
+def overfitting(
+    y_train: np.ndarray,
+    y_pred_train: np.ndarray,
+    y_test: np.ndarray,
+    y_pred_test: np.ndarray,
+) -> dict:
+    """
+    Train–Test accuracy gap as a proxy for overfitting.
+
+    Difference = Train Acc - Test Acc
+    Ideal value: 0  (> 0.05 indicates overfitting)
+    """
+    train_acc = float(accuracy_score(y_train, y_pred_train))
+    test_acc  = float(accuracy_score(y_test, y_pred_test))
+    diff = train_acc - test_acc
+    return {
+        "value": diff,
+        "train_accuracy": train_acc,
+        "test_accuracy": test_acc,
+        "overfitting": bool(diff > 0.05),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Group Fairness Metrics
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -80,12 +113,13 @@ def statistical_parity_difference(
     """
     Statistical Parity Difference (SPD).
 
-    SPD = P(ŷ=1 | protected) − P(ŷ=1 | unprotected)
+    SPD = P(ŷ=1 | protected) - P(ŷ=1 | unprotected)
 
-    Ideal value: 0  (negative → protected group is disadvantaged)
+    Ideal value: 0  (negative -> protected group is disadvantaged)
     """
     prot  = _favored_ratio(y_pred, group_mask)
     unprot = _favored_ratio(y_pred, ~group_mask)
+    
     val = prot - unprot
     return {
         "value": val,
@@ -93,6 +127,8 @@ def statistical_parity_difference(
         "favored_ratio_unprotected": unprot,
         "n_protected": int(group_mask.sum()),
         "n_unprotected": int((~group_mask).sum()),
+        "n_protected_favored": int((y_pred[group_mask] == 1).sum()),
+        "n_unprotected_favored": int((y_pred[~group_mask] == 1).sum()),
     }
 
 
@@ -114,6 +150,10 @@ def disparate_impact(
         "value": val,
         "favored_ratio_protected": prot,
         "favored_ratio_unprotected": unprot,
+        "n_protected": int(group_mask.sum()),
+        "n_unprotected": int((~group_mask).sum()),
+        "n_protected_favored": int((y_pred[group_mask] == 1).sum()),
+        "n_unprotected_favored": int((y_pred[~group_mask] == 1).sum()),
     }
 
 
@@ -125,7 +165,7 @@ def equal_opportunity_difference(
     """
     Equal Opportunity Difference (EOD).
 
-    EOD = TPR(protected) − TPR(unprotected)
+    EOD = TPR(protected) - TPR(unprotected)
 
     Ideal value: 0
     """
@@ -147,7 +187,7 @@ def average_odds_difference(
     """
     Average Odds Difference (AOD).
 
-    AOD = 0.5 × [(TPR_prot − TPR_unprot) + (FPR_prot − FPR_unprot)]
+    AOD = 0.5 × [(TPR_prot - TPR_unprot) + (FPR_prot - FPR_unprot)]
 
     Ideal value: 0
     """
@@ -173,7 +213,7 @@ def accuracy_parity(
     """
     Accuracy Parity.
 
-    AP = Accuracy(protected) − Accuracy(unprotected)
+    AP = Accuracy(protected) - Accuracy(unprotected)
 
     Ideal value: 0
     """
@@ -194,7 +234,7 @@ def predictive_parity(
     """
     Predictive Parity (average of PPV and NPV gap).
 
-    PP = 0.5 × [(PPV_prot − PPV_unprot) + (NPV_prot − NPV_unprot)]
+    PP = 0.5 × [(PPV_prot - PPV_unprot) + (NPV_prot - NPV_unprot)]
 
     Ideal value: 0
     """
@@ -220,7 +260,7 @@ def treatment_equality(
     """
     Treatment Equality.
 
-    TE = (FN/FP)_protected − (FN/FP)_unprotected
+    TE = (FN/FP)_protected - (FN/FP)_unprotected
 
     Ideal value: 0
     """
@@ -321,8 +361,8 @@ def generalized_entropy_index(
     Measures inequality in benefit distribution (b_i = 1 if correctly
     predicted, 0 otherwise).
 
-    alpha=1 → Theil T Index
-    alpha=2 → Half squared coefficient of variation
+    alpha=1 -> Theil T Index
+    alpha=2 -> Half squared coefficient of variation
     Ideal value: 0  (perfect equality)
     """
     b = (y_true == y_pred).astype(float)
@@ -394,7 +434,7 @@ def individual_consistency(
     """
     Individual Consistency Score.
 
-    Consistency = 1 − mean(|ŷ_i − mean(ŷ_neighbours)|)
+    Consistency = 1 - mean(|ŷ_i - mean(ŷ_neighbours)|)
 
     A score of 1 means every individual gets the same prediction as
     their k nearest neighbours.  Ideal value: 1
@@ -418,14 +458,14 @@ def class_balance(y_true: np.ndarray) -> dict:
     """
     Chi-square test for class balance in label distribution.
 
-    p >= 0.05  → classes are balanced
+    p >= 0.05  -> classes are balanced
     Ideal p-value: 1.0  (uniform distribution)
     """
     values, counts = np.unique(y_true, return_counts=True)
     stat, p_val = chisquare(counts)
     return {
         "p_value": float(p_val),
-        "chi2_stat": float(stat),
+        #"chi2_stat": float(stat),
         "balanced": bool(p_val >= 0.05),
         "class_counts": dict(zip(values.tolist(), counts.tolist())),
     }
@@ -435,7 +475,7 @@ def class_imbalance(group_mask: np.ndarray) -> dict:
     """
     Class Imbalance between privileged and protected groups.
 
-    CI = (N_unprot − N_prot) / (N_unprot + N_prot)
+    CI = (N_unprot - N_prot) / (N_unprot + N_prot)
 
     Ideal value: 0  (equal group sizes)
     |CI| < 0.1 is considered balanced
@@ -449,40 +489,6 @@ def class_imbalance(group_mask: np.ndarray) -> dict:
         "n_unprotected": n_unprot,
         "balanced": bool(abs(val) < 0.1),
     }
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Model Performance & Fit Metrics (not fairness-specific, but included for context)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def underfitting(y_test: np.ndarray, y_pred_test: np.ndarray) -> dict:
-    """Test accuracy as a proxy for underfitting."""
-    acc = float(accuracy_score(y_test, y_pred_test))
-    return {"value": acc, "test_accuracy": acc}
-
-
-def overfitting(
-    y_train: np.ndarray,
-    y_pred_train: np.ndarray,
-    y_test: np.ndarray,
-    y_pred_test: np.ndarray,
-) -> dict:
-    """
-    Train–Test accuracy gap as a proxy for overfitting.
-
-    Difference = Train Acc − Test Acc
-    Ideal value: 0  (> 0.05 indicates overfitting)
-    """
-    train_acc = float(accuracy_score(y_train, y_pred_train))
-    test_acc  = float(accuracy_score(y_test, y_pred_test))
-    diff = train_acc - test_acc
-    return {
-        "value": diff,
-        "train_accuracy": train_acc,
-        "test_accuracy": test_acc,
-        "overfitting": bool(diff > 0.05),
-    }
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Bias Amplification & Effect Size
@@ -498,8 +504,8 @@ def bias_amplification(
 
     Measures whether the model *amplifies* the bias already present in labels.
 
-    BA = |bias(ŷ)| − |bias(y)|
-    where bias = mean(group_prot) − mean(group_unprot)
+    BA = |bias(ŷ)| - |bias(y)|
+    where bias = mean(group_prot) - mean(group_unprot)
 
     Ideal value: 0 or negative (model should not amplify bias)
     """
@@ -521,9 +527,9 @@ def cohens_d(
     """
     Cohen's D effect size between protected and unprotected groups.
 
-    d = (μ_prot − μ_unprot) / σ_pooled
+    d = (μ_prot - μ_unprot) / σ_pooled
 
-    |d| < 0.2 → negligible, 0.2–0.5 → small, 0.5–0.8 → medium, > 0.8 → large
+    |d| < 0.2 -> negligible, 0.2–0.5 -> small, 0.5–0.8 -> medium, > 0.8 -> large
     """
     g1 = y_pred[group_mask].astype(float)
     g2 = y_pred[~group_mask].astype(float)
@@ -558,3 +564,88 @@ def smoothed_edf(
         "group_smoothed_means": {str(k): v for k, v in group_means.items()},
         "alpha": alpha,
     }
+
+
+
+# def conditional_dp_score(dataset, factsheet, thresholds, conditioning_cols):
+#     try:
+#         m = get_aif360_metrics(None, dataset, factsheet)
+#         prot, vals, target, fav = load_fairness_config(factsheet)
+#         fav_label = fav[0] if fav else 1
+
+#         total = 0
+#         weighted = 0
+
+#         for _, g in dataset.groupby(conditioning_cols):
+#             Ni = len(g)
+#             if Ni == 0:
+#                 continue
+
+#             p_pos = (g[target] == fav_label).mean()
+#             p_neg = 1 - p_pos
+
+#             weighted += Ni * (p_neg - p_pos)
+#             total += Ni
+
+#         val = weighted / total
+#         score = calculate_score(val, thresholds)
+
+#         props = {
+#             "Metric Description": (
+#                 "Measures demographic parity conditioned on additional variables."
+#             ),
+#             "Depends on": "Dataset",
+#             "CDD": f"{val:.4f}",
+#             "CDD (AIF360)": f"{m.conditional_demographic_parity(conditioning_cols):.4f}"
+#         }
+
+#         return Result(score, props)
+
+#     except Exception as e:
+#         return Result(np.nan, {"Error": str(e)})
+
+
+# def between_group_ge_score(model, test_data, factsheet, thresholds, alpha=1):
+#     try:
+#         m = get_aif360_metrics(model, test_data, factsheet)
+#         val = m.between_group_generalized_entropy_index(alpha=alpha)
+#         score = calculate_score(val, thresholds)
+
+#         props = {
+#             "Metric Description": (
+#                 "Measures inequality strictly between protected groups."
+#             ),
+#             "Alpha": alpha,
+#             "Between-group GE (AIF360)": f"{val:.6f}"
+#         }
+
+#         return Result(score, props)
+
+#     except Exception as e:
+#         return Result(np.nan, {"Error": str(e)})
+
+# def two_sd_rule_score(context):
+#     try:
+#         prot, vals, target, _ = load_fairness_config(context.factsheet)
+#         y_hat = context.model.predict(context.test_data.drop(target, axis=1))
+
+#         g1 = y_hat[context.test_data[prot].isin(vals)]
+#         g2 = y_hat[~context.test_data[prot].isin(vals)]
+
+#         mu_diff = abs(g1.mean() - g2.mean())
+#         sigma = np.std(y_hat)
+
+#         violated = mu_diff > 2 * sigma
+#         score = 1 if violated else 5
+
+#         props = {
+#             "Metric Description": "Heuristic adverse impact detection rule.",
+#             "Mean Difference": f"{mu_diff:.4f}",
+#             "2sigma Threshold": f"{2*sigma:.4f}",
+#             "Violated": violated
+#         }
+
+#         return Result(score, props)
+
+#     except Exception as e:
+#         return Result(np.nan, {"Error": str(e)})

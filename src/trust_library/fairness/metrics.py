@@ -19,6 +19,7 @@ class UnderfittingMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Compares the model's test accuracy against a baseline.",
+            "Depends on": "Model, Test Data",
             "Test Accuracy": f"{raw['test_accuracy']:.2%}",
         }
 
@@ -42,11 +43,12 @@ class OverfittingMetric(BaseMetric):
 
     def compute_score(self, raw, config):
         if raw["test_accuracy"] < 0.6:
-            return None
+            return None # Don't penalize overfitting if the model is performing poorly on the test set (i.e. likely underfitting)
         return super().compute_score(raw, config)
 
     def build_properties(self, raw):
         return {
+            "Depends on": "Model, Training Data, Test Data",
             "Training Accuracy": f"{raw['train_accuracy']:.2%}",
             "Test Accuracy": f"{raw['test_accuracy']:.2%}",
             "Train-Test Gap": f"{raw['value']:.2%}",
@@ -73,8 +75,15 @@ class StatisticalParityMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
+            "Metric Description": "Difference in favorable prediction rates between protected and unprotected groups.",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+            "Number Protected": raw["n_protected"],
+            "Number Protected Favored": raw["n_protected_favored"],
             "Favored Protected Ratio": f"{raw['favored_ratio_protected']:.2%}",
+            "Number Unprotected": raw["n_unprotected"],
+            "Number Unprotected Favored": raw["n_unprotected_favored"],
             "Favored Unprotected Ratio": f"{raw['favored_ratio_unprotected']:.2%}",
+            "Formula": "Statistical Parity Difference = Favored Ratio Protected - Favored Ratio Unprotected",
             "Statistical Parity Difference": f"{raw['value']:.4f}",
         }
 
@@ -98,6 +107,8 @@ class ClassBalanceMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
+            "Metric Description": "Measures how well the training data is balanced or unbalanced",
+            "Depends on": "Training Data",
             "P-Value": f"{raw['p_value']:.4f}",
             "Class Counts": raw["class_counts"],
         }
@@ -119,7 +130,11 @@ class DisparateImpactMetric(BaseMetric):
         return {
             "Metric Description": "Ratio of favorable prediction rates between protected and unprotected groups.",
             "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+            "Number Protected": raw["n_protected"],
+            "Number Protected Favored": raw["n_protected_favored"],
             "Protected Favored Ratio": f"P(y_hat=favorable|protected=True) = {raw['favored_ratio_protected']:.2%}",
+            "Number Unprotected": raw["n_unprotected"],
+            "Number Unprotected Favored": raw["n_unprotected_favored"],
             "Unprotected Favored Ratio": f"P(y_hat=favorable|protected=False) = {raw['favored_ratio_unprotected']:.2%}",
             "Formula": "Protected Favored Ratio / Unprotected Favored Ratio",
             "Disparate Impact": f"{raw['value']:.4f}",
@@ -523,6 +538,9 @@ class CohensDMetric(BaseMetric):
         return {
             "Metric Description": "Standardised effect size between group predictions.",
             "Depends on": "Model, Test Data, Factsheet",
+            "Mean Unprotected": f"{raw['mean_unprotected']:.4f}",
+            "Mean Protected": f"{raw['mean_protected']:.4f}",
+            "Pooled Std Dev": f"{raw['pooled_std']:.4f}",
             "Cohen's D": f"{raw['value']:.4f}",
             "Formula": "(mu1 - mu2) / sigma_pooled",
         }

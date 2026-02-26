@@ -19,14 +19,24 @@ def track_training_run(model, train_data, project_name="ML_Project") -> Dict[str
     and returns structured run metadata.
     """
 
+    # import pickle
+
+    # with open("model.pkl", "rb") as f:
+    #     model = pickle.load(f)
+
+    # print(type(model))
+    # print(model)
     tracker = EmissionsTracker(
         project_name=project_name,
-        log_level=logging.ERROR,
+        log_level=logging.ERROR,    # o INFO form more details
         output_file="emissions.csv",
         output_dir=".",
         save_to_file=True,
-        tracking_mode="process",
-        measure_power_secs=15,
+        tracking_mode='process',
+        #pue=None,                  # PUE automaticaly detected
+        #wue=None,                  # WUE automaticaly detected
+        #country_iso_code="ESP"     # Specify country region if known, otherwise auto-detected
+        measure_power_secs=15       # Measure power every 15 seconds (default)
     )
 
     X = train_data.iloc[:, :-1]
@@ -90,13 +100,13 @@ def compute_carbon_intensity(run_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def compute_energy_efficiency(run_data: Dict[str, Any]) -> Dict[str, Any]:
-    duration_hours = run_data["duration"] / 3600.0
-    energy = run_data["energy_consumed"]
+# def compute_energy_efficiency(run_data: Dict[str, Any]) -> Dict[str, Any]:
+#     duration_hours = run_data["duration"] / 3600.0
+#     energy = run_data["energy_consumed"]
 
-    efficiency = energy / duration_hours if duration_hours > 0 else np.inf
+#     efficiency = energy / duration_hours if duration_hours > 0 else np.inf
 
-    return {
-        "value": float(efficiency),
-        "duration_hours": float(duration_hours),
-    }
+#     return {
+#         "value": float(efficiency),
+#         "duration_hours": float(duration_hours),
+#     }

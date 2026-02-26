@@ -33,7 +33,7 @@ class BaseMetric(ABC):
 
     def evaluate(self, context, config: dict | None) -> Result:
         """
-        Safe wrapper executing compute → scoring → property building.
+        Safe wrapper executing compute -> scoring -> property building.
         """
 
         try:
