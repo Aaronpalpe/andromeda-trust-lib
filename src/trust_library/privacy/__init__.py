@@ -15,6 +15,7 @@ from .privacy import PrivacyPillar
 # Privacy Metrics
 # ─────────────────────────────────────────────────────────────
 from .privacy_metrics_core import (
+    compute_epsilon_dp,
     compute_epsilon_star,
     compute_shapr,
     compute_attribute_inference,
@@ -30,6 +31,7 @@ __all__ = [
     "PrivacyPillar",
 
     # Metrics
+    "compute_epsilon_dp",
     "compute_epsilon_star",
     "compute_shapr",
     "compute_attribute_inference",

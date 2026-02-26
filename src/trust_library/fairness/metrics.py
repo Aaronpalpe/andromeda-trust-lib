@@ -377,7 +377,7 @@ class TheilIndexMetric(GeneralizedEntropyMetric):
         super().__init__(alpha=1)
         # Override the config / score keys to match the original naming
         self.metric_key = "theil_index"
-        self.score_key  = "score_theil_index"
+        self.score_config_key  = "score_theil_index" # ERRATA: ANTES score_key
 
 
 # ─────────────────────────────────────────────────────────────

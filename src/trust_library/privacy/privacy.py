@@ -7,6 +7,7 @@ from trust_library.utils import EvaluationContext, Result
 
 from .metrics import (
     BaseMetric,
+    EpsilonMetric,
     EpsilonStarMetric,
     SHAPRMetric,
     AttributeInferenceMetric,
@@ -34,7 +35,7 @@ class PrivacyPillar(Pillar):
 
     def get_metrics(self) -> List[BaseMetric]:
         metrics: List[Any] = [
-            #EpsilonMetric(),
+            EpsilonMetric(),
             EpsilonStarMetric(),
             SHAPRMetric(),
             AttributeInferenceMetric(),

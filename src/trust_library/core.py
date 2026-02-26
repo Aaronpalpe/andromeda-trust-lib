@@ -171,6 +171,8 @@ def evaluate(
         config.get("pillars", {})
     )
 
+    score_explanation = build_score_explanation(pillar_results, config) # NEW
+
     output = {
         "trust_score": trust_score,
         "pillar_score": pillar_scores,
@@ -182,11 +184,53 @@ def evaluate(
             name: data["properties"]
             for name, data in pillar_results.items()
         },
+        "explanation": score_explanation, # NEW
     }
 
     save_result(output, output_path)
     return output
 
+
+
+def build_score_explanation(pillar_results: dict, config: dict) -> dict:
+    
+    explanation = {}
+    pillar_weights = config.get("pillars", {})
+
+    trust_formula_parts = []
+    trust_value = 0
+
+    for pillar_name, data in pillar_results.items():
+        p_weight = pillar_weights.get(pillar_name, 1)
+        p_score  = data["score"]
+
+        trust_value += p_weight * p_score
+
+        trust_formula_parts.append(
+            f"{p_weight}*{pillar_name.capitalize()}({p_score})"
+        )
+
+        # === Métricas internas del pilar ===
+        metric_weights = config.get("weights", {}).get(pillar_name, {})
+        metric_parts = []
+
+        for metric_name, metric_value in data["metrics"].items():
+            m_weight = metric_weights.get(metric_name, 1)
+            metric_parts.append(
+                f"{m_weight}*{metric_name}({metric_value})"
+            )
+
+        explanation[pillar_name] = {
+            "formula": " + ".join(metric_parts),
+            "score": p_score,
+        }
+
+    explanation["trust_score"] = {
+        "formula": " + ".join(trust_formula_parts),
+        "final_score": trust_value
+    }
+
+    return explanation
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Optional facade - preserves compatibility with existing code
@@ -211,3 +255,29 @@ class TrustEvaluator:
             self.factsheet
         )
         return self.result
+    
+    def compute_pillars(self, pillars: list[str]) -> dict:
+        config  = load_config(None)
+        context = build_context(
+            self.model,
+            self.train_data,
+            self.test_data,
+            self.factsheet
+        )
+
+        results = {}
+
+        for name in pillars:
+            if name not in _PILLARS:
+                raise ValueError(f"Pillar '{name}' is not registered.")
+
+            pillar = _PILLARS[name]
+            aggregated_score, result_obj = pillar.score(context, config)
+
+            results[name] = {
+                "score": aggregated_score,
+                "metrics": result_obj.score,
+                "properties": result_obj.properties,
+            }
+
+        return results

@@ -4,7 +4,7 @@ import numpy as np
 from trust_library.utils import Result, calculate_score
 import warnings
 
-_DEFAULT_THRESHOLDS = [0.1, 0.2, 0.3, 0.4]
+# _DEFAULT_THRESHOLDS = [0.1, 0.2, 0.3, 0.4]
 
 
 class BaseMetric(ABC):
@@ -65,7 +65,7 @@ class BaseMetric(ABC):
     # Scoring logic
     # ─────────────────────────────────────────────────────────────
 
-    def compute_score(self, raw: dict, config: dict | None):
+    def compute_score(self, raw: dict, config: dict | None) -> int:
         """
         Default scoring using thresholds.
         Override if necessary.
@@ -75,6 +75,8 @@ class BaseMetric(ABC):
             return self.custom_score(raw)
 
         thresholds = self._get_thresholds(config)
+        if thresholds is None:
+            raise ValueError(f"No thresholds available for '{self.score_config_key}'.")
         return calculate_score(raw.get("value"), thresholds)
 
     def custom_score(self, raw: dict):
@@ -89,7 +91,8 @@ class BaseMetric(ABC):
     def _get_thresholds(self, config: dict | None):
         if config is None:
             warnings.warn("Config is None. Using default thresholds.", RuntimeWarning, stacklevel=2,)
-            return _DEFAULT_THRESHOLDS
+            #return _DEFAULT_THRESHOLDS
+            return None
 
         thresholds = (
             config.get(self.score_config_key, {})
@@ -99,5 +102,6 @@ class BaseMetric(ABC):
 
         if thresholds is None:
             warnings.warn(f"No thresholds configured for '{self.score_config_key}'. Using default thresholds.", RuntimeWarning, stacklevel=2,)
-            return _DEFAULT_THRESHOLDS
+            # return _DEFAULT_THRESHOLDS
+            return None
         return thresholds

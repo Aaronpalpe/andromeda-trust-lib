@@ -244,7 +244,7 @@
                     "label": ""
                 }
             },
-            "score_coefficient_variation": {
+            "score_coefficient_of_variation": {
                 "thresholds": {
                     "value": [
                         0.1,
@@ -490,7 +490,7 @@
             }
         },
         "privacy": {
-            "score_epsilon": {
+            "score_epsilon_dp": {
                 "thresholds": {
                     "value": [
                         0.1,
@@ -514,7 +514,7 @@
                     "label": "Score Thresholds"
                 }
             },
-            "score_shapr_score": {
+            "score_shapr": {
                 "thresholds": {
                     "value": [
                         0.1,
@@ -526,7 +526,7 @@
                     "label": "Score Thresholds"
                 }
             },
-            "score_attribute_inference_score": {
+            "score_attribute_inference": {
                 "thresholds": {
                     "value": [
                         0.1,
@@ -538,7 +538,7 @@
                     "label": "Score Thresholds"
                 }
             },
-            "score_accuracy_ratio_score": {
+            "score_accuracy_ratio": {
                 "thresholds": {
                     "value": [
                         0.1,

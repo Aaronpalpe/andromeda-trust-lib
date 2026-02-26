@@ -365,7 +365,8 @@ def generalized_entropy_index(
     alpha=2 -> Half squared coefficient of variation
     Ideal value: 0  (perfect equality)
     """
-    b = (y_true == y_pred).astype(float)
+    # b = (y_true == y_pred).astype(float)
+    b = (y_pred - y_true + 1).astype(float)
     mu = b.mean()
     n = len(b)
 

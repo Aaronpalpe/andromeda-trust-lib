@@ -4,8 +4,38 @@ from typing import Dict, Any, List
 import pandas as pd
 
 from trust_library.base_metric import BaseMetric
-from . import privacy_metrics_core as core
+from . import privacy_metrics_manual as core
 
+
+# =============================================================================
+# Epsilon DP Leakage
+# =============================================================================
+
+class EpsilonMetric(BaseMetric):
+
+    def __init__(self) -> None:
+        super().__init__("epsilon_dp", "score_epsilon_dp")
+
+    def compute(self, ctx) -> Dict[str, float]:
+
+        epsilon = (
+            ctx.factsheet
+            .get("privacy", {})
+            .get("epsilon", {})
+            .get("value", [])
+        )
+
+        return core.compute_epsilon_dp(
+            epsilon=epsilon,
+        )
+
+    def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
+        return {
+            "Metric Description": "Theoretical epsilon from DP analysis, given in factsheet.",
+            "Depends on": "Training Mechanism",
+            "Epsilon": f"{raw['value']:.6f}",
+            "Interpretation": "Lower epsilon implies stronger privacy guarantees (less theoretical leakage).",
+        }
 
 # =============================================================================
 # Epsilon Star (Empirical DP Leakage)

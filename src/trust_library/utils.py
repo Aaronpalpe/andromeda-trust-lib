@@ -49,7 +49,7 @@ def to_json_safe(obj):
     return obj
 
 
-def calculate_score(value, thresholds):
+def calculate_score(value: float, thresholds: list[float]) -> int:
     """
     Calcula el score 1-5 de forma robusta, detectando si los umbrales
     son ascendentes (accuracy) o descendentes (errores).
