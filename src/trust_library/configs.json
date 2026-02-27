@@ -1,0 +1,750 @@
+{
+    "pillars": {
+        "fairness": 0.25,
+        "explainability": 0.25,
+        "privacy": 0.25,
+        "robustness": 0.25,
+        "accountability": 0.25,
+        "sustainability": 0.25
+    },
+
+    "weights": {
+        "fairness": {
+            "underfitting": 0.35,
+            "overfitting": 0.15,
+            "statistical_parity_difference": 0.15,
+            "equal_opportunity_difference": 0.2,
+            "average_odds_difference": 0.1,
+            "disparate_impact": 0.1,
+            "class_balance": 0.1,
+            "accuracy_parity": 0.1,
+            "predictive_parity": 0.1,
+            "treatment_equality": 0.1,
+            "calibration_gap": 0.1,
+            "well_calibration_error": 0.1,
+            "theil_index": 0.1,
+            "coefficient_variation": 0.1,
+            "individual_consistency": 0.1,
+            "class_imbalance": 0.1,
+            "kl_divergence": 0.1,
+            "conditional_dp": 0.1,
+            "smoothed_edf": 0.1,
+            "bias_amplification": 0.1,
+            "between_group_ge": 0.1,
+            "cohens_d": 0.1,
+            "two_sd_rule": 0.1
+        },
+        "explainability": {
+            "algorithm_class": 0.55,
+            "correlated_features": 0.15,
+            "model_size": 0.15,
+            "feature_relevance": 0.15,
+
+            "sparsity": 0.4,
+            "feature_entropy": 0.2,
+            "topk_concentration": 0.4
+        },
+        "privacy": {
+            "epsilon": 0.5,
+            "epsilon_star": 0.5,
+            "shapr_score": 0.5,
+            "attribute_inference_score": 0.5,
+            "accuracy_ratio_score": 0.5
+        },
+        "robustness": {
+            "confidence_score": 0.2,
+            "clique_method": 0.2,
+            "loss_sensitivity": 0.2,
+            "clever_score": 0.2,
+            "er_fast_gradient_attack": 0.2,
+            "er_carlini_wagner_attack": 0.2,
+            "er_deepfool_attack": 0.2,
+            "er_hopskipjump_attack": 0.2
+        },
+        "accountability": {
+            "normalization": 0.2,
+            "missing_data": 0.2,
+            "regularization": 0.2,
+            "train_test_split": 0.2,
+            "factsheet_completeness": 0.2
+        },
+        "sustainability": {
+            "emissions": 0.5,
+            "energy": 0.25,
+            "carbon_intensity": 0.25
+        }
+
+    },
+    "mappings": {
+        "fairness": {
+            "score_underfitting": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.85,
+                        0.9,
+                        0.95
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_overfitting": {
+                "thresholds": {
+                    "value": [
+                        0.04,
+                        0.03,
+                        0.02,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_statistical_parity_difference": {
+                "thresholds": {
+                    "value": [
+                        0.075,
+                        0.05,
+                        0.025,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_equal_opportunity_difference": {
+                "thresholds": {
+                    "value": [
+                        0.15,
+                        0.1,
+                        0.05,
+                        0.03,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_average_odds_difference": {
+                "thresholds": {
+                    "value": [
+                        0.15,
+                        0.1,
+                        0.05,
+                        0.03,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_disparate_impact": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.85,
+                        0.9,
+                        0.95
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_class_balance": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_accuracy_parity": {
+                "thresholds": {
+                    "value": [
+                        0.05,
+                        0.03,
+                        0.02,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_predictive_parity": {
+                "thresholds": {
+                    "value": [
+                        0.05,
+                        0.03,
+                        0.02,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_treatment_equality": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_calibration_gap": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_well_calibration_error": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+
+            "score_theil_index": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_coefficient_of_variation": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_individual_consistency": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "class_imbalance": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_kl_divergence": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_conditional_dp": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_smoothed_edf": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_bias_amplification": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_between_group_ge": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.05,
+                        0.03,
+                        0.01,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_cohens_d": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.5,
+                        0.2,
+                        0.1,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_two_sd_rule": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.5,
+                        0.2,
+                        0.1,
+                        0
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            }
+        },
+        "explainability": {
+            "score_algorithm_class": {
+                "clf_type_score": {
+                    "value": {
+                        "RandomForestClassifier": 4,
+                        "KNeighborsClassifier": 3,
+                        "SVC": 2,
+                        "GaussianProcessClassifier": 3,
+                        "DecisionTreeClassifier": 5,
+                        "MLPClassifier": 1,
+                        "AdaBoostClassifier": 3,
+                        "GaussianNB": 3.5,
+                        "QuadraticDiscriminantAnalysis": 3,
+                        "LogisticRegression": 4,
+                        "LinearRegression": 3.5,
+                        "Sequential": 1
+                    },
+                    "description": "Mapping of Learning techniques to the level of explainability based on on literature research and qualitative analysis of each learning technique. For more information see gh-pages/explainability/taxonomy",
+                    "label": "Score Mapping"
+                }
+            },
+            "score_model_size": {
+                "thresholds": {
+                    "value": [
+                        10,
+                        25,
+                        50,
+                        100
+                    ],
+                    "description": "Thresholds of how to map model size to a score from 1-5. Example if 10 is the first number it means that a model with 10 or less features would get the best score(5) and if 500 was the last number it would mean that a model with 500 or more features would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_correlated_features": {
+                "high_cor": {
+                    "value": 0.95,
+                    "description": "Threshold value to classify a correlation as highly correlated. Default value is 0.95 meaning every correlation equal or higher than 0.9 would be considered highly correlated",
+                    "label": "High Correlation Threshold"
+                },
+                "thresholds": {
+                    "value": [
+                        0.05,
+                        0.15,
+                        0.25,
+                        0.4
+                    ],
+                    "description": "Thresholds of how to map the percentage of highly correlated features (>= high_cor or default 0.9) to a score from 1-5. Example if 0.05 is the first number it means that training dataset with 5% or less highly correlated variables would get the best score(5) and if 0.4 was the last number it would mean that a training dataset 40% or more highly correlated features would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_feature_relevance": {
+                "thresholds": {
+                    "value": [
+                        0.05,
+                        0.1,
+                        0.15,
+                        0.2
+                    ],
+                    "description": "Map the fraction of many features make up 60% of all importance to a Score from 1-5. If the first number in the list is 0.05 it means that 5% or less features make up more than 60% of all importance, which would be a very skewed distribution of the feature importance and result in the worst score of 1, and if the next number is 0.1 it means if the fraction is between 5%-10% the Score would be a 2, analog the other thresholds",
+                    "label": "Score Thresholds"
+                },
+                "threshold_outlier": {
+                    "value": 0.03,
+                    "description": "The threshold for a score penalty if there are too many outliers in the feature importance distribution. For example if the threshold is 0.03 it means taht if 3% or more features are outliers a penalty with tha value #penalty_outlier would be substacted from the score",
+                    "label": "Threshold for outliers"
+                },
+                "penalty_outlier": {
+                    "value": 0,
+                    "description": "The penalty that should be applied if the the number of outliers in the feature importance distribution is equal or greater than the #threshold_outlier. For example if this value is 0.5 it would mean if the the theshold is reached 0.5 points will be substacted from score. If the number is set to 0 no penalty will be applied",
+                    "label": "Penalty for outliers"
+                }
+            },
+
+            "params": {
+                "n_samples": 50,
+                "shap_threshold": 0.001,
+                "top_k": 5,
+                "seed": 42
+            },
+
+            "score_sparsity": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.6,
+                        0.4,
+                        0.2,
+                        0
+                    ]
+                }
+            },
+            "score_feature_entropy": {
+                "thresholds": {
+                    "value": [
+                        0.8,
+                        0.6,
+                        0.4,
+                        0.2,
+                        0
+                    ]
+                }
+            },
+            "score_topk_concentration": {
+                "thresholds": {
+                    "value": [
+                        0.2,
+                        0.4,
+                        0.6,
+                        0.8,
+                        1.0
+                    ]
+                }
+            }
+        },
+        "privacy": {
+            "score_epsilon_dp": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.5,
+                        1,
+                        2
+                    ],
+                    "description": "Thresholds of how to map the value of epsilon to a score from 1-5. Example if the first number is 0.1 it means that a model with epsilon value of 0.1 or less would get the best score(5) and if 10 was the last number it would mean that a model with epsilon value of 10 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_epsilon_star": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.5,
+                        1,
+                        2
+                    ],
+                    "description": "Thresholds of how to map the value of epsilon score to a score from 1-5. Example if the first number is 0.1 it means that a model with epsilon score value of 0.1 or less would get the best score(5) and if 10 was the last number it would mean that a model with epsilon score value of 10 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_shapr": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.3,
+                        0.5,
+                        0.7
+                    ],
+                    "description": "Thresholds of how to map the SHAPR score to a score from 1-5. Example if the first number is 0.1 it means that a model with SHAPR score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with SHAPR score of 0.7 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_attribute_inference": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.3,
+                        0.5,
+                        0.7
+                    ],
+                    "description": "Thresholds of how to map the attribute inference attack score to a score from 1-5. Example if the first number is 0.1 it means that a model with attribute inference attack score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with attribute inference attack score of 0.7 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_accuracy_ratio": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.3,
+                        0.5,
+                        0.7
+                    ],
+                    "description": "Thresholds of how to map the accuracy ratio attack score to a score from 1-5. Example if the first number is 0.1 it means that a model with accuracy ratio attack score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with accuracy ratio attack score of 0.7 or more would get the worst score (1), analog for the numbers in between",
+                    "label": "Score Thresholds"
+                }
+            }
+        },
+        "robustness": {
+            "score_clique_method": {
+                "thresholds": {
+                    "value": [
+                        0.01,
+                        0.1,
+                        0.25,
+                        0.5
+                    ],
+                    "description": "Thresholds of how to map the result of the clique method from 1-5.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_loss_sensitivity": {
+                "thresholds": {
+                    "value": [
+                        2,
+                        1.5,
+                        1,
+                        0.5
+                    ],
+                    "description": "Thresholds of how to map loss sensitivity from 1-5. Smaller value means higher robustness.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_clever_score": {
+                "thresholds": {
+                    "value": [
+                        0.2,
+                        0.5,
+                        1,
+                        2.5
+                    ],
+                    "description": "Thresholds of how to map CLEVER score from 1-5.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_confidence_score": {
+                "thresholds": {
+                    "value": [
+                        20,
+                        40,
+                        60,
+                        80
+                    ],
+                    "description": "Thresholds of how to map confidence score from 1-5. Better confidence score means higher robustness.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_fast_gradient_attack": {
+                "thresholds": {
+                    "value": [
+                        80,
+                        60,
+                        40,
+                        20
+                    ],
+                    "description": "Thresholds of how to map difference between before-after attack accuracies from 1-5. Example: If the before attack accuracy is 85% and after attack accuracy is again 85% it means model is so robust that attack was not successful at all. The difference is 0 and hence this would result in a score of 5 (best score). However if the before attack accuracy was 100% and after attack accuracy is 0% then the model is not robust. The difference is 100% and it would result in score 0 (worst score)",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_carlini_wagner_attack": {
+                "thresholds": {
+                    "value": [
+                        80,
+                        60,
+                        40,
+                        20
+                    ],
+                    "description": "Thresholds of how to map difference between before-after attack accuracies from 1-5. Example: If the before attack accuracy is 85% and after attack accuracy is again 85% it means model is so robust that attack was not successful at all. The difference is 0 and hence this would result in a score of 5 (best score). However if the before attack accuracy was 100% and after attack accuracy is 0% then the model is not robust. The difference is 100% and it would result in score 0 (worst score)",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_deepfool_attack": {
+                "thresholds": {
+                    "value": [
+                        80,
+                        60,
+                        40,
+                        20
+                    ],
+                    "description": "Thresholds of how to map difference between before-after attack accuracies from 1-5. Example: If the before attack accuracy is 85% and after attack accuracy is again 85% it means model is so robust that attack was not successful at all. The difference is 0 and hence this would result in a score of 5 (best score). However if the before attack accuracy was 100% and after attack accuracy is 0% then the model is not robust. The difference is 100% and it would result in score 0 (worst score)",
+                    "label": "Score Thresholds"
+                }
+            },
+             "score_hopskipjump_attack": {
+                "thresholds": {
+                    "value": [
+                        80,
+                        60,
+                        40,
+                        20
+                    ],
+                    "description": "Thresholds to map accuracy drop (percentage points) after ART HopSkipJump attack to a score from 1-5. 0 drop => best score.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "params": {
+                "n_samples": 50,
+                "seed": 42,
+                "max_iter": 10,
+                "max_eval": 1000,
+                "init_eval": 10,
+                "init_size": 10,
+                "norm": 2
+            }
+        },
+        "accountability": {
+            "score_normalization": {
+                "mappings": {
+                    "value": {
+                        "None": 1,
+                        "training_normal": 2,
+                        "training_and_test_normal": 3,
+                        "training_standardized": 4,
+                        "training_and_test_standardize": 5
+                    },
+                    "description": "Dictionary of how to map different normalization types to scores between 1-5.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_missing_data": {
+                "mappings": {
+                    "value": {
+                        "null_values_exist": 1,
+                        "no_null_values": 5
+                    },
+                    "description": "Dictionary of how to map missing data to scores between 1-5.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_regularization": {
+                "parameter_regularization_technique": {
+                    "value": "The value of the parameter_XY",
+                    "description": "The description of the paramter and its impact"
+                }
+            },
+            "score_train_test_split": {
+                "mappings": {
+                    "value": {
+                        "50-60 95-97": 1,
+                        "60-75 90-95": 2,
+                        "70-75 85-90": 3,
+                        "75-79 81-85": 4,
+                        "79-81": 5
+                    },
+                    "description": "Thresholds of how to map the train-test split to a score between 1-5.",
+                    "label": "Score Thresholds"
+                }
+            },
+            "score_factsheet_completeness": {
+                "parameter_split": {
+                    "value": "The value of the parameter_XY",
+                    "description": "The description of the paramter and its impact"
+                }
+            }
+        },
+        "sustainability": {
+            "score_emissions": {
+                "thresholds": {
+                    "value": [
+                        0.05,
+                        0.1,
+                        0.2,
+                        0.4
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_energy": {
+                "thresholds": {
+                    "value": [
+                        0.1,
+                        0.2,
+                        0.4,
+                        0.8
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            },
+            "score_carbon_intensity": {
+                "thresholds": {
+                    "value": [
+                        0.2,
+                        0.4,
+                        0.6,
+                        0.8
+                    ],
+                    "description": "",
+                    "label": ""
+                }
+            }
+        }
+    }
+}

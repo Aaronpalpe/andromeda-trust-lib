@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "andromeda-trust-lib"
+version = "0.1.0"
+description = "Trust evaluation framework for ML systems"
+readme = "README.md"
+requires-python = ">=3.9"
+
+authors = [
+    { name = "Aaron Palomar Peña", email = "aaronpalpe@yahoo.es" },
+    { name = "Antonio Marín Ortega", email = "antonio.marino@um.es" },
+]
+
+license = { file = "LICENSE" }
+
+dependencies = [
+    "numpy>=1.21",
+    "pandas>=1.2",
+    "scikit-learn>=0.24",
+    "holisticai",
+    "codecarbon",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"trust_library" = ["configs.json"]

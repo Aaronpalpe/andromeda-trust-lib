@@ -1,0 +1,196 @@
+# core.py
+
+from __future__ import annotations
+import json
+from typing import List
+
+from trust_library import utils
+from trust_library.fairness import FairnessPillar
+from trust_library.accountability import AccountabilityPillar
+from trust_library.privacy import PrivacyPillar
+from trust_library.sustainability import SustainabilityPillar
+from trust_library.explainability import ExplainabilityPillar
+from trust_library.robustness import RobustnessPillar
+from importlib import resources
+
+
+_PILLARS = {
+    "fairness": FairnessPillar(),
+    "accountability": AccountabilityPillar(),
+    "privacy": PrivacyPillar(),
+    "sustainability": SustainabilityPillar(),
+    "explainability": ExplainabilityPillar(),
+    "robustness": RobustnessPillar(),
+}
+
+
+class TrustEvaluator:
+
+    def __init__(
+        self,
+        model,
+        train_data,
+        test_data,
+        factsheet,
+        config_path: str | None = None,
+        output_path: str = "trust_evaluation_result.json",
+    ):
+        self.model       = model
+        self.train_data  = train_data
+        self.test_data   = test_data
+        self.factsheet   = factsheet
+        self.output_path = output_path
+        self.config      = self._load_config(config_path)
+        self.context     = self._build_context()
+        self.result: dict | None = None
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Public API
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def evaluate(self) -> dict:
+        """Full evaluation: all pillars + trust score + explanation."""
+        pillar_results = self._compute_pillar_scores()
+
+        pillar_scores = {name: data["score"] for name, data in pillar_results.items()}
+        trust_score   = self._compute_trust_score(pillar_scores)
+        explanation   = self._build_score_explanation(pillar_results)
+
+        self.result = {
+            "trust_score":  trust_score,
+            "pillar_score": pillar_scores,
+            "details":      {name: data["metrics"]    for name, data in pillar_results.items()},
+            "properties":   {name: data["properties"] for name, data in pillar_results.items()},
+            "explanation":  explanation,
+        }
+
+        self._save_result()
+        return self.result
+
+    def evaluate_pillars(self, pillars: list[str]) -> dict:
+        """Partial evaluation: only the requested pillars."""
+        self._validate_pillars(pillars)
+        return self._compute_pillar_scores(pillars)
+
+    def run_analysis(self) -> dict:
+        """Runs analyse() on every pillar and returns raw pillar results."""
+        return {
+            name: pillar.analyse(
+                self.context,
+                self.config.get("mappings", {}).get(name),
+            )
+            for name, pillar in _PILLARS.items()
+        }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Private helpers
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _load_config(self, config_path: str | None) -> dict:
+        if config_path is None:
+            with resources.files("trust_library").joinpath("configs.json").open("r") as f:
+                return json.load(f)
+        with open(config_path, "r") as f:
+            return json.load(f)
+
+    def _build_context(self) -> utils.EvaluationContext:
+        target = self.factsheet["general"]["target_column"]["value"]
+
+        if target not in self.train_data.columns or target not in self.test_data.columns:
+            raise ValueError(f"Target column '{target}' not found in the datasets.")
+
+        X_train = self.train_data.drop(columns=[target])
+        y_train = self.train_data[target].values.flatten()
+        X_test  = self.test_data.drop(columns=[target])
+        y_test  = self.test_data[target].values.flatten()
+
+        try:
+            y_pred_train = self._predict(X_train)
+            y_pred_test  = self._predict(X_test)
+            y_prob_train = self._predict_proba(X_train)
+            y_prob_test  = self._predict_proba(X_test)
+        except Exception as e:
+            raise RuntimeError(f"Error during model prediction: {e}")
+
+        return utils.EvaluationContext(
+            model=self.model,
+            train_data=self.train_data,
+            test_data=self.test_data,
+            X_train=X_train, y_train=y_train,
+            X_test=X_test,   y_test=y_test,
+            y_pred_train=y_pred_train,
+            y_pred_test=y_pred_test,
+            y_prob_train=y_prob_train,
+            y_prob_test=y_prob_test,
+            factsheet=self.factsheet,
+        )
+
+    def _predict(self, X):
+        result = self.model.predict(X)
+        return result.flatten() if hasattr(result, "flatten") else result
+
+    def _predict_proba(self, X):
+        if hasattr(self.model, "predict_proba"):
+            return self.model.predict_proba(X)
+        return None
+
+    def _compute_pillar_scores(self, pillars: list[str] | None = None) -> dict:
+        items = (
+            ((name, _PILLARS[name]) for name in pillars)
+            if pillars
+            else _PILLARS.items()
+        )
+        results = {}
+        for name, pillar in items:
+            print(f"Computing {name.capitalize()} metrics...")
+            aggregated_score, result_obj = pillar.score(self.context, self.config)
+            results[name] = {
+                "score":      aggregated_score,
+                "metrics":    result_obj.score,
+                "properties": result_obj.properties,
+            }
+        return results
+
+    def _compute_trust_score(self, pillar_scores: dict) -> float:
+        return utils.calculate_weighted_score(
+            pillar_scores,
+            self.config.get("pillars", {}),
+        )
+
+    def _build_score_explanation(self, pillar_results: dict) -> dict:
+        explanation      = {}
+        pillar_weights   = self.config.get("pillars", {})
+        trust_formula_parts = []
+        trust_value      = 0
+
+        for pillar_name, data in pillar_results.items():
+            p_weight = pillar_weights.get(pillar_name, 1)
+            p_score  = data["score"]
+            trust_value += p_weight * p_score
+            trust_formula_parts.append(f"{p_weight}*{pillar_name.capitalize()}({p_score})")
+
+            metric_weights = self.config.get("weights", {}).get(pillar_name, {})
+            metric_parts   = [
+                f"{metric_weights.get(metric_name, 1)}*{metric_name}({metric_value})"
+                for metric_name, metric_value in data["metrics"].items()
+            ]
+
+            explanation[pillar_name] = {
+                "formula": " + ".join(metric_parts),
+                "score":   p_score,
+            }
+
+        explanation["trust_score"] = {
+            "formula":     " + ".join(trust_formula_parts),
+            "final_score": trust_value,
+        }
+        return explanation
+
+    def _save_result(self) -> None:
+        with open(self.output_path, "w") as f:
+            json.dump(utils.to_json_safe(self.result), f, indent=4)
+
+    def _validate_pillars(self, pillars: list[str]) -> None:
+        unknown = [p for p in pillars if p not in _PILLARS]
+        if unknown:
+            raise ValueError(f"Unknown pillar(s): {unknown}. Available: {list(_PILLARS.keys())}")
