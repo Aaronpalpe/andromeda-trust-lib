@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 
 authors = [
-    { name = "Aaron Palomar Peña", email = "tu@email.com" },
+    { name = "Aaron Palomar Peña", email = "aaronpalpe@yahoo.es" },
     { name = "Antonio Marín Ortega", email = "antonio.marino@um.es" },
 ]
 
