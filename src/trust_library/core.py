@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import json
-import os
+from typing import List
 
 from trust_library import utils
 from trust_library.fairness import FairnessPillar
@@ -112,14 +112,26 @@ def run_pillars(context: utils.EvaluationContext, config: dict) -> dict:
 # Score computation
 # ─────────────────────────────────────────────────────────────────────────────
 
-def compute_pillar_scores(context: utils.EvaluationContext, config: dict) -> dict:
-    """Delegates aggregated score computation to each pillar."""
+def compute_pillar_scores(context: utils.EvaluationContext, config: dict, pillars: List[str] = None) -> dict:
+    """Delegates aggregated score computation to each pillar.
+    
+    If `pillars` is provided, computes only for those pillar names (strings).
+    If `pillars` is None, computes for all pillars.
+    """
+
+    if pillars is None:
+        selected_items = _PILLARS.items()
+    else:
+        unknown = [p for p in pillars if p not in _PILLARS]
+        if unknown:
+            raise ValueError(
+                f"Unknown pillar(s): {unknown}. Available: {list(_PILLARS.keys())}"
+            )
+        selected_items = ((name, _PILLARS[name]) for name in pillars)
 
     results = {}
-
-    for name, pillar in _PILLARS.items():
+    for name, pillar in selected_items:
         aggregated_score, result_obj = pillar.score(context, config)
-
         results[name] = {
             "score": aggregated_score,
             "metrics": result_obj.score,
