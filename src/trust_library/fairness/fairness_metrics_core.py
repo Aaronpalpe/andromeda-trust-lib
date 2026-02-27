@@ -427,29 +427,77 @@ def kl_divergence(
 # Individual Fairness
 # ─────────────────────────────────────────────────────────────────────────────
 
-def individual_consistency(
-    X: np.ndarray,
-    y_pred: np.ndarray,
-    k: int = 5,
-) -> dict:
-    """
-    Individual Consistency Score.
+# def individual_consistency(
+#     X: np.ndarray,
+#     y_pred: np.ndarray,
+#     k: int = 5,
+# ) -> dict:
+#     """
+#     Individual Consistency Score.
 
-    Consistency = 1 - mean(|ŷ_i - mean(ŷ_neighbours)|)
+#     Consistency = 1 - mean(|ŷ_i - mean(ŷ_neighbours)|)
 
-    A score of 1 means every individual gets the same prediction as
-    their k nearest neighbours.  Ideal value: 1
+#     A score of 1 means every individual gets the same prediction as
+#     their k nearest neighbours.  Ideal value: 1
+#     """
+#     nn = NearestNeighbors(n_neighbors=k + 1).fit(X)
+#     _, idx = nn.kneighbors(X)
+
+#     diffs = [
+#         abs(y_pred[i] - np.mean(y_pred[idx[i][1:]]))
+#         for i in range(len(X))
+#     ]
+#     val = 1.0 - float(np.mean(diffs))
+#     return {"value": val, "k": k}
+
+from sklearn.neighbors import NearestNeighbors
+
+# def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dict:
+#     """
+#     Individual Consistency manual.
+#     Replica AIF360: Utiliza ball_tree e incluye al propio individuo 
+#     dentro de sus k vecinos para calcular la media de predicciones.
+#     """
+#     # Filtro de seguridad: Imputar NaNs por 0.0 para que las distancias no devuelvan error
+#     X_safe = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+    
+#     # AIF360 fuerza el algoritmo 'ball_tree' y busca exactamente `k` vecinos.
+#     # Al buscar k vecinos en el mismo dataset, el vecino #0 es el punto mismo.
+#     nn = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(X_safe)
+#     _, idx = nn.kneighbors(X_safe)
+    
+#     # Obtenemos las predicciones de los k vecinos de cada punto (shape: N x k)
+#     neighbor_preds = y_pred[idx]
+    
+#     # Promedio de la predicción de los vecinos (incluyéndose a sí mismo)
+#     mean_neighbor_preds = np.mean(neighbor_preds, axis=1)
+    
+#     # Consistency = 1 - mean( | y_pred - mean_neighbors_pred | )
+#     diffs = np.abs(y_pred - mean_neighbor_preds)
+#     val = 1.0 - float(np.mean(diffs))
+    
+#     return {
+#         "value": val, 
+#         "k": k
+#     }
+
+def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dict:
     """
+    Individual Consistency replicando AIF360.
+    Consistency = 1 - mean(|y_i - mean(y_neighbors)|)
+    """
+    # KNN
     nn = NearestNeighbors(n_neighbors=k + 1).fit(X)
     _, idx = nn.kneighbors(X)
-
-    diffs = [
-        abs(y_pred[i] - np.mean(y_pred[idx[i][1:]]))
-        for i in range(len(X))
-    ]
-    val = 1.0 - float(np.mean(diffs))
+    
+    diffs = []
+    for i in range(len(X)):
+        neighbors_idx = idx[i][1:]  # excluir el punto mismo
+        diffs.append(abs(y_pred[i] - np.mean(y_pred[neighbors_idx])))
+    
+    val = 1.0 - np.mean(diffs)
+    
     return {"value": val, "k": k}
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Dataset / Distribution Metrics
@@ -495,31 +543,89 @@ def class_imbalance(group_mask: np.ndarray) -> dict:
 # Bias Amplification & Effect Size
 # ─────────────────────────────────────────────────────────────────────────────
 
-def bias_amplification(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    group_mask: np.ndarray,
-) -> dict:
+# def bias_amplification(
+#     y_true: np.ndarray,
+#     y_pred: np.ndarray,
+#     group_mask: np.ndarray,
+# ) -> dict:
+#     """
+#     Bias Amplification.
+
+#     Measures whether the model *amplifies* the bias already present in labels.
+
+#     BA = |bias(ŷ)| - |bias(y)|
+#     where bias = mean(group_prot) - mean(group_unprot)
+
+#     Ideal value: 0 or negative (model should not amplify bias)
+#     """
+#     bias_y    = abs(float(y_true[group_mask].mean()) - float(y_true[~group_mask].mean()))
+#     bias_yhat = abs(float(y_pred[group_mask].mean()) - float(y_pred[~group_mask].mean()))
+#     val = bias_yhat - bias_y
+#     return {
+#         "value": val,
+#         "bias_in_labels": bias_y,
+#         "bias_in_predictions": bias_yhat,
+#         "amplified": bool(val > 0),
+#     }
+
+
+# def bias_amplification(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
+#     """
+#     Bias Amplification manual (Differential Fairness).
+#     Replica AIF360: Bias Amplification = EDF(Predicciones) - EDF(Etiquetas Reales).
+#     """
+#     # Helper interno para calcular el EDF base con alpha=1.0 (default de AIF360 para esta métrica)
+#     def _get_edf(y_arr, g_arr, alpha=1.0):
+#         groups = np.unique(g_arr)
+#         ssr = []
+#         for g in groups:
+#             mask_g = (g_arr == g)
+#             n_g = np.sum(mask_g)
+#             p_g = np.sum(y_arr[mask_g] == 1.0)
+#             ssr.append((p_g + alpha) / (n_g + 2.0 * alpha))
+            
+#         max_edf = 0.0
+#         for i in range(len(ssr)):
+#             for j in range(len(ssr)):
+#                 if i != j:
+#                     pos = abs(np.log(ssr[i]) - np.log(ssr[j]))
+#                     neg = abs(np.log(1.0 - ssr[i]) - np.log(1.0 - ssr[j]))
+#                     max_edf = max(max_edf, pos, neg)
+#         return max_edf
+
+#     # Calculamos el sesgo en el Ground Truth y en las Predicciones
+#     bias_labels = _get_edf(y_true, group_mask, alpha=1.0)
+#     bias_preds = _get_edf(y_pred, group_mask, alpha=1.0)
+    
+#     val = bias_preds - bias_labels
+    
+#     return {
+#         "value": float(val),
+#         "bias_in_labels": float(bias_labels),
+#         "bias_in_predictions": float(bias_preds)
+#     }
+
+def bias_amplification(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarray, alpha: float = 1.0) -> dict:
     """
-    Bias Amplification.
-
-    Measures whether the model *amplifies* the bias already present in labels.
-
-    BA = |bias(ŷ)| - |bias(y)|
-    where bias = mean(group_prot) - mean(group_unprot)
-
-    Ideal value: 0 or negative (model should not amplify bias)
+    Bias Amplification replicando AIF360:
+    BA = EDF(y_pred) - EDF(y_true)
     """
-    bias_y    = abs(float(y_true[group_mask].mean()) - float(y_true[~group_mask].mean()))
-    bias_yhat = abs(float(y_pred[group_mask].mean()) - float(y_pred[~group_mask].mean()))
-    val = bias_yhat - bias_y
+    # Binarizar si no lo está
+    y_true_bin = (y_true >= 0.5).astype(int)
+    y_pred_bin = (y_pred >= 0.5).astype(int)
+    
+    # EDF suavizado de labels
+    edf_labels = smoothed_edf(y_true_bin, group_mask, alpha)["value"]
+    # EDF suavizado de predicciones
+    edf_preds  = smoothed_edf(y_pred_bin, group_mask, alpha)["value"]
+    
+    ba = edf_preds - edf_labels
+    
     return {
-        "value": val,
-        "bias_in_labels": bias_y,
-        "bias_in_predictions": bias_yhat,
-        "amplified": bool(val > 0),
+        "value": ba,
+        "bias_in_labels": edf_labels,
+        "bias_in_predictions": edf_preds
     }
-
 
 def cohens_d(
     y_pred: np.ndarray,
@@ -544,29 +650,100 @@ def cohens_d(
     }
 
 
-def smoothed_edf(
-    y_prob: np.ndarray,
-    group_values: np.ndarray,
-    alpha: float = 1.0,
-) -> dict:
-    """
-    Smoothed Empirical Differential Fairness (EDF).
+# def smoothed_edf(
+#     y_prob: np.ndarray,
+#     group_values: np.ndarray,
+#     alpha: float = 1.0,
+# ) -> dict:
+#     """
+#     Smoothed Empirical Differential Fairness (EDF).
 
-    Based on log-ratio of (mean_prob + alpha) across groups.
-    Ideal value: 0
+#     Based on log-ratio of (mean_prob + alpha) across groups.
+#     Ideal value: 0
+#     """
+#     unique_groups = np.unique(group_values)
+#     group_means = {g: float(y_prob[group_values == g].mean()) + alpha for g in unique_groups}
+#     vals = list(group_means.values())
+#     ratio = max(vals) / min(vals)
+#     val = float(abs(np.log(ratio)))
+#     return {
+#         "value": val,
+#         "group_smoothed_means": {str(k): v for k, v in group_means.items()},
+#         "alpha": alpha,
+#     }
+
+# def smoothed_edf(y_prob: np.ndarray, group_values: np.ndarray, alpha: float = 1.0) -> dict:
+#     """
+#     Smoothed Empirical Differential Fairness (EDF) manual.
+#     Replica matemáticamente la lógica de AIF360:
+#     1. Binariza probabilidades.
+#     2. Aplica Suavizado de Dirichlet a las tasas base.
+#     3. Evalúa el peor escenario logarítmico entre clases positivas y negativas.
+#     """
+#     # 1. Binarizar predicciones (como requiere AIF360 internamente)
+#     y_pred_bin = (np.array(y_prob) >= 0.5).astype(float)
+    
+#     unique_groups = np.unique(group_values)
+#     ssr = [] # smoothed_selection_rates
+    
+#     for g in unique_groups:
+#         mask_g = (group_values == g)
+#         n_g = np.sum(mask_g)
+#         p_g = np.sum(y_pred_bin[mask_g] == 1.0)
+        
+#         # 2. Suavizado de Dirichlet: (conteo_positivos + alpha) / (conteo_total + 2*alpha)
+#         rate = (p_g + alpha) / (n_g + 2.0 * alpha)
+#         ssr.append(rate)
+    
+#     # 3. Encontrar el log-ratio máximo (comparando tanto tasas positivas como negativas)
+#     max_edf = 0.0
+#     for i in range(len(ssr)):
+#         for j in range(len(ssr)):
+#             if i != j:
+#                 pos_ratio = abs(np.log(ssr[i]) - np.log(ssr[j]))
+#                 neg_ratio = abs(np.log(1.0 - ssr[i]) - np.log(1.0 - ssr[j]))
+#                 max_edf = max(max_edf, pos_ratio, neg_ratio)
+                
+#     return {
+#         "value": float(max_edf),
+#         "alpha": alpha
+#     }
+
+from itertools import product
+
+def smoothed_edf(y_bin: np.ndarray, group_mask: np.ndarray, alpha: float = 1.0) -> dict:
     """
-    unique_groups = np.unique(group_values)
-    group_means = {g: float(y_prob[group_values == g].mean()) + alpha for g in unique_groups}
-    vals = list(group_means.values())
-    ratio = max(vals) / min(vals)
-    val = float(abs(np.log(ratio)))
+    Smoothed Empirical Differential Fairness replicando AIF360.
+    
+    y_bin: labels binarizadas (0 o 1)
+    group_mask: array booleano o categórico con grupo protegido
+    alpha: concentración de smoothing (concentration)
+    """
+    # Convertir grupos a valores únicos
+    unique_groups = np.unique(group_mask)
+    
+    # Calcular proporciones suavizadas
+    group_probs = {}
+    for g in unique_groups:
+        idx = group_mask == g
+        n_g = np.sum(idx)
+        n_g1 = np.sum(y_bin[idx] == 1)
+        # Smoothing Beta-Binomial como hace AIF360
+        p_hat = (n_g1 + alpha) / (n_g + 2 * alpha)
+        group_probs[g] = p_hat
+    
+    # Calcular máximo log-ratio entre todos los pares de grupos
+    max_log_ratio = 0.0
+    for g1, g2 in product(unique_groups, repeat=2):
+        r = abs(np.log(group_probs[g1] / group_probs[g2]))
+        if r > max_log_ratio:
+            max_log_ratio = r
+    
     return {
-        "value": val,
-        "group_smoothed_means": {str(k): v for k, v in group_means.items()},
-        "alpha": alpha,
+        "value": max_log_ratio,
+        "group_smoothed_means": group_probs,
+        "alpha": alpha
     }
-
-
 
 # def conditional_dp_score(dataset, factsheet, thresholds, conditioning_cols):
 #     try:

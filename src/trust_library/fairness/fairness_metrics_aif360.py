@@ -14,6 +14,11 @@ import numpy as np
 import pandas as pd
 from aif360.datasets import BinaryLabelDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
+from aif360.sklearn.metrics import (
+    class_imbalance as class_imbalance_aif,
+    kl_divergence as kl_divergence_aif
+)
+# from aif360.metrics import smoothed_empirical_differential_fairness, differential_fairness_bias_amplification
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helper: Puente entre Numpy y AIF360
@@ -77,13 +82,21 @@ def statistical_parity_difference(y_pred: np.ndarray, group_mask: np.ndarray) ->
     """Statistical Parity Difference (SPD) via AIF360."""
     _, dataset_pred, priv, unpriv = _get_aif360_datasets(y_pred=y_pred, group_mask=group_mask)
     metric = BinaryLabelDatasetMetric(dataset_pred, privileged_groups=priv, unprivileged_groups=unpriv)
-    
+
+    n_prot = metric.num_instances(privileged=False)
+    n_unprot = metric.num_instances(privileged=True)
+
+    rate_prot = metric.base_rate(privileged=False)
+    rate_unprot = metric.base_rate(privileged=True)
+
     return {
         "value": metric.statistical_parity_difference(),
-        "favored_ratio_protected": metric.base_rate(privileged=False),
-        "favored_ratio_unprotected": metric.base_rate(privileged=True),
-        "n_protected": metric.num_instances(privileged=False),
-        "n_unprotected": metric.num_instances(privileged=True),
+        "favored_ratio_protected": rate_prot,
+        "favored_ratio_unprotected": rate_unprot,
+        "n_protected": n_prot,
+        "n_unprotected": n_unprot,
+        "n_protected_favored": int(rate_prot * n_prot),
+        "n_unprotected_favored": int(rate_unprot * n_unprot),
     }
 
 
@@ -91,11 +104,21 @@ def disparate_impact(y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
     """Disparate Impact (DI) via AIF360."""
     _, dataset_pred, priv, unpriv = _get_aif360_datasets(y_pred=y_pred, group_mask=group_mask)
     metric = BinaryLabelDatasetMetric(dataset_pred, privileged_groups=priv, unprivileged_groups=unpriv)
-    
+
+    n_prot = metric.num_instances(privileged=False)
+    n_unprot = metric.num_instances(privileged=True)
+
+    rate_prot = metric.base_rate(privileged=False)
+    rate_unprot = metric.base_rate(privileged=True)
+
     return {
         "value": metric.disparate_impact(),
-        "favored_ratio_protected": metric.base_rate(privileged=False),
-        "favored_ratio_unprotected": metric.base_rate(privileged=True),
+        "favored_ratio_protected": rate_prot,
+        "favored_ratio_unprotected": rate_unprot,
+        "n_protected": n_prot,
+        "n_unprotected": n_unprot,
+        "n_protected_favored": int(rate_prot * n_prot),
+        "n_unprotected_favored": int(rate_unprot * n_unprot),
     }
 
 
@@ -228,9 +251,17 @@ def coefficient_of_variation(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dict:
-    """Individual Consistency via AIF360 (Requiere matriz X)."""
+    """
+    Individual Consistency via AIF360.
+    Incluye un filtro de seguridad para imputar NaNs, ya que KNN no soporta valores nulos.
+    """
+    # --- CORRECCIÓN DE SEGURIDAD ---
+    # Reemplazamos los NaN por 0.0 y los infinitos por números finitos.
+    # Esto evita que el cálculo de distancias internas en AIF360 crashee.
+    X_safe = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+    
     dummy_mask = np.zeros(len(y_pred), dtype=bool)
-    _, dataset_pred, priv, unpriv = _get_aif360_datasets(y_pred=y_pred, group_mask=dummy_mask, X=X)
+    _, dataset_pred, priv, unpriv = _get_aif360_datasets(y_pred=y_pred, group_mask=dummy_mask, X=X_safe)
     metric = BinaryLabelDatasetMetric(dataset_pred, privileged_groups=priv, unprivileged_groups=unpriv)
     
     # AIF360 devuelve un array con un único valor
@@ -242,10 +273,92 @@ def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dic
     }
 
 
-# class_imbalance
+# ─────────────────────────────────────────────────────────────────────────────
+# Individual Fairness / Advanced Metrics (Corregidas)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# kl_divergence
+def class_imbalance(group_mask: np.ndarray) -> dict:
+    """
+    Class Imbalance usando AIF360 metrics.class_imbalance.
+    """
+    dummy_labels = np.zeros_like(group_mask, dtype=int)
+    
+    # Al usar la API de sklearn de aif360, llamamos a la función directamente 
+    # pasándole los arrays crudos y especificando cuál es el grupo privilegiado (0.0 en tu helper)
+    value = class_imbalance_aif(dummy_labels, prot_attr=group_mask, priv_group=0.0)
 
-# smoothed_edf
+    n_prot = np.sum(group_mask)
+    n_unprot = len(group_mask) - n_prot
 
-# bias_amplification
+    return {
+        "value": float(value),
+        "n_protected": int(n_prot),
+        "n_unprotected": int(n_unprot),
+        "balanced": abs(n_prot - n_unprot) < 0.1 * len(group_mask)
+    }
+
+def kl_divergence(y_true: np.ndarray, group_mask: np.ndarray) -> dict:
+    """
+    KL Divergence usando AIF360 metrics.kl_divergence.
+    """
+    # Función directa de sklearn, sin instanciar ClassificationMetric
+    value = kl_divergence_aif(y_true, prot_attr=group_mask, priv_group=0.0)
+
+    return {
+        "value": float(value)
+    }
+
+def smoothed_edf(y_prob: np.ndarray,
+                 group_values: np.ndarray,
+                 alpha: float = 1.0) -> dict:
+    """
+    Smoothed EDF usando AIF360. 
+    Transforma probabilidades a etiquetas binarias para cumplir con la API.
+    """
+    # 1. Binarizamos las probabilidades a 0.0 y 1.0
+    y_pred_bin = (np.array(y_prob) >= 0.5).astype(float)
+
+    # 2. Generamos solo el dataset de predicciones (y_true=None)
+    _, dataset_pred, priv, unpriv = _get_aif360_datasets(
+        y_pred=y_pred_bin,
+        group_mask=group_values
+    )
+
+    # 3. Calculamos la métrica
+    metric = BinaryLabelDatasetMetric(dataset_pred, privileged_groups=priv, unprivileged_groups=unpriv)
+    value = metric.smoothed_empirical_differential_fairness(concentration=alpha)
+
+    return {
+        "value": float(value),
+        "alpha": alpha
+    }
+
+def bias_amplification(y_true: np.ndarray,
+                       y_pred: np.ndarray,
+                       group_mask: np.ndarray) -> dict:
+    """
+    Differential Fairness Bias Amplification.
+    """
+    dataset_true, dataset_pred, priv, unpriv = _get_aif360_datasets(
+        y_true=y_true,
+        y_pred=y_pred,
+        group_mask=group_mask
+    )
+
+    metric = ClassificationMetric(dataset_true, dataset_pred, unprivileged_groups=unpriv, privileged_groups=priv)
+
+    # El método solo necesita la concentración (por defecto 1.0)
+    value = metric.differential_fairness_bias_amplification(concentration=1.0)
+
+    # Para el bias individual en labels y preds, usamos BinaryLabelDatasetMetric
+    metric_true = BinaryLabelDatasetMetric(dataset_true, privileged_groups=priv, unprivileged_groups=unpriv)
+    metric_pred = BinaryLabelDatasetMetric(dataset_pred, privileged_groups=priv, unprivileged_groups=unpriv)
+    
+    bias_labels = metric_true.smoothed_empirical_differential_fairness(concentration=1.0)
+    bias_preds = metric_pred.smoothed_empirical_differential_fairness(concentration=1.0)
+
+    return {
+        "value": float(value),
+        "bias_in_labels": float(bias_labels),
+        "bias_in_predictions": float(bias_preds)
+    }
