@@ -1,7 +1,7 @@
 # fairness/metrics.py
 
 from trust_library.base_metric import BaseMetric
-from . import fairness_metrics_holisticAI as core
+from . import fairness_metrics_core as core
 
 
 # ─────────────────────────────────────────────────────────────
