@@ -50,11 +50,11 @@ class TrustEvaluator:
 
     def evaluate(self) -> dict:
         """Full evaluation: all pillars + trust score + explanation."""
-        pillar_results = self._compute_pillar_scores()
+        pillar_results = self._compute_pillar_scores() # Diccionario compuesto por cada pilar, con su score agregado, sus métricas:score y metricas:propiedades.
 
-        pillar_scores = {name: data["score"] for name, data in pillar_results.items()}
-        trust_score   = self._compute_trust_score(pillar_scores)
-        explanation   = self._build_score_explanation(pillar_results)
+        pillar_scores = {name: data["score"] for name, data in pillar_results.items()} # Pillar:score
+        trust_score   = self._compute_trust_score(pillar_scores) # Trust global
+        explanation   = self._build_score_explanation(pillar_results) # Fórmula
 
         self.result = {
             "trust_score":  trust_score,
@@ -72,7 +72,7 @@ class TrustEvaluator:
         self._validate_pillars(pillars)
         return self._compute_pillar_scores(pillars)
 
-    def run_analysis(self) -> dict:
+    def run_analysis(self) -> dict: #¿Se puede quitar? Creo que ya está representado ocn los 2 de arriba
         """Runs analyse() on every pillar and returns raw pillar results."""
         return {
             name: pillar.analyse(

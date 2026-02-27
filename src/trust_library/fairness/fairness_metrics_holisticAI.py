@@ -24,9 +24,9 @@ from holisticai.bias.metrics import (
     #false_positive_rate_diff,
     average_odds_diff,
     accuracy_diff,
-    theil_index,
-    generalized_entropy_index,
-    coefficient_of_variation,
+    theil_index as hai_theil_index,
+    generalized_entropy_index as hai_generalized_entropy_index,
+    coefficient_of_variation as hai_coefficient_of_variation,
     consistency_score
 )
 
@@ -189,43 +189,49 @@ def cohens_d(y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
         "pooled_std": sigma,
     }
 
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Inequality / Information-Theory Metrics (Matemática pura, faltantes en HolisticAI)
+# Inequality / Information-Theory Metrics (Vía HolisticAI)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def generalized_entropy_index(y_true: np.ndarray, y_pred: np.ndarray, alpha: float = 2) -> dict:
+def generalized_entropy_index(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    alpha: float = 2
+) -> dict:
     """
-    Generalized Entropy Index (GEI).
-    Al no existir una equivalente directa en HolisticAI para beneficios de clasificación,
-    se mantiene la implementación matemática pura.
+    Generalized Entropy Index via HolisticAI.
     """
-    b = (y_true == y_pred).astype(float)
-    mu = b.mean()
-    n = len(b)
+    # HolisticAI calcula los beneficios internamente recibiendo y_pred y y_true
+    val = hai_generalized_entropy_index(y_pred, y_true, alpha=alpha)
 
-    if mu == 0:
-        return {"value": 0.0, "alpha": alpha, "mean_benefit": 0.0}
+    return {
+        "value": float(val)
+    }
 
-    if alpha == 1:
-        ratio = b / mu
-        val = float(np.mean(np.where(ratio > 0, ratio * np.log(ratio), 0)))
-    elif alpha == 2:
-        val = float(np.mean((b / mu - 1) ** 2) / 2)
-    else:
-        val = float(np.mean((b / mu) ** alpha - 1) / (alpha * (alpha - 1)))
+def theil_index(
+    y_true: np.ndarray,
+    y_pred: np.ndarray
+) -> dict:
+    """
+    Theil Index via HolisticAI.
+    Equivalent to GEI with alpha=1.
+    """
+    val = hai_theil_index(y_pred, y_true)
 
-    return {"value": val, "alpha": alpha, "mean_benefit": float(mu)}
+    return {
+        "value": float(val)
+    }
 
+def coefficient_of_variation( # NO IGUAL QUE AIF---------------
+    y_true: np.ndarray,
+    y_pred: np.ndarray
+) -> dict:
+    """
+    Coefficient of Variation via HolisticAI.
+    """
+    val = hai_coefficient_of_variation(y_pred, y_true)
 
-def theil_index(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    """Theil Index (GEI con alpha=1)."""
-    result = generalized_entropy_index(y_true, y_pred, alpha=1)
-    result["name"] = "Theil Index"
-    return result
-
-
-def coefficient_of_variation(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    """Coefficient of Variation."""
-    gei = generalized_entropy_index(y_true, y_pred, alpha=2)["value"]
-    val = float(np.sqrt(2 * gei))
-    return {"value": val, "gei_alpha2": gei}
+    return {
+        "value": float(val)
+    }
