@@ -399,18 +399,593 @@ def compute_clever_score_metrics(
     }
 
 
-# def compute_psi(expected, actual, bins=10):
-#     # crea contenedores de bins
-#     breakpoints = np.linspace(0, 1, bins+1)
-#     exp_percents = np.histogram(expected, bins=breakpoints)[0] / len(expected)
-#     act_percents = np.histogram(actual, bins=breakpoints)[0] / len(actual)
 
-#     psi_value = np.sum((exp_percents - act_percents) * np.log(exp_percents / act_percents))
-#     return psi_value
+def compute_confidence_score_metrics(*, model, X_test, y_test):
+    """For a given model this function calculates the Confidence score.
+    It takes the average over confusion_matrix. Then returns a score according to the thresholds.
+        Args:
+            model: ML-model.
+            train_data: pd.DataFrame containing the data.
+            test_data: pd.DataFrame containing the data.
+            threshold: list of threshold values
 
-# # uso
-# train_dist = np.random.rand(1000)
-# prod_dist  = np.random.rand(1000) * 1.1
+        Returns:
+            Confidence score
+    """
+    from sklearn.metrics import confusion_matrix
 
-# psi_score = compute_psi(train_dist, prod_dist)
-# print("PSI:", psi_score)
+    X_df = _ensure_dataframe(X_test)
+    y = np.asarray(y_test).reshape(-1)
+
+    y_pred = np.asarray(model.predict(X_df)).reshape(-1)
+
+    cm = confusion_matrix(y, y_pred)
+    cm_norm = cm / cm.sum(axis=1, keepdims=True)
+
+    confidence = float(np.mean(np.diag(cm_norm)) * 100.0)
+
+    return {
+        "confidence_score": confidence,
+        "metric": "ConfidenceScore",
+    }
+
+
+def compute_loss_sensitivity_metrics(*, classifier, X_test):
+    """For a given Keras-NN model this function calculates the Loss Sensitivity score.
+    It uses loss_sensitivity function from IBM art library.
+    Returns a score according to the thresholds.
+        Args:
+            model: ML-model (Keras).
+            train_data: pd.DataFrame containing the data.
+            test_data: pd.DataFrame containing the data.
+            threshold: list of threshold values
+
+        Returns:
+            Loss Sensitivity score
+    """
+    from art.metrics import loss_sensitivity
+
+    X_df = _ensure_dataframe(X_test)
+    X_np = _to_numpy_float(X_df)
+
+    y_pred = classifier.predict(X_np)
+
+    value = float(loss_sensitivity(classifier, X_np, y_pred))
+
+    return {
+        "loss_sensitivity": value,
+        "metric": "LossSensitivity",
+    }
+
+
+def compute_fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42):
+    """For a given model this function calculates the fast gradient attack score.
+    First from the test data selects a random small test subset.
+    Then measures the accuracy of the model on this subset.
+    Next creates FSG attacks on this test set and measures the model's
+    accuracy on the attacks. Compares the before attack and after attack accuracies.
+    Returns a score according to the thresholds.
+
+    Args:
+        model: ML-model (Logistic Regression, SVM).
+        train_data: pd.DataFrame containing the data.
+        test_data: pd.DataFrame containing the data.
+        threshold: list of threshold values
+
+    Returns:
+        FSG attack score
+        FSG Before attack accuracy
+        FSG After attack accuracy
+    """
+    from art.attacks.evasion import FastGradientMethod
+    from art.estimators.classification.scikitlearn import ScikitlearnClassifier
+
+    X_df = _ensure_dataframe(X_test)
+    y = np.asarray(y_test).reshape(-1)
+
+    rng = np.random.RandomState(seed)
+    idx = rng.choice(len(X_df), size=min(n_samples, len(X_df)), replace=False)
+
+    X_eval = X_df.iloc[idx]
+    y_eval = y[idx]
+
+    y_pred_clean = model.predict(X_eval)
+    clean_acc = float((y_pred_clean == y_eval).mean())
+
+    art_clf = ScikitlearnClassifier(model=model)
+    attack = FastGradientMethod(estimator=art_clf, eps=eps)
+
+    X_adv = attack.generate(_to_numpy_float(X_eval))
+    y_pred_adv = model.predict(_ensure_dataframe(X_adv, columns=X_eval.columns))
+
+    adv_acc = float((y_pred_adv == y_eval).mean())
+    drop_pct = max(0.0, clean_acc - adv_acc) * 100.0
+
+    return {
+        "clean_accuracy": clean_acc * 100.0,
+        "adv_accuracy": adv_acc * 100.0,
+        "accuracy_drop_pct": drop_pct,
+        "metric": "FGM",
+    }
+
+
+def compute_carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
+    """For a given model this function calculates the CW attack score.
+    First from the test data selects a random small test subset.
+    Then measures the accuracy of the model on this subset.
+    Next creates CW attacks on this test set and measures the model's
+    accuracy on the attacks. Compares the before attack and after attack accuracies.
+    Returns a score according to the thresholds.
+
+    Args:
+        model: ML-model (Logistic Regression, SVM).
+        train_data: pd.DataFrame containing the data.
+        test_data: pd.DataFrame containing the data.
+        threshold: list of threshold values
+
+    Returns:
+        CW attack score
+        CW Before attack accuracy
+        CW After attack accuracy
+    """
+    from art.attacks.evasion import CarliniL2Method
+    from art.estimators.classification.scikitlearn import ScikitlearnClassifier
+
+    X_df = _ensure_dataframe(X_test)
+    y = np.asarray(y_test).reshape(-1)
+
+    rng = np.random.RandomState(seed)
+    idx = rng.choice(len(X_df), size=min(n_samples, len(X_df)), replace=False)
+
+    X_eval = X_df.iloc[idx]
+    y_eval = y[idx]
+
+    clean_acc = float((model.predict(X_eval) == y_eval).mean())
+
+    art_clf = ScikitlearnClassifier(model=model)
+    attack = CarliniL2Method(art_clf)
+
+    X_adv = attack.generate(_to_numpy_float(X_eval))
+    adv_acc = float((model.predict(_ensure_dataframe(X_adv, columns=X_eval.columns)) == y_eval).mean())
+
+    drop_pct = max(0.0, clean_acc - adv_acc) * 100.0
+
+    return {
+        "clean_accuracy": clean_acc * 100.0,
+        "adv_accuracy": adv_acc * 100.0,
+        "accuracy_drop_pct": drop_pct,
+        "metric": "CarliniWagner",
+    }
+
+
+def compute_deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
+    """For a given model this function calculates the deepfool attack score.
+    First from the test data selects a random small test subset.
+    Then measures the accuracy of the model on this subset.
+    Next creates deepfool attacks on this test set and measures the model's
+    accuracy on the attacks. Compares the before attack and after attack accuracies.
+    Returns a score according to the thresholds.
+
+    Args:
+        model: ML-model (Logistic Regression, SVM).
+        train_data: pd.DataFrame containing the data.
+        test_data: pd.DataFrame containing the data.
+        threshold: list of threshold values
+
+    Returns:
+        Deepfool attack score
+        DF Before attack accuracy
+        DF After attack accuracy
+    """
+    from art.attacks.evasion import DeepFool
+    from art.estimators.classification.scikitlearn import ScikitlearnClassifier
+
+    X_df = _ensure_dataframe(X_test)
+    y = np.asarray(y_test).reshape(-1)
+
+    rng = np.random.RandomState(seed)
+    idx = rng.choice(len(X_df), size=min(n_samples, len(X_df)), replace=False)
+
+    X_eval = X_df.iloc[idx]
+    y_eval = y[idx]
+
+    clean_acc = float((model.predict(X_eval) == y_eval).mean())
+
+    art_clf = ScikitlearnClassifier(model=model)
+    attack = DeepFool(art_clf)
+
+    X_adv = attack.generate(_to_numpy_float(X_eval))
+    adv_acc = float((model.predict(_ensure_dataframe(X_adv, columns=X_eval.columns)) == y_eval).mean())
+
+    drop_pct = max(0.0, clean_acc - adv_acc) * 100.0
+
+    return {
+        "clean_accuracy": clean_acc * 100.0,
+        "adv_accuracy": adv_acc * 100.0,
+        "accuracy_drop_pct": drop_pct,
+        "metric": "DeepFool",
+    }
+
+
+
+# def clever_score(model, train_data, test_data, thresholds):
+# """For a given Keras-NN model this function calculates the Untargeted-Clever score.
+# It uses clever_u function from IBM art library.
+# Returns a score according to the thresholds.
+#     Args:
+#         model: ML-model (Keras).
+#         train_data: pd.DataFrame containing the data.
+#         test_data: pd.DataFrame containing the data.
+#         threshold: list of threshold values
+
+#     Returns:
+#         Clever score
+# """
+#     try:
+#         X_test = test_data.iloc[:,:-1]
+#         X_train = train_data.iloc[:, :-1]
+#         classifier = KerasClassifier(model, False)
+
+#         min_score = 100
+
+#         randomX = X_test.sample(10)
+#         randomX = np.array(randomX)
+
+#         for x in randomX:
+#             temp = clever_u(classifier=classifier, x=x, nb_batches=1, batch_size=1, radius=500, norm=1)
+#             if min_score > temp:
+#                 min_score = temp
+#         score = np.digitize(min_score, thresholds) + 1
+#         return result(score=int(score), properties={"clever_score": info("CLEVER Score", "{:.2f}".format(min_score)),
+#                                                     "depends_on": info("Depends on", "Model")})
+#     except Exception as e:
+#         print(e)
+#         return result(score=np.nan, properties={"non_computable": info("Non Computable Because",
+#                                                                        "Can only be calculated on Keras models.")})
+
+# def loss_sensitivity_score(model, train_data, test_data, thresholds):
+#     """For a given Keras-NN model this function calculates the Loss Sensitivity score.
+#     It uses loss_sensitivity function from IBM art library.
+#     Returns a score according to the thresholds.
+#         Args:
+#             model: ML-model (Keras).
+#             train_data: pd.DataFrame containing the data.
+#             test_data: pd.DataFrame containing the data.
+#             threshold: list of threshold values
+
+#         Returns:
+#             Loss Sensitivity score
+#     """
+#     try:
+#         X_test = test_data.iloc[:,:-1]
+#         X_test = np.array(X_test)
+#         y = model.predict(X_test)
+
+#         classifier = KerasClassifier(model=model, use_logits=False)
+#         l_s = loss_sensitivity(classifier, X_test, y)
+#         score = np.digitize(l_s, thresholds, right=True) + 1
+#         return result(score=int(score), properties={"loss_sensitivity": info("Average gradient value of the loss function", "{:.2f}".format(l_s)),
+#                                                     "depends_on": info("Depends on", "Model")})
+#     except Exception as e:
+#         print(e)
+#         return result(score=np.nan, properties={"non_computable": info("Non Computable Because",
+#                                                                        "Can only be calculated on Keras models.")})
+
+
+# def clique_method(model, train_data, test_data, thresholds, factsheet):
+#     """For a given tree-based model this function calculates the Clique score.
+#     First checks the factsheet to see if the score is already calculated.
+#     If not it uses RobustnessVerificationTreeModelsCliqueMethod function from
+#     IBM art library to calculate the score. Returns a score according to the thresholds.
+
+#     Args:
+#         model: ML-model (Tree-based).
+#         train_data: pd.DataFrame containing the data.
+#         test_data: pd.DataFrame containing the data.
+#         threshold: list of threshold values
+#         factsheet: factsheet dict
+
+#     Returns:
+#         Clique score
+#         Error bound
+#         Error
+#     """
+#     with open('configs/mappings/robustness/default.json', 'r') as f:
+#           default_map = json.loads(f.read())
+    
+#     if thresholds == default_map["score_clique_method"]["thresholds"]["value"]:
+#         if "scores" in factsheet.keys() and "properties" in factsheet.keys():
+#             score = factsheet["scores"]["robustness"]["clique_method"]
+#             properties = factsheet["properties"]["robustness"]["clique_method"]
+#             return result(score=score, properties=properties)
+    
+#     try:
+#         X_test = test_data.iloc[:, :-1]
+#         y_test = test_data.iloc[:, -1:]
+#         classifier = SklearnClassifier(model)
+#         rt = RobustnessVerificationTreeModelsCliqueMethod(classifier=classifier, verbose=True)
+
+#         bound, error = rt.verify(x=X_test.to_numpy()[100:103], y=y_test[100:103].to_numpy(), eps_init=0.5, norm=1,
+#                                  nb_search_steps=5, max_clique=2, max_level=2)
+#         score = np.digitize(bound, thresholds) + 1
+#         return result(score=int(score), properties={
+#             "error_bound": info("Average error bound", "{:.2f}".format(bound)),
+#             "error": info("Error", "{:.1f}".format(error)),
+#             "depends_on": info("Depends on", "Model")
+#         })
+#     except:
+#         return result(score=np.nan, properties={"non_computable": info("Non Computable Because", "Can only be calculated on Tree-Based models.")})
+
+
+
+def compute_psi_metrics(
+    *,
+    train_values,
+    current_values,
+    n_bins: int = 10,
+    eps: float = 1e-8,
+) -> dict:
+    """
+    Population Stability Index between two 1D distributions.
+    """
+
+    train = np.asarray(train_values).reshape(-1)
+    current = np.asarray(current_values).reshape(-1)
+
+    # bins definidos sobre train (práctica estándar)
+    breakpoints = np.linspace(
+        np.min(train),
+        np.max(train),
+        n_bins + 1
+    )
+
+    p_counts, _ = np.histogram(train, bins=breakpoints)
+    q_counts, _ = np.histogram(current, bins=breakpoints)
+
+    p = p_counts / max(len(train), 1)
+    q = q_counts / max(len(current), 1)
+
+    # evitar log(0)
+    p = np.clip(p, eps, None)
+    q = np.clip(q, eps, None)
+
+    psi = float(np.sum((p - q) * np.log(p / q)))
+
+    return {
+        "psi": psi,
+        "n_bins": int(n_bins),
+        "metric": "PSI",
+    }
+
+def compute_robustness_ratio(*, clean_acc: float, perturbed_acc: float) -> dict:
+    if clean_acc <= 0:
+        ratio = 0.0
+    else:
+        ratio = float(perturbed_acc / clean_acc)
+
+    return {
+        "robustness_ratio": ratio,
+        "clean_accuracy": clean_acc,
+        "perturbed_accuracy": perturbed_acc,
+        "metric": "RobustnessScore",
+    }
+
+def compute_effective_robustness(
+    *,
+    acc_scenario_1: float,
+    acc_scenario_2: float,
+    beta: float = 1.0,
+) -> dict:
+
+    value = float(acc_scenario_2 - beta * acc_scenario_1)
+
+    return {
+        "effective_robustness": value,
+        "acc_scenario_1": acc_scenario_1,
+        "acc_scenario_2": acc_scenario_2,
+        "beta": beta,
+        "metric": "EffectiveRobustness",
+    }
+
+# def compute_neuron_coverage(
+#     *,
+#     model,
+#     X_test,
+#     threshold: float = 0.0,
+# ) -> dict:
+
+#     import torch
+
+#     model.eval()
+#     covered = set()
+#     total_neurons = 0
+
+#     activations = []
+
+#     def hook_fn(module, inp, out):
+#         if isinstance(out, torch.Tensor):
+#             activations.append(out.detach())
+
+#     hooks = []
+#     for layer in model.modules():
+#         if isinstance(layer, torch.nn.ReLU):
+#             hooks.append(layer.register_forward_hook(hook_fn))
+
+#     with torch.no_grad():
+#         _ = model(torch.tensor(X_test).float())
+
+#     for act in activations:
+#         total_neurons += act.shape[1]
+#         mask = (act >= threshold).any(dim=0)
+#         covered.update(torch.where(mask)[0].tolist())
+
+#     for h in hooks:
+#         h.remove()
+
+#     nc = len(covered) / max(total_neurons, 1)
+
+#     return {
+#         "neuron_coverage": float(nc),
+#         "total_neurons": int(total_neurons),
+#         "covered_neurons": len(covered),
+#         "metric": "NeuronCoverage",
+#     }
+# def compute_tknc_bknc(
+#     *,
+#     model,
+#     X_test,
+#     k: int = 3,
+# ) -> dict:
+
+#     import torch
+
+#     model.eval()
+#     top_neurons = set()
+#     bottom_neurons = set()
+#     total_neurons = 0
+
+#     activations = []
+
+#     def hook_fn(module, inp, out):
+#         if isinstance(out, torch.Tensor):
+#             activations.append(out.detach())
+
+#     hooks = []
+#     for layer in model.modules():
+#         if isinstance(layer, torch.nn.ReLU):
+#             hooks.append(layer.register_forward_hook(hook_fn))
+
+#     with torch.no_grad():
+#         _ = model(torch.tensor(X_test).float())
+
+#     for act in activations:
+#         n = act.shape[1]
+#         total_neurons += n
+
+#         mean_act = act.mean(dim=0)
+
+#         topk = torch.topk(mean_act, min(k, n)).indices
+#         bottomk = torch.topk(-mean_act, min(k, n)).indices
+
+#         top_neurons.update(topk.tolist())
+#         bottom_neurons.update(bottomk.tolist())
+
+#     for h in hooks:
+#         h.remove()
+
+#     return {
+#         "tknc": len(top_neurons) / max(total_neurons, 1),
+#         "bknc": len(bottom_neurons) / max(total_neurons, 1),
+#         "metric": "TKNC_BKNC",
+#     }
+
+def compute_rgr_metrics(
+    *,
+    model,
+    X_test,
+    feature_index: int,
+    perturbation: float = 0.01,
+    method: str = "additive",  # "additive" | "multiplicative"
+    ranking_method: str = "kendall",  # "kendall" | "spearman"
+) -> dict:
+    """
+    Rank-based Global Robustness (RGR).
+    Measures stability of prediction ranking under structured feature perturbation.
+    """
+
+    from scipy.stats import kendalltau, spearmanr
+
+    X_df = _ensure_dataframe(X_test).copy()
+
+    if feature_index < 0 or feature_index >= X_df.shape[1]:
+        raise ValueError("feature_index out of range.")
+
+    # --- Original predictions ---
+    y_original = np.asarray(model.predict(X_df)).reshape(-1)
+
+    # If classification labels → convert to numeric scores
+    # If model has predict_proba use max prob
+    if hasattr(model, "predict_proba"):
+        y_original = np.max(model.predict_proba(X_df), axis=1)
+
+    # --- Perturb one feature ---
+    if method == "additive":
+        X_df.iloc[:, feature_index] += perturbation
+    elif method == "multiplicative":
+        X_df.iloc[:, feature_index] *= (1.0 + perturbation)
+    else:
+        raise ValueError("method must be 'additive' or 'multiplicative'")
+
+    # --- Perturbed predictions ---
+    y_pert = np.asarray(model.predict(X_df)).reshape(-1)
+
+    if hasattr(model, "predict_proba"):
+        y_pert = np.max(model.predict_proba(X_df), axis=1)
+
+    # --- Rank correlation ---
+    if ranking_method == "kendall":
+        corr, _ = kendalltau(y_original, y_pert)
+    elif ranking_method == "spearman":
+        corr, _ = spearmanr(y_original, y_pert)
+    else:
+        raise ValueError("ranking_method must be 'kendall' or 'spearman'")
+
+    corr = 0.0 if corr is None or np.isnan(corr) else float(corr)
+
+    return {
+        "rgr_score": corr,
+        "feature_index": int(feature_index),
+        "perturbation": float(perturbation),
+        "method": method,
+        "ranking_method": ranking_method,
+        "metric": "RGR",
+    }
+
+def compute_ece_metrics(
+    *,
+    model,
+    X_test,
+    y_test,
+    n_bins: int = 10,
+) -> dict:
+    """
+    Expected Calibration Error (ECE).
+    """
+
+    X_df = _ensure_dataframe(X_test)
+    y_true = np.asarray(y_test).reshape(-1)
+
+    if not hasattr(model, "predict_proba"):
+        raise RuntimeError("ECE requires model.predict_proba().")
+
+    probs = np.asarray(model.predict_proba(X_df))
+    confidences = np.max(probs, axis=1)
+    predictions = np.argmax(probs, axis=1)
+
+    correct = (predictions == y_true).astype(int)
+
+    bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    n = len(y_true)
+
+    for b in range(n_bins):
+        lower = bin_edges[b]
+        upper = bin_edges[b + 1]
+
+        mask = (confidences > lower) & (confidences <= upper)
+
+        if not np.any(mask):
+            continue
+
+        bin_size = np.sum(mask)
+        acc_bin = np.mean(correct[mask])
+        conf_bin = np.mean(confidences[mask])
+
+        ece += (bin_size / n) * abs(acc_bin - conf_bin)
+
+    return {
+        "ece": float(ece),
+        "n_bins": int(n_bins),
+        "metric": "ECE",
+    }
+
