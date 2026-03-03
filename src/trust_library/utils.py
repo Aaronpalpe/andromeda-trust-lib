@@ -8,8 +8,8 @@ import pandas as pd
 # Estructura de resultados
 Result = collections.namedtuple('result', 'score properties')
 
-def calculate_weighted_score(scores, weights):
-    """Calcula el score ponderado"""
+def calculate_weighted_score(scores: dict[str, float], weights: dict[str, float]) -> float:
+    """Compute a weighted average of the scores"""
     weighted_scores = []
     valid_weights = []
 
@@ -27,8 +27,8 @@ def calculate_weighted_score(scores, weights):
     
     return round(np.sum(weighted_scores) / sum_weights, 1)
 
-def to_json_safe(obj):
-    """Convierte recursivamente objetos numpy/pandas a JSON."""
+def to_json_safe(obj: Any) -> Any:
+    """Convert object to a JSON-serializable format, handling common non-serializable types."""
     if isinstance(obj, dict):
         return {k: to_json_safe(v) for k, v in obj.items()}
 
@@ -51,8 +51,9 @@ def to_json_safe(obj):
 
 def calculate_score(value: float, thresholds: list[float]) -> int:
     """
-    Calcula el score 1-5 de forma robusta, detectando si los umbrales
-    son ascendentes (accuracy) o descendentes (errores).
+    Compute a score from 1 to 5 based on the given value and thresholds.
+    Detects whether the thresholds are for ascending (accuracy) or descending 
+    (error) metrics and calculates the score accordingly.
     """
     if not thresholds or len(thresholds) == 0:
         raise ValueError("Thresholds must be a non empty list.")
@@ -69,6 +70,10 @@ def calculate_score(value: float, thresholds: list[float]) -> int:
 
 
 def load_fairness_config(factsheet: dict) -> tuple:
+    '''
+    Extracts the fairness configuration from the factsheet, ensuring that protected_feature and target_column are present.
+    Returns a tuple of (protected_feature, protected_values, target_column, favorable_outcomes).
+    '''
     fairness_section = factsheet.get("fairness", {})
     general_section  = factsheet.get("general", {})
 
@@ -127,22 +132,27 @@ class EvaluationContext:
 
     @property
     def protected_feature(self) -> str:
+        ''' Returns the name of the protected feature as specified in the factsheet. '''
         return load_fairness_config(self.factsheet)[0]
 
     @property
     def protected_values(self) -> list[Any]:
+        ''' Returns the list of protected values for the protected feature, as specified in the factsheet. '''
         return load_fairness_config(self.factsheet)[1]
 
     @property
     def target_column(self) -> str:
+        ''' Returns the name of the target column as specified in the factsheet. '''
         return load_fairness_config(self.factsheet)[2]
 
     @property
     def favorable_outcomes(self) -> list[Any]:
+        ''' Returns the list of favorable outcomes for the target variable, as specified in the factsheet. '''
         return load_fairness_config(self.factsheet)[3]
 
     @property
     def y_prob_positive(self) -> np.ndarray | None:
+        ''' Returns the predicted probabilities for the positive class, if available. '''
         if self.y_prob_test is None:
             return None
         return np.asarray(self.y_prob_test)[:, 1]
