@@ -8,6 +8,13 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from sklearn.metrics import confusion_matrix
+from art.metrics import loss_sensitivity
+from art.attacks.evasion import FastGradientMethod
+from art.estimators.classification.scikitlearn import ScikitlearnClassifier
+# from art.attacks.evasion import CarliniL2Method
+from art.attacks.evasion import DeepFool
+from scipy.stats import kendalltau, spearmanr
 
 def _safe_import_art_blackbox():
     """Import ART components for black-box HSJ."""
@@ -412,8 +419,6 @@ def compute_confidence_score_metrics(*, model, X_test, y_test):
         Returns:
             Confidence score
     """
-    from sklearn.metrics import confusion_matrix
-
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
 
@@ -443,7 +448,6 @@ def compute_loss_sensitivity_metrics(*, classifier, X_test):
         Returns:
             Loss Sensitivity score
     """
-    from art.metrics import loss_sensitivity
 
     X_df = _ensure_dataframe(X_test)
     X_np = _to_numpy_float(X_df)
@@ -477,8 +481,6 @@ def compute_fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, 
         FSG Before attack accuracy
         FSG After attack accuracy
     """
-    from art.attacks.evasion import FastGradientMethod
-    from art.estimators.classification.scikitlearn import ScikitlearnClassifier
 
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
@@ -528,8 +530,6 @@ def compute_carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=
         CW Before attack accuracy
         CW After attack accuracy
     """
-    from art.attacks.evasion import CarliniL2Method
-    from art.estimators.classification.scikitlearn import ScikitlearnClassifier
 
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
@@ -577,8 +577,6 @@ def compute_deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
         DF Before attack accuracy
         DF After attack accuracy
     """
-    from art.attacks.evasion import DeepFool
-    from art.estimators.classification.scikitlearn import ScikitlearnClassifier
 
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
@@ -892,9 +890,6 @@ def compute_rgr_metrics(
     Rank-based Global Robustness (RGR).
     Measures stability of prediction ranking under structured feature perturbation.
     """
-
-    from scipy.stats import kendalltau, spearmanr
-
     X_df = _ensure_dataframe(X_test).copy()
 
     if feature_index < 0 or feature_index >= X_df.shape[1]:

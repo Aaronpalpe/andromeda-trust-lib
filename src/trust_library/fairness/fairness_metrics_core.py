@@ -16,6 +16,7 @@ from scipy.stats import entropy as scipy_entropy, chisquare
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import accuracy_score
 import pandas as pd
+from sklearn.neighbors import NearestNeighbors
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -449,8 +450,6 @@ def kl_divergence(
 #     ]
 #     val = 1.0 - float(np.mean(diffs))
 #     return {"value": val, "k": k}
-
-from sklearn.neighbors import NearestNeighbors
 
 def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dict:
     """

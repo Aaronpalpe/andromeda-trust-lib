@@ -3,6 +3,8 @@ from pathlib import Path
 
 from trust_library.utils import to_json_safe
 
+import copy
+
 DEFAULT_FACTSHEET_FILE_PATH = Path(__file__).parent / "factsheet.json"
 
 def load_factsheet_default(path=DEFAULT_FACTSHEET_FILE_PATH):
@@ -63,8 +65,6 @@ def create_factsheet_interactive(output_path="factsheet.json"):
     print(f"\nFactsheet guardada en {output_path}")
     return factsheet
 
-
-import copy
 
 def create_factsheet(initial_values=None):
     """

@@ -72,7 +72,7 @@ def calculate_score(value: float, thresholds: list[float]) -> int:
 def load_fairness_config(factsheet: dict) -> tuple:
     '''
     Extracts the fairness configuration from the factsheet, ensuring that protected_feature and target_column are present.
-    Returns a tuple of (protected_feature, protected_values, target_column, favorable_outcomes).
+    Returns a tuple of (protected_feature : String, protected_values : List, target_column : String, favorable_outcomes : List).
     '''
     fairness_section = factsheet.get("fairness", {})
     general_section  = factsheet.get("general", {})

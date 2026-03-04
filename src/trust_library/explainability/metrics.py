@@ -4,7 +4,7 @@ from trust_library.base_metric import BaseMetric
 from trust_library.utils import EvaluationContext
 
 from . import explainability_metrics_core as core
-
+import numpy as np
 
 _EXPL_KEY = "explainability_shap_metrics"
 _EXPL_PARAMS_KEY = "explainability_params"
@@ -389,15 +389,7 @@ class InfidelityMetric(BaseMetric):
             "Infidelity Score": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
         }
 
-from __future__ import annotations
 
-import numpy as np
-from typing import Dict, Any
-
-from trust_library.base_metric import BaseMetric
-from trust_library.utils import EvaluationContext
-
-from . import xai_advanced_metrics_core as core
 
 _GLOBAL_KEY = "xai_global_metrics"
 _LOCAL_KEY = "xai_local_metrics"

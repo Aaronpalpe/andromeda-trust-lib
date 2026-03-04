@@ -20,6 +20,13 @@ def _safe_import_shap():
         ) from exc
     return shap
 
+from sklearn.base import clone
+from typing import Dict, Any
+from holisticai.utils.surrogate_models import get_features, get_number_of_rules
+from holisticai.explainability.metrics import classification_explainability_metrics
+from holisticai.explainability.metrics.local_feature_importance import classification_local_feature_importance_explainability_metrics
+from holisticai.explainability.metrics.surrogate import regression_surrogate_explainability_metrics
+from holisticai.explainability.metrics.surrogate import classification_surrogate_explainability_metrics
 
 # ============================================================
 # Silence SHAP
@@ -538,7 +545,6 @@ def compute_roar(model, X_train, y_train, X_test, y_test, train_feature_weights,
     Evaluate the performance degradation using AUC.
     A higher roar score is better.
     """
-    from sklearn.base import clone
     
     X_train_np = np.asarray(X_train).copy()
     X_test_np = np.asarray(X_test).copy()
@@ -640,9 +646,6 @@ def compute_infidelity(model, X_test, feature_weights) -> Dict[str, float]:
 ##########
 ## HOLISTICAI
 #########
-from typing import Dict, Any
-
-from holisticai.utils.surrogate_models import get_features, get_number_of_rules
 
 def _extract_metric_from_df(df: pd.DataFrame, metric_name: str) -> float:
     """Helper para extraer un valor específico de los DataFrames de holisticai."""
@@ -665,7 +668,6 @@ def _extract_metric_from_df(df: pd.DataFrame, metric_name: str) -> float:
 # =============================================================================
 
 def compute_global_explainability_metrics(importances, partial_dependencies, conditional_importances) -> Dict[str, float]:
-    from holisticai.explainability.metrics import classification_explainability_metrics
     df_metrics = classification_explainability_metrics(importances, partial_dependencies, conditional_importances)
     
     return {
@@ -683,7 +685,6 @@ def compute_global_explainability_metrics(importances, partial_dependencies, con
 # =============================================================================
 
 def compute_local_explainability_metrics(local_importances) -> Dict[str, float]:
-    from holisticai.explainability.metrics.local_feature_importance import classification_local_feature_importance_explainability_metrics
     df_metrics = classification_local_feature_importance_explainability_metrics(local_importances)
     
     return {
@@ -697,10 +698,8 @@ def compute_local_explainability_metrics(local_importances) -> Dict[str, float]:
 
 def compute_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate, is_regression: bool = False) -> Dict[str, float]:
     if is_regression:
-        from holisticai.explainability.metrics.surrogate import regression_surrogate_explainability_metrics
         df_metrics = regression_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
     else:
-        from holisticai.explainability.metrics.surrogate import classification_surrogate_explainability_metrics
         df_metrics = classification_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
         
     return {
