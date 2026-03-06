@@ -70,7 +70,7 @@ def track_training_run(model, train_data, project_name="ML_Project") -> Dict[str
 # METRIC COMPUTATIONS (PURE FUNCTIONS)
 # ==========================================================
 
-def compute_energy_consumption(run_data: Dict[str, Any]) -> Dict[str, Any]:
+def energy_consumption(run_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "value": run_data["energy_consumed"],
         "cpu_energy": run_data["cpu_energy"],
@@ -79,7 +79,7 @@ def compute_energy_consumption(run_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def compute_emissions(run_data: Dict[str, Any]) -> Dict[str, Any]:
+def emissions(run_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "value": run_data["emissions"],
         "duration": run_data["duration"],
@@ -88,7 +88,7 @@ def compute_emissions(run_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def compute_carbon_intensity(run_data: Dict[str, Any]) -> Dict[str, Any]:
+def carbon_intensity(run_data: Dict[str, Any]) -> Dict[str, Any]:
     energy = run_data["energy_consumed"]
     emissions = run_data["emissions"]
 
@@ -100,7 +100,7 @@ def compute_carbon_intensity(run_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# def compute_energy_efficiency(run_data: Dict[str, Any]) -> Dict[str, Any]:
+# def energy_efficiency(run_data: Dict[str, Any]) -> Dict[str, Any]:
 #     duration_hours = run_data["duration"] / 3600.0
 #     energy = run_data["energy_consumed"]
 

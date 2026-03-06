@@ -125,7 +125,7 @@ def _featurewise_clip_values(X_train: pd.DataFrame | np.ndarray):
     return mins, maxs
 
 
-def compute_hopskipjump_metrics(
+def hopskipjump_metrics(
     *,
     model,
     X_test,
@@ -283,7 +283,7 @@ def compute_hopskipjump_metrics(
     }
 
 
-def compute_clique_method_metrics(
+def clique_method_metrics(
     *,
     model,
     X_test,
@@ -349,7 +349,7 @@ def compute_clique_method_metrics(
     }
 
 
-def compute_clever_score_metrics(
+def clever_score_metrics(
     *,
     classifier,
     x,
@@ -407,7 +407,7 @@ def compute_clever_score_metrics(
 
 
 
-def compute_confidence_score_metrics(*, model, X_test, y_test):
+def confidence_score_metrics(*, model, X_test, y_test):
     """For a given model this function calculates the Confidence score.
     It takes the average over confusion_matrix. Then returns a score according to the thresholds.
         Args:
@@ -435,7 +435,7 @@ def compute_confidence_score_metrics(*, model, X_test, y_test):
     }
 
 
-def compute_loss_sensitivity_metrics(*, classifier, X_test):
+def loss_sensitivity_metrics(*, classifier, X_test):
     """For a given Keras-NN model this function calculates the Loss Sensitivity score.
     It uses loss_sensitivity function from IBM art library.
     Returns a score according to the thresholds.
@@ -462,7 +462,7 @@ def compute_loss_sensitivity_metrics(*, classifier, X_test):
     }
 
 
-def compute_fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42):
+def fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42):
     """For a given model this function calculates the fast gradient attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
@@ -511,7 +511,7 @@ def compute_fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, 
     }
 
 
-def compute_carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
+def carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
     """For a given model this function calculates the CW attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
@@ -558,7 +558,7 @@ def compute_carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=
     }
 
 
-def compute_deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
+def deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
     """For a given model this function calculates the deepfool attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
@@ -716,7 +716,7 @@ def compute_deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
 
 
 
-def compute_psi_metrics(
+def psi_metrics(
     *,
     train_values,
     current_values,
@@ -755,20 +755,20 @@ def compute_psi_metrics(
         "metric": "PSI",
     }
 
-def compute_robustness_ratio(*, clean_acc: float, perturbed_acc: float) -> dict:
-    if clean_acc <= 0:
-        ratio = 0.0
-    else:
-        ratio = float(perturbed_acc / clean_acc)
+# def robustness_ratio(*, clean_acc: float, perturbed_acc: float) -> dict:
+#     if clean_acc <= 0:
+#         ratio = 0.0
+#     else:
+#         ratio = float(perturbed_acc / clean_acc)
 
-    return {
-        "robustness_ratio": ratio,
-        "clean_accuracy": clean_acc,
-        "perturbed_accuracy": perturbed_acc,
-        "metric": "RobustnessScore",
-    }
+#     return {
+#         "robustness_ratio": ratio,
+#         "clean_accuracy": clean_acc,
+#         "perturbed_accuracy": perturbed_acc,
+#         "metric": "RobustnessScore",
+#     }
 
-def compute_effective_robustness(
+def effective_robustness(
     *,
     acc_scenario_1: float,
     acc_scenario_2: float,
@@ -785,7 +785,7 @@ def compute_effective_robustness(
         "metric": "EffectiveRobustness",
     }
 
-# def compute_neuron_coverage(
+# def neuron_coverage(
 #     *,
 #     model,
 #     X_test,
@@ -828,7 +828,7 @@ def compute_effective_robustness(
 #         "covered_neurons": len(covered),
 #         "metric": "NeuronCoverage",
 #     }
-# def compute_tknc_bknc(
+# def tknc_bknc(
 #     *,
 #     model,
 #     X_test,
@@ -877,7 +877,7 @@ def compute_effective_robustness(
 #         "metric": "TKNC_BKNC",
 #     }
 
-def compute_rgr_metrics(
+def rgr_metrics(
     *,
     model,
     X_test,
@@ -936,7 +936,7 @@ def compute_rgr_metrics(
         "metric": "RGR",
     }
 
-def compute_ece_metrics(
+def ece_metrics(
     *,
     model,
     X_test,

@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 import pandas as pd
 
 from trust_library.base_metric import BaseMetric
-from . import privacy_metrics_manual as core
+from . import privacy_metrics_core as core
 
 
 # =============================================================================
@@ -25,7 +25,7 @@ class EpsilonMetric(BaseMetric):
             .get("value", [])
         )
 
-        return core.compute_epsilon_dp(
+        return core.epsilon_dp(
             epsilon=epsilon,
         )
 
@@ -48,7 +48,7 @@ class EpsilonStarMetric(BaseMetric):
 
     def compute(self, ctx) -> Dict[str, float]:
 
-        return core.compute_epsilon_star(
+        return core.epsilon_star(
             model=ctx.model,
             X_train=ctx.X_train,
             y_train=ctx.y_train,
@@ -76,7 +76,7 @@ class SHAPRMetric(BaseMetric):
 
     def compute(self, ctx) -> Dict[str, float]:
 
-        return core.compute_shapr(
+        return core.shapr(
             model=ctx.model,
             X_train=ctx.X_train,
             y_train=ctx.y_train,
@@ -115,7 +115,7 @@ class AttributeInferenceMetric(BaseMetric):
 
         sensitive_attr = sensitive[0]
 
-        return core.compute_attribute_inference(
+        return core.attribute_inference(
             X_train=ctx.X_train,
             X_test=ctx.X_test,
             y_train=ctx.y_train,
@@ -143,7 +143,7 @@ class AccuracyRatioMetric(BaseMetric):
 
     def compute(self, ctx) -> Dict[str, float]:
 
-        return core.compute_accuracy_ratio(
+        return core.accuracy_ratio(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
@@ -168,7 +168,7 @@ class PrivacyRiskMetric(BaseMetric):
 
     def compute(self, ctx) -> Dict[str, float]:
 
-        return core.compute_privacy_risk(
+        return core.privacy_risk(
             y_prob_train=ctx.y_prob_train,
             y_train=ctx.y_train,
             y_prob_test=ctx.y_prob_test,
@@ -202,7 +202,7 @@ class KAnonymityMetric(BaseMetric):
 
         df = pd.concat([ctx.train_data, ctx.test_data], ignore_index=True)
 
-        return core.compute_k_anonymity(
+        return core.k_anonymity(
             df=df,
             quasi_identifiers=quasi,
         )
@@ -242,7 +242,7 @@ class LDiversityMetric(BaseMetric):
 
         df = pd.concat([ctx.train_data, ctx.test_data], ignore_index=True)
 
-        return core.compute_l_diversity(
+        return core.l_diversity(
             df=df,
             quasi_identifiers=quasi,
             sensitive_attributes=sensitive,
@@ -284,7 +284,7 @@ class TClosenessMetric(BaseMetric):
 
         df = pd.concat([ctx.train_data, ctx.test_data], ignore_index=True)
 
-        return core.compute_t_closeness(
+        return core.t_closeness(
             df=df,
             quasi_identifiers=quasi,
             sensitive_attributes=sensitive,

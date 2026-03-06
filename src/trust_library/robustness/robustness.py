@@ -14,6 +14,17 @@ from .metrics import (
     HopSkipJumpEmpiricalRobustnessLinfMetric,
     CliqueMethodMetric,
     CleverScoreMetric,
+    FastGradientAttackMetric,
+    CarliniWagnerAttackMetric,
+    DeepFoolAttackMetric,
+    LossSensitivityMetric,
+    ConfidenceScoreMetric,
+    # PopulationStabilityIndexMetric,
+    # RobustnessRatioHSJMetric,
+    # EffectiveRobustnessMetric,
+    # RankGlobalRobustnessMetric,
+    # ExpectedCalibrationErrorMetric,
+
 )
 
 
@@ -36,6 +47,18 @@ class RobustnessPillar(Pillar):
             # ART metrics
             CliqueMethodMetric(),                      # verification_error (tree-only)
             CleverScoreMetric(),                       # clever_score_mean (requires gradients)
+
+            FastGradientAttackMetric(),                # fgsm_success
+            CarliniWagnerAttackMetric(),               # cw_success
+            DeepFoolAttackMetric(),                   # deepfool_success
+            # Other robustness metrics
+            LossSensitivityMetric(),                   # loss_sensitivity
+            ConfidenceScoreMetric(),                  # confidence_score
+            # PopulationStabilityIndexMetric(),          # population_stability_index
+            # RobustnessRatioHSJMetric(),                # robustness_ratio_hsj
+            # EffectiveRobustnessMetric(),              # effective_robustness
+            # RankGlobalRobustnessMetric(),             # rank_global_robustness
+            # ExpectedCalibrationErrorMetric(),         # expected_calibration_error
         ]
 
     def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:
@@ -105,7 +128,7 @@ class RobustnessPillar(Pillar):
         # Best-effort eager compute (HSJ only)
         # --------------------------------------------
         try:
-            metrics = core.compute_hopskipjump_metrics(
+            metrics = core.hopskipjump_metrics(
                 model=context.model,
                 X_test=context.X_test,
                 y_test=context.y_test,

@@ -17,7 +17,7 @@ class EnergyConsumptionMetric(BaseMetric):
 
     def compute(self, ctx):
         run_data = ctx.extras["run_data"]
-        return core.compute_energy_consumption(run_data)
+        return core.energy_consumption(run_data)
 
     def compute_score(self, raw, config):
         thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])
@@ -44,7 +44,7 @@ class EmissionsMetric(BaseMetric):
 
     def compute(self, ctx):
         run_data = ctx.extras["run_data"]
-        return core.compute_emissions(run_data)
+        return core.emissions(run_data)
 
     def compute_score(self, raw, config):
         thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])
@@ -71,7 +71,7 @@ class CarbonIntensityMetric(BaseMetric):
 
     def compute(self, ctx):
         run_data = ctx.extras["run_data"]
-        return core.compute_carbon_intensity(run_data)
+        return core.carbon_intensity(run_data)
 
     def compute_score(self, raw, config):
         thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])
@@ -96,7 +96,7 @@ class CarbonIntensityMetric(BaseMetric):
 
 #     def compute(self, ctx):
 #         run_data = ctx.extras["run_data"]
-#         return core.compute_energy_efficiency(run_data)
+#         return core.energy_efficiency(run_data)
 
 #     def compute_score(self, raw, config):
 #         thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])

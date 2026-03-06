@@ -399,10 +399,10 @@
             "score_model_size": {
                 "thresholds": {
                     "value": [
-                        10,
-                        25,
+                        100,
                         50,
-                        100
+                        25,
+                        15
                     ],
                     "description": "Thresholds of how to map model size to a score from 1-5. Example if 10 is the first number it means that a model with 10 or less features would get the best score(5) and if 500 was the last number it would mean that a model with 500 or more features would get the worst score (1), analog for the numbers in between",
                     "label": "Score Thresholds"

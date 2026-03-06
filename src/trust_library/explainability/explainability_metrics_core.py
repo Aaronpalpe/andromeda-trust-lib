@@ -28,6 +28,12 @@ from holisticai.explainability.metrics.local_feature_importance import classific
 from holisticai.explainability.metrics.surrogate import regression_surrogate_explainability_metrics
 from holisticai.explainability.metrics.surrogate import classification_surrogate_explainability_metrics
 
+import random
+import lime
+import lime.lime_tabular
+from sklearn.inspection import partial_dependence, permutation_importance
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+
 # ============================================================
 # Silence SHAP
 # ============================================================
@@ -61,7 +67,7 @@ def _predict_fn_for_permutation(model):
     return model.predict
 
 
-def compute_shap_based_metrics(
+def shap_based_metrics(
     *,
     model,
     X,
@@ -145,121 +151,11 @@ def compute_shap_based_metrics(
     }
 
 
-# def compute_structural_explainability_metrics(
-#     *,
-#     model,
-#     X_train,
-#     X_test,
-#     y_train,
-#     clf_type_score: dict,
-#     correlated_thresholds,
-#     high_cor: float,
-#     model_size_thresholds,
-#     feature_relevance_thresholds,
-#     threshold_outlier: float,
-#     penalty_outlier: float,
-# ) -> dict:
-
-#     # ============================================================
-#     # 1) Algorithm Class Score
-#     # ============================================================
-
-#     model_name = type(model).__name__
-#     algorithm_score = float(clf_type_score.get(model_name, np.nan))
-
-#     # ============================================================
-#     # 2) Correlated Features Score
-#     # ============================================================
-
-#     X_comb = pd.concat([X_train, X_test])
-#     corr_matrix = X_comb.corr().abs()
-
-#     upper = corr_matrix.where(
-#         np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
-#     )
-
-#     to_drop = [col for col in upper.columns if any(upper[col] > high_cor)]
-#     pct_corr = float(len(to_drop) / max(len(X_comb.columns), 1))
-
-#     corr_score = float(
-#         5 - np.digitize(pct_corr, correlated_thresholds, right=True)
-#     )
-
-#     # ============================================================
-#     # 3) Model Size Score
-#     # ============================================================
-
-#     n_features = int(X_train.shape[1])
-#     model_size_score = float(
-#         5 - np.digitize(n_features, model_size_thresholds, right=True)
-#     )
-
-#     # ============================================================
-#     # 4) Feature Relevance Score
-#     # ============================================================
-
-#     importance = None
-
-#     if hasattr(model, "coef_"):
-#         model.fit(X_train, y_train)
-#         importance = np.abs(model.coef_[0])
-
-#     elif hasattr(model, "feature_importances_"):
-#         importance = np.abs(model.feature_importances_)
-
-#     if importance is None:
-#         feature_relevance_score = np.nan
-#         n_outliers = 0
-#         pct_dominant = 0.0
-#     else:
-#         importance = np.asarray(importance)
-
-#         q1, q3 = np.percentile(importance, [25, 75])
-#         iqr = q3 - q1
-#         lower = q1 - 1.5 * iqr
-#         upper_t = q3 + 1.5 * iqr
-
-#         n_outliers = int(
-#             np.sum((importance < lower) | (importance > upper_t))
-#         )
-
-#         cumulative = np.cumsum(np.sort(importance)[::-1])
-#         total = float(importance.sum())
-#         pct_dominant = float(
-#             np.sum(cumulative < 0.6 * total) / max(len(importance), 1)
-#         )
-
-#         base_score = float(
-#             np.digitize(pct_dominant, feature_relevance_thresholds, right=False) + 1
-#         )
-
-#         if n_outliers / max(len(importance), 1) >= threshold_outlier:
-#             base_score -= penalty_outlier
-
-#         feature_relevance_score = float(max(base_score, 1))
-
-#     # ============================================================
-#     # Output
-#     # ============================================================
-
-#     return {
-#         "algorithm_class": algorithm_score,
-#         "correlated_features": corr_score,
-#         "model_size": model_size_score,
-#         "feature_relevance": feature_relevance_score,
-#         "pct_correlated": pct_corr,
-#         "n_features": n_features,
-#         "model_type": model_name,
-#         "n_outliers": n_outliers,
-#         "pct_dominant": pct_dominant,
-#     }
-
-
 # ============================================================
 # Structural Explainability Metrics
 # ============================================================
 
-def compute_algorithm_class(model):
+def algorithm_class(model):
     model_name = type(model).__name__
 
     # Ejemplo simple (puedes externalizarlo a config)
@@ -276,7 +172,7 @@ def compute_algorithm_class(model):
     }
 
 
-def compute_correlated_features(X_train, X_test, high_cor=0.9):
+def correlated_features(X_train, X_test, high_cor=0.9):
     X_comb = pd.concat([X_train, X_test])
     corr_matrix = X_comb.corr().abs()
 
@@ -292,7 +188,7 @@ def compute_correlated_features(X_train, X_test, high_cor=0.9):
     }
 
 
-def compute_model_size(X_train):
+def model_size(X_train):
     n_features = X_train.shape[1]
 
     return {
@@ -300,7 +196,7 @@ def compute_model_size(X_train):
     }
 
 
-def compute_feature_relevance(
+def feature_relevance(
     model,
     X_train,
     y_train,
@@ -341,33 +237,33 @@ def compute_feature_relevance(
 
 
 
-def compute_performance_difference(f, g, X_test, y_test):
+# def performance_difference(f, g, X_test, y_test):
 
-    y_f = f.predict(X_test)
-    y_g = g.predict(X_test)
+#     y_f = f.predict(X_test)
+#     y_g = g.predict(X_test)
 
-    acc_f = accuracy_score(y_test, y_f)
-    acc_g = accuracy_score(y_test, y_g)
+#     acc_f = accuracy_score(y_test, y_f)
+#     acc_g = accuracy_score(y_test, y_g)
 
-    D = acc_f - acc_g
+#     D = acc_f - acc_g
 
-    return {
-        "value": float(D),
-        "perf_original": float(acc_f),
-        "perf_explainer": float(acc_g),
-    }
+#     return {
+#         "value": float(D),
+#         "perf_original": float(acc_f),
+#         "perf_explainer": float(acc_g),
+#     }
 
-def compute_number_of_rules(tree_model) -> dict:
+def number_of_rules(tree_model) -> dict:
     if hasattr(tree_model, "get_n_leaves"):
         n_rules = tree_model.get_n_leaves()
+        return {"value": float(n_rules), "n_rules": float(n_rules)}
     else:
-        n_rules = float('nan')
-    return {"value": float(n_rules), "n_rules": float(n_rules)}
+        return {"value": np.nan, "n_rules": np.nan}
 
 
-def compute_average_rule_length(tree_model) -> dict:
+def average_rule_length(tree_model) -> dict:
     if not hasattr(tree_model, "tree_"):
-        return {"value": float('nan'), "avg_rule_length": float('nan')}
+        return {"value": np.nan, "avg_rule_length": np.nan}
         
     children_left = tree_model.tree_.children_left
     children_right = tree_model.tree_.children_right
@@ -387,9 +283,9 @@ def compute_average_rule_length(tree_model) -> dict:
 
     return {"value": float(avg_depth), "avg_rule_length": float(avg_depth)}
 
-def compute_rule_stats(rule_model) -> dict:
+def rule_stats(rule_model) -> dict:
     if not hasattr(rule_model, "rules_"):
-        return {"value": float('nan'), "n_rules": 0, "avg_rule_length": float('nan')}
+        return {"value": np.nan, "n_rules": 0, "avg_rule_length": np.nan}
         
     rules = rule_model.rules_
     n_rules = len(rules)
@@ -401,37 +297,37 @@ def compute_rule_stats(rule_model) -> dict:
         "avg_rule_length": float(np.mean(lengths)),
     }
 
-def compute_tree_depth(tree_model) -> dict:
+def tree_depth(tree_model) -> dict:
     if hasattr(tree_model, "get_depth"):
         depth = tree_model.get_depth()
+        return {"value": float(depth), "max_depth": float(depth)}
     else:
-        depth = float('nan')
-    return {"value": float(depth), "max_depth": float(depth)}
+        return {"value": np.nan, "max_depth": np.nan}
 
-def compute_interaction_strength(model, X) -> dict:
-    try:
-        explainer = shap.TreeExplainer(model)
-        shap_int = explainer.shap_interaction_values(X)
-        shap_int = np.abs(shap_int)
+# def interaction_strength(model, X) -> dict:
+#     try:
+#         explainer = shap.TreeExplainer(model)
+#         shap_int = explainer.shap_interaction_values(X)
+#         shap_int = np.abs(shap_int)
 
-        total = shap_int.sum()
-        # shap_interaction_values devuelve tensores (n_samples, n_features, n_features)
-        # o una lista de ellos si es multiclase. Asumimos el formato estándar:
-        if isinstance(shap_int, list):
-            shap_int = shap_int[1] if len(shap_int) > 1 else shap_int[0]
+#         total = shap_int.sum()
+#         # shap_interaction_values devuelve tensores (n_samples, n_features, n_features)
+#         # o una lista de ellos si es multiclase. Asumimos el formato estándar:
+#         if isinstance(shap_int, list):
+#             shap_int = shap_int[1] if len(shap_int) > 1 else shap_int[0]
             
-        main_effect = np.sum(np.diagonal(shap_int, axis1=1, axis2=2))
-        interaction_strength = (total - main_effect) / total if total != 0 else 0.0
+#         main_effect = np.sum(np.diagonal(shap_int, axis1=1, axis2=2))
+#         interaction_strength = (total - main_effect) / total if total != 0 else 0.0
         
-        return {"value": float(interaction_strength)}
-    except Exception:
-        return {"value": float('nan')}
+#         return {"value": float(interaction_strength)}
+#     except Exception:
+#         return {"value": np.nan}
 
 ###########################
 ## AIX 360 ¿FIT? XPLIQUE todo el dataset
 ###########################
 
-def compute_faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarray) -> dict:
+def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarray) -> dict:
     """ This metric evaluates the correlation between the importance assigned by the interpretability algorithm
     to attributes and the effect of each of the attributes on the performance of the predictive model.
     The higher the importance, the higher should be the effect, and vice versa, The metric evaluates this by
@@ -478,7 +374,7 @@ def compute_faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: n
     }
 
 
-def compute_monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarray) -> dict:
+def monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarray) -> dict:
     """ This metric measures the effect of individual features on model performance by evaluating the effect on
     model performance of incrementally adding each attribute in order of increasing importance. As each feature
     is added, the performance of the model should correspondingly increase, thereby resulting in monotonically
@@ -525,123 +421,123 @@ def compute_monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: n
 # Perturbation & Correlation Metrics (Xplique-style) 
 # ============================================================================= 
 
-def compute_shapley_corr(feature_weights: np.ndarray, ground_truth_weights: np.ndarray) -> Dict[str, float]:
-    """
-    Calcula la correlación de Pearson entre los pesos de las características explicadas 
-    y unos pesos que se consideran el 'ground truth'.
-    """
-    feature_weights = np.asarray(feature_weights)
-    ground_truth_weights = np.asarray(ground_truth_weights)
+# def shapley_corr(feature_weights: np.ndarray, ground_truth_weights: np.ndarray) -> Dict[str, float]:
+#     """
+#     Calcula la correlación de Pearson entre los pesos de las características explicadas 
+#     y unos pesos que se consideran el 'ground truth'.
+#     """
+#     feature_weights = np.asarray(feature_weights)
+#     ground_truth_weights = np.asarray(ground_truth_weights)
     
-    corr = [np.corrcoef(a, b)[0, 1] for a, b in zip(feature_weights, ground_truth_weights)]
-    corr = np.nan_to_num(corr, nan=0.0, posinf=0.0, neginf=0.0)
+#     corr = [np.corrcoef(a, b)[0, 1] for a, b in zip(feature_weights, ground_truth_weights)]
+#     corr = np.nan_to_num(corr, nan=0.0, posinf=0.0, neginf=0.0)
     
-    return {"value": float(np.mean(corr))}
+#     return {"value": float(np.mean(corr))}
 
-def compute_roar(model, X_train, y_train, X_test, y_test, train_feature_weights, test_feature_weights) -> Dict[str, float]: # DIFIERE
-    """
-    Implementation of ROAR, remove and retrain - https://arxiv.org/abs/1806.10758
-    Remove the features deemed most important, then remove them from the data and retrain.
-    Evaluate the performance degradation using AUC.
-    A higher roar score is better.
-    """
+# def roar(model, X_train, y_train, X_test, y_test, train_feature_weights, test_feature_weights) -> Dict[str, float]: # DIFIERE
+#     """
+#     Implementation of ROAR, remove and retrain - https://arxiv.org/abs/1806.10758
+#     Remove the features deemed most important, then remove them from the data and retrain.
+#     Evaluate the performance degradation using AUC.
+#     A higher roar score is better.
+#     """
     
-    X_train_np = np.asarray(X_train).copy()
-    X_test_np = np.asarray(X_test).copy()
-    y_train_np = np.asarray(y_train)
-    y_test_np = np.asarray(y_test)
+#     X_train_np = np.asarray(X_train).copy()
+#     X_test_np = np.asarray(X_test).copy()
+#     y_train_np = np.asarray(y_train)
+#     y_test_np = np.asarray(y_test)
     
-    # Combinamos para obtener las medias globales de las características (Interventional conditional)
-    X_all = np.vstack([X_train_np, X_test_np])
-    avg_feature_values = X_all.mean(axis=0)
-    num_features = X_all.shape[1]
+#     # Combinamos para obtener las medias globales de las características (Interventional conditional)
+#     X_all = np.vstack([X_train_np, X_test_np])
+#     avg_feature_values = X_all.mean(axis=0)
+#     num_features = X_all.shape[1]
     
-    cutoffs = [0, 0.1, 0.3, 0.5, 0.7, 0.9]
-    losses = []
+#     cutoffs = [0, 0.1, 0.3, 0.5, 0.7, 0.9]
+#     losses = []
     
-    for cutoff_percent in cutoffs:
-        cutoff = int(cutoff_percent * num_features)
-        X_train_new = X_train_np.copy()
-        X_test_new = X_test_np.copy()
+#     for cutoff_percent in cutoffs:
+#         cutoff = int(cutoff_percent * num_features)
+#         X_train_new = X_train_np.copy()
+#         X_test_new = X_test_np.copy()
         
-        # Enmascaramos características en el conjunto de entrenamiento
-        for i in range(len(X_train_new)):
-            sorted_indices = np.argsort(np.abs(train_feature_weights[i]))[::-1]
-            indices_to_remove = sorted_indices[:cutoff]
-            X_train_new[i, indices_to_remove] = avg_feature_values[indices_to_remove]
+#         # Enmascaramos características en el conjunto de entrenamiento
+#         for i in range(len(X_train_new)):
+#             sorted_indices = np.argsort(np.abs(train_feature_weights[i]))[::-1]
+#             indices_to_remove = sorted_indices[:cutoff]
+#             X_train_new[i, indices_to_remove] = avg_feature_values[indices_to_remove]
             
-        # Enmascaramos características en el conjunto de prueba
-        for i in range(len(X_test_new)):
-            sorted_indices = np.argsort(np.abs(test_feature_weights[i]))[::-1]
-            indices_to_remove = sorted_indices[:cutoff]
-            X_test_new[i, indices_to_remove] = avg_feature_values[indices_to_remove]
+#         # Enmascaramos características en el conjunto de prueba
+#         for i in range(len(X_test_new)):
+#             sorted_indices = np.argsort(np.abs(test_feature_weights[i]))[::-1]
+#             indices_to_remove = sorted_indices[:cutoff]
+#             X_test_new[i, indices_to_remove] = avg_feature_values[indices_to_remove]
             
-        # Clonamos el modelo original sin entrenar, lo ajustamos y predecimos
-        model_new = clone(model)
-        model_new.fit(X_train_new, y_train_np.ravel())
-        preds = model_new.predict(X_test_new)
+#         # Clonamos el modelo original sin entrenar, lo ajustamos y predecimos
+#         model_new = clone(model)
+#         model_new.fit(X_train_new, y_train_np.ravel())
+#         preds = model_new.predict(X_test_new)
         
-        # Pérdida usando MAE (acorde al script original evaluate_model)
-        loss = np.mean(np.abs(y_test_np - preds))
-        losses.append(loss)
+#         # Pérdida usando MAE (acorde al script original evaluate_model)
+#         loss = np.mean(np.abs(y_test_np - preds))
+#         losses.append(loss)
         
-    # Calculamos el AUC de la curva de pérdidas
-    area = 0.0
-    for i in range(1, len(cutoffs)):
-        length = (losses[i] + losses[i - 1]) / 2
-        width = cutoffs[i] - cutoffs[i - 1]
-        area += length * width
+#     # Calculamos el AUC de la curva de pérdidas
+#     area = 0.0
+#     for i in range(1, len(cutoffs)):
+#         length = (losses[i] + losses[i - 1]) / 2
+#         width = cutoffs[i] - cutoffs[i - 1]
+#         area += length * width
         
-    return {"value": float(area)}
+#     return {"value": float(area)}
 
 
-def compute_infidelity(model, X_test, feature_weights) -> Dict[str, float]:
-    """
-    Computes the infidelity by evaluating whether perturbations to important features lead to proportional changes in model output.
-    Implementation of https://arxiv.org/pdf/1901.09392.pdf, based on https://github.com/chihkuanyeh/saliency_evaluation/blob/master/infid_sen_utils.py
-    """
-    X_np = np.asarray(X_test)
-    num_datapoints, num_features = X_np.shape
-    infids = []
+# def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
+#     """
+#     Computes the infidelity by evaluating whether perturbations to important features lead to proportional changes in model output.
+#     Implementation of https://arxiv.org/pdf/1901.09392.pdf, based on https://github.com/chihkuanyeh/saliency_evaluation/blob/master/infid_sen_utils.py
+#     """
+#     X_np = np.asarray(X_test)
+#     num_datapoints, num_features = X_np.shape
+#     infids = []
     
-    def get_exp(ind, exp):
-        return exp[ind.astype(int)]
+#     def get_exp(ind, exp):
+#         return exp[ind.astype(int)]
 
-    def set_zero_infid(array, size, point):
-        ind = np.random.choice(size, point, replace=False)
-        randd = np.random.normal(size=point) * 0.2 + array[ind]
-        randd = np.minimum(array[ind], randd)
-        randd = np.maximum(array[ind] - 1.0, randd)
-        array[ind] -= randd
-        return np.concatenate([array, ind, randd])
+#     def set_zero_infid(array, size, point):
+#         ind = np.random.choice(size, point, replace=False)
+#         randd = np.random.normal(size=point) * 0.2 + array[ind]
+#         randd = np.minimum(array[ind], randd)
+#         randd = np.maximum(array[ind] - 1.0, randd)
+#         array[ind] -= randd
+#         return np.concatenate([array, ind, randd])
 
-    for i in range(num_datapoints):
-        num_reps = 1000
-        x_orig = np.tile(X_np[i], [num_reps, 1])
-        x = X_np[i]
-        expl_copy = np.copy(feature_weights[i])
+#     for i in range(num_datapoints):
+#         num_reps = 1000
+#         x_orig = np.tile(X_np[i], [num_reps, 1])
+#         x = X_np[i]
+#         expl_copy = np.copy(feature_weights[i])
         
-        val = np.apply_along_axis(set_zero_infid, 1, x_orig, num_features, num_features)
-        x_ptb = val[:, :num_features]
-        ind = val[:, num_features: 2*num_features]
-        rand = val[:, 2*num_features: 3*num_features]
+#         val = np.apply_along_axis(set_zero_infid, 1, x_orig, num_features, num_features)
+#         x_ptb = val[:, :num_features]
+#         ind = val[:, num_features: 2*num_features]
+#         rand = val[:, 2*num_features: 3*num_features]
         
-        exp_sum = np.sum(rand * np.apply_along_axis(get_exp, 1, ind, expl_copy), axis=1)
-        ks = np.ones(num_reps)
+#         exp_sum = np.sum(rand * np.apply_along_axis(get_exp, 1, ind, expl_copy), axis=1)
+#         ks = np.ones(num_reps)
         
-        pdt = model.predict([x])[0]
-        pdt_ptb = model.predict(x_ptb)
-        pdt_diff = pdt - pdt_ptb
+#         pdt = model.predict([x])[0]
+#         pdt_ptb = model.predict(x_ptb)
+#         pdt_diff = pdt - pdt_ptb
 
-        # Evitamos divisiones por cero en el cálculo de beta
-        denominator = np.mean(ks * exp_sum * exp_sum)
-        beta = np.mean(ks * pdt_diff * exp_sum) / (denominator if denominator != 0 else 1e-10)
-        exp_sum *= beta
+#         # Evitamos divisiones por cero en el cálculo de beta
+#         denominator = np.mean(ks * exp_sum * exp_sum)
+#         beta = np.mean(ks * pdt_diff * exp_sum) / (denominator if denominator != 0 else 1e-10)
+#         exp_sum *= beta
         
-        infid = np.mean(ks * np.square(pdt_diff - exp_sum)) / np.mean(ks)
-        infids.append(infid)
+#         infid = np.mean(ks * np.square(pdt_diff - exp_sum)) / np.mean(ks)
+#         infids.append(infid)
         
-    return {"value": float(np.mean(infids))}
+#     return {"value": float(np.mean(infids))}
 
 ##########
 ## HOLISTICAI
@@ -650,7 +546,7 @@ def compute_infidelity(model, X_test, feature_weights) -> Dict[str, float]:
 def _extract_metric_from_df(df: pd.DataFrame, metric_name: str) -> float:
     """Helper para extraer un valor específico de los DataFrames de holisticai."""
     if df is None or df.empty:
-        return float('nan')
+        return np.nan
     
     if 'value' in df.columns:
         if 'metric' in df.columns:
@@ -661,13 +557,13 @@ def _extract_metric_from_df(df: pd.DataFrame, metric_name: str) -> float:
             for idx in df.index:
                 if metric_name.lower() in str(idx).lower():
                     return float(df.loc[idx, 'value'])
-    return float('nan')
+    return np.nan
 
 # =============================================================================
 # Global Explainability Metrics
 # =============================================================================
 
-def compute_global_explainability_metrics(importances, partial_dependencies, conditional_importances) -> Dict[str, float]:
+def global_explainability_metrics(importances, partial_dependencies, conditional_importances) -> Dict[str, float]:
     df_metrics = classification_explainability_metrics(importances, partial_dependencies, conditional_importances)
     
     return {
@@ -684,7 +580,7 @@ def compute_global_explainability_metrics(importances, partial_dependencies, con
 # Local Explainability Metrics
 # =============================================================================
 
-def compute_local_explainability_metrics(local_importances) -> Dict[str, float]:
+def local_explainability_metrics(local_importances) -> Dict[str, float]:
     df_metrics = classification_local_feature_importance_explainability_metrics(local_importances)
     
     return {
@@ -696,7 +592,7 @@ def compute_local_explainability_metrics(local_importances) -> Dict[str, float]:
 # Surrogate Accuracy/Fidelity Metrics
 # =============================================================================
 
-def compute_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate, is_regression: bool = False) -> Dict[str, float]:
+def surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate, is_regression: bool = False) -> Dict[str, float]:
     if is_regression:
         df_metrics = regression_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
     else:
@@ -823,7 +719,7 @@ def get_depths_counts(node_index: int, tree, depths: list, counts: list, h: int 
 # Tree / Structural Surrogate Metrics
 # =============================================================================
 
-def compute_weighted_average_depth(tree) -> Dict[str, float]:
+def weighted_average_depth(tree) -> Dict[str, float]:
     """
     Weighted Average Depth calculates the average depth of a tree considering the number
     of samples that pass through each cut.
@@ -850,7 +746,7 @@ def compute_weighted_average_depth(tree) -> Dict[str, float]:
     if n_samples == 0: return {"value": 0.0}
     return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum())}
 
-def compute_weighted_average_explainability_score(tree) -> Dict[str, float]:
+def weighted_average_explainability_score(tree) -> Dict[str, float]:
     """
     Weighted Average Explainability Score calculates the average depth of a tree considering the number
     of samples that pass through each cut.
@@ -877,7 +773,7 @@ def compute_weighted_average_explainability_score(tree) -> Dict[str, float]:
     if n_samples == 0: return {"value": 0.0}
     return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum())}
 
-def compute_weighted_tree_gini(tree) -> Dict[str, float]: # ALGO DIFERENTE
+def weighted_tree_gini(tree) -> Dict[str, float]: # ALGO DIFERENTE
     """
     Compute the weighted Gini index for the tree (WGNI).
     Reference value: 0.0
@@ -916,7 +812,7 @@ def compute_weighted_tree_gini(tree) -> Dict[str, float]: # ALGO DIFERENTE
     accumulate_impurity(0)
     return {"value": float(weighted_impurity)}
 
-def compute_tree_depth_variance(tree) -> Dict[str, float]:
+def tree_depth_variance(tree) -> Dict[str, float]:
     """
     Compute the variance of the depths of the leaves in the tree (TDV).
     Reference value: 0.0
@@ -937,7 +833,7 @@ def compute_tree_depth_variance(tree) -> Dict[str, float]:
     if not depths: return {"value": 0.0}
     return {"value": float(np.mean((depths - np.mean(depths)) ** 2))}
 
-def compute_tree_number_of_rules(surrogate) -> Dict[str, float]:
+def tree_number_of_rules(surrogate) -> Dict[str, float]:
     """
     Calculates the number of rules in a decision tree surrogate model.
 
@@ -952,7 +848,7 @@ def compute_tree_number_of_rules(surrogate) -> Dict[str, float]:
     if surrogate is None: return {"value": np.nan}
     return {"value": float(get_number_of_rules(surrogate))}
 
-def compute_tree_number_of_features(surrogate) -> Dict[str, float]:
+def tree_number_of_features(surrogate) -> Dict[str, float]:
     """
     Calculates the number of features used in a decision tree surrogate model.
 
@@ -973,11 +869,6 @@ def compute_tree_number_of_features(surrogate) -> Dict[str, float]:
 # Ensemble XAI Consistency Metrics (Custom)
 # =============================================================================
 
-import random
-import lime
-import lime.lime_tabular
-from sklearn.inspection import partial_dependence, permutation_importance
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 
 # ----------------------------
 # Funciones auxiliares
@@ -1066,10 +957,10 @@ def compute_pdp_importance(model, X):
         importances[col] = val
     return importances
 
-def compute_pfi(model, X, y, seed=42):
-    r = permutation_importance(model, X, y, n_repeats=5, random_state=seed)
-    importances = dict(zip(X.columns, r.importances_mean))
-    return importances
+# def compute_pfi(model, X, y, seed=42):
+#     r = permutation_importance(model, X, y, n_repeats=5, random_state=seed)
+#     importances = dict(zip(X.columns, r.importances_mean))
+#     return importances
 
 # def compute_lofo(model, X, y):
 #     base_score = model.score(X, y)
@@ -1081,15 +972,15 @@ def compute_pfi(model, X, y, seed=42):
 #         importances[col] = score_drop
 #     return importances
 
-def compute_surrogate(model, X, mode='classification'):
-    targets = model.predict(X)
-    if mode == 'classification':
-        surrogate = DecisionTreeClassifier(max_depth=3)
-    else:
-        surrogate = DecisionTreeRegressor(max_depth=3)
-    surrogate.fit(X, targets)
-    importances = dict(zip(X.columns, surrogate.feature_importances_))
-    return importances
+# def compute_surrogate(model, X, mode='classification'):
+#     targets = model.predict(X)
+#     if mode == 'classification':
+#         surrogate = DecisionTreeClassifier(max_depth=3)
+#     else:
+#         surrogate = DecisionTreeRegressor(max_depth=3)
+#     surrogate.fit(X, targets)
+#     importances = dict(zip(X.columns, surrogate.feature_importances_))
+#     return importances
 
 # ----------------------------
 # Métrica de consistencia XAI
@@ -1117,7 +1008,7 @@ def get_aggregated_score(matrix):
     values = matrix.values[np.triu_indices(len(matrix), k=1)]
     return np.mean(values)
 
-def compute_xai_consistency(model, X, y, k=5, mode='classification', seed=42) -> Dict[str, Any]:
+def xai_consistency(model, X, y, k=5, mode='classification', seed=42) -> Dict[str, Any]:
     np.random.seed(seed)
     random.seed(seed)
     
@@ -1129,9 +1020,9 @@ def compute_xai_consistency(model, X, y, k=5, mode='classification', seed=42) ->
     rankings['LIME'] = compute_lime(model, X, mode=mode, num_samples=20, seed=seed)
     rankings['SHAP'] = compute_shap_custom(model, X, mode=mode)
     rankings['PDP'] = compute_pdp_importance(model, X)
-    rankings['PFI'] = compute_pfi(model, X, y, seed=seed)
-    #rankings['LOFO'] = compute_lofo(model, X, y)
-    rankings['Surrogate'] = compute_surrogate(model, X, mode=mode)
+    # rankings['PFI'] = compute_pfi(model, X, y, seed=seed)
+    # rankings['LOFO'] = compute_lofo(model, X, y)
+    # rankings['Surrogate'] = compute_surrogate(model, X, mode=mode)
 
     matrix = calculate_consistency_matrix(rankings, k=k)
     score = get_aggregated_score(matrix)

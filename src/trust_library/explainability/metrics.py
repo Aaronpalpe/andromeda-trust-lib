@@ -30,7 +30,7 @@ def _get_or_compute(ctx: EvaluationContext) -> dict:
         raise RuntimeError(ctx.extras[_EXPL_ERROR_KEY])
 
     try:
-        metrics = core.compute_shap_based_metrics(
+        metrics = core.shap_based_metrics(
             model=ctx.model,
             X=ctx.X_test,
             n_samples=int(params.get("n_samples", 50)),
@@ -38,26 +38,7 @@ def _get_or_compute(ctx: EvaluationContext) -> dict:
             top_k=int(params.get("top_k", 5)),
             seed=int(params.get("seed", 42)),
         )
-    # if not hasattr(ctx.model, "fit") or not hasattr(ctx.model, "predict"):
-    #     ctx.extras[_EXPL_ERROR_KEY] = (
-    #         "Model must implement fit() and predict() methods." #NEW fit
-    #     )
-    #     raise RuntimeError(ctx.extras[_EXPL_ERROR_KEY])
 
-    # try:
-    #     metrics = core.compute_structural_explainability_metrics(
-    #         model=ctx.model,
-    #         X_train=ctx.X_train,
-    #         X_test=ctx.X_test,
-    #         y_train=ctx.y_train,
-    #         clf_type_score=params.get("clf_type_score", {}),
-    #         correlated_thresholds=params.get("correlated_thresholds", [0.05, 0.16, 0.28, 0.4]),
-    #         high_cor=float(params.get("high_cor", 0.9)),
-    #         model_size_thresholds=params.get("model_size_thresholds", [10, 30, 100, 500]),
-    #         feature_relevance_thresholds=params.get("feature_relevance_thresholds", [0.05, 0.1, 0.2, 0.3]),
-    #         threshold_outlier=float(params.get("threshold_outlier", 0.03)),
-    #         penalty_outlier=float(params.get("penalty_outlier", 0.5)),
-    #     )
     except Exception as exc:
         ctx.extras[_EXPL_ERROR_KEY] = str(exc)
         raise
@@ -133,7 +114,7 @@ class AlgorithmClassMetric(BaseMetric):
         super().__init__("algorithm_class", "score_algorithm_class") #AÑADIR
 
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_algorithm_class(ctx.model)
+        return core.algorithm_class(ctx.model)
 
     def custom_score(self, raw: dict):
         return raw.get("value")
@@ -152,7 +133,7 @@ class CorrelatedFeaturesMetric(BaseMetric):
         super().__init__("correlated_features", "score_correlated_features")
 
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_correlated_features(
+        return core.correlated_features(
             X_train=ctx.X_train,
             X_test=ctx.X_test,
         )
@@ -170,7 +151,7 @@ class ModelSizeMetric(BaseMetric):
         super().__init__("model_size", "score_model_size")
 
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_model_size(ctx.X_train)
+        return core.model_size(ctx.X_train)
 
     def build_properties(self, raw: dict) -> dict:
         return {
@@ -185,7 +166,7 @@ class FeatureRelevanceMetric(BaseMetric):
         super().__init__("feature_relevance", "score_feature_relevance")
 
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_feature_relevance(
+        return core.feature_relevance(
             model=ctx.model,
             X_train=ctx.X_train,
             y_train=ctx.y_train,
@@ -205,59 +186,59 @@ class FeatureRelevanceMetric(BaseMetric):
 # Additional Explainability & Surrogate Metrics Wrappers
 # =============================================================================
 
-class PerformanceDifferenceMetric(BaseMetric):
-    def __init__(self): 
-        super().__init__("performance_difference", "score_performance_difference")
+# class PerformanceDifferenceMetric(BaseMetric):
+#     def __init__(self): 
+#         super().__init__("performance_difference", "score_performance_difference")
         
-    def compute(self, ctx: EvaluationContext) -> dict:
-        surrogate = ctx.extras.get("surrogate")
-        if surrogate is None:
-            raise ValueError("Missing 'surrogate' in ctx.extras.")
+#     def compute(self, ctx: EvaluationContext) -> dict:
+#         surrogate = ctx.extras.get("surrogate")
+#         if surrogate is None:
+#             raise ValueError("Missing 'surrogate' in ctx.extras.")
             
-        return core.compute_performance_difference(ctx.model, surrogate, ctx.X_test, ctx.y_test)
+#         return core.performance_difference(ctx.model, surrogate, ctx.X_test, ctx.y_test)
         
-    def build_properties(self, raw: dict) -> dict: 
-        return {
-            "Metric Description": "Difference in accuracy between original model and surrogate explainer.", 
-            "Performance Difference": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A",
-            "Original Perf": f"{raw.get('perf_original', 0):.4f}",
-            "Surrogate Perf": f"{raw.get('perf_explainer', 0):.4f}"
-        }
+#     def build_properties(self, raw: dict) -> dict: 
+#         return {
+#             "Metric Description": "Difference in accuracy between original model and surrogate explainer.", 
+#             "Performance Difference": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A",
+#             "Original Perf": f"{raw.get('perf_original', 0):.4f}",
+#             "Surrogate Perf": f"{raw.get('perf_explainer', 0):.4f}"
+#         }
 
 class NumberOfRulesMetric(BaseMetric):
     def __init__(self): super().__init__("number_of_rules", "score_number_of_rules")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_number_of_rules(getattr(ctx.model, "tree_", ctx.model))
+        return core.number_of_rules(ctx.model) # return core.number_of_rules(getattr(ctx.model, "tree_", ctx.model))
     def build_properties(self, raw: dict) -> dict: 
         return {"Metric Description": "Number of leaves/rules in the tree.", "Value": f"{raw['value']:.0f}"}
 
 class AverageRuleLengthMetric(BaseMetric):
     def __init__(self): super().__init__("average_rule_length", "score_average_rule_length")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_average_rule_length(ctx.model)
+        return core.average_rule_length(ctx.model)
     def build_properties(self, raw: dict) -> dict: 
         return {"Metric Description": "Average depth/length of paths in the tree.", "Value": f"{raw['value']:.4f}"}
 
 class RuleStatsMetric(BaseMetric):
     def __init__(self): super().__init__("rule_stats", "score_rule_stats")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_rule_stats(ctx.model)
+        return core.rule_stats(ctx.model)
     def build_properties(self, raw: dict) -> dict: 
         return {"Metric Description": "Average rule length for rule-based models.", "Value": f"{raw['value']:.4f}"}
 
 class TreeDepthMetric(BaseMetric):
     def __init__(self): super().__init__("tree_depth", "score_tree_depth")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_tree_depth(ctx.model)
+        return core.tree_depth(ctx.model)
     def build_properties(self, raw: dict) -> dict: 
         return {"Metric Description": "Maximum depth of the tree model.", "Value": f"{raw['value']:.0f}"}
 
-class InteractionStrengthMetric(BaseMetric):
-    def __init__(self): super().__init__("interaction_strength", "score_interaction_strength")
-    def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_interaction_strength(ctx.model, ctx.X_test)
-    def build_properties(self, raw: dict) -> dict: 
-        return {"Metric Description": "Proportion of SHAP importance coming from feature interactions.", "Value": f"{raw['value']:.6f}"}
+# class InteractionStrengthMetric(BaseMetric):
+#     def __init__(self): super().__init__("interaction_strength", "score_interaction_strength")
+#     def compute(self, ctx: EvaluationContext) -> dict:
+#         return core.interaction_strength(ctx.model, ctx.X_test)
+#     def build_properties(self, raw: dict) -> dict: 
+#         return {"Metric Description": "Proportion of SHAP importance coming from feature interactions.", "Value": f"{raw['value']:.6f}"}
 
 
 # =============================================================================
@@ -281,7 +262,7 @@ class FaithfulnessMetric(BaseMetric):
         # Evaluamos las primeras N instancias si no se especifica una sola
         limit = min(len(X_np), 10) 
         for i in range(limit):
-            res = core.compute_faithfulness_metric(ctx.model, X_np[i], local_importances[i], base)
+            res = core.faithfulness_metric(ctx.model, X_np[i], local_importances[i], base)
             scores.append(res["value"])
 
         return {"value": float(np.mean(scores))}
@@ -306,7 +287,7 @@ class MonotonicityMetric(BaseMetric):
         scores = []
         limit = min(len(X_np), 10) 
         for i in range(limit):
-            res = core.compute_monotonicity_metric(ctx.model, X_np[i], local_importances[i], base)
+            res = core.monotonicity_metric(ctx.model, X_np[i], local_importances[i], base)
             scores.append(res["value"])
 
         return {"value": float(np.mean(scores))}
@@ -321,73 +302,73 @@ class MonotonicityMetric(BaseMetric):
 # Perturbation & Correlation Metrics Wrappers (Xplique-style)
 # =============================================================================
 
-class ShapleyCorrMetric(BaseMetric):
-    def __init__(self): 
-        super().__init__("shapley_corr", "score_shapley_corr")
+# class ShapleyCorrMetric(BaseMetric):
+#     def __init__(self): 
+#         super().__init__("shapley_corr", "score_shapley_corr")
         
-    def compute(self, ctx: EvaluationContext) -> dict:
-        feature_weights = ctx.extras.get("feature_weights")
-        ground_truth_weights = ctx.extras.get("ground_truth_weights")
+#     def compute(self, ctx: EvaluationContext) -> dict:
+#         feature_weights = ctx.extras.get("feature_weights")
+#         ground_truth_weights = ctx.extras.get("ground_truth_weights")
         
-        if feature_weights is None or ground_truth_weights is None:
-            raise ValueError("Missing 'feature_weights' or 'ground_truth_weights' in ctx.extras for ShapleyCorrMetric.")
+#         if feature_weights is None or ground_truth_weights is None:
+#             raise ValueError("Missing 'feature_weights' or 'ground_truth_weights' in ctx.extras for ShapleyCorrMetric.")
             
-        return core.compute_shapley_corr(feature_weights, ground_truth_weights)
+#         return core.shapley_corr(feature_weights, ground_truth_weights)
         
-    def build_properties(self, raw: dict) -> dict: 
-        return {
-            "Metric Description": "Pearson correlation between generated feature weights and ground truth weights.", 
-            "Shapley Correlation": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
-        }
+#     def build_properties(self, raw: dict) -> dict: 
+#         return {
+#             "Metric Description": "Pearson correlation between generated feature weights and ground truth weights.", 
+#             "Shapley Correlation": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
+#         }
 
-class ROARMetric(BaseMetric):
-    def __init__(self): 
-        super().__init__("roar", "score_roar")
+# class ROARMetric(BaseMetric):
+#     def __init__(self): 
+#         super().__init__("roar", "score_roar")
         
-    def compute(self, ctx: EvaluationContext) -> dict:
-        train_feature_weights = ctx.extras.get("train_feature_weights")
-        test_feature_weights = ctx.extras.get("test_feature_weights")
+#     def compute(self, ctx: EvaluationContext) -> dict:
+#         train_feature_weights = ctx.extras.get("train_feature_weights")
+#         test_feature_weights = ctx.extras.get("test_feature_weights")
         
-        if train_feature_weights is None or test_feature_weights is None:
-            raise ValueError("Missing 'train_feature_weights' or 'test_feature_weights' in ctx.extras for ROARMetric.")
+#         if train_feature_weights is None or test_feature_weights is None:
+#             raise ValueError("Missing 'train_feature_weights' or 'test_feature_weights' in ctx.extras for ROARMetric.")
             
-        return core.compute_roar(
-            model=ctx.model, 
-            X_train=ctx.X_train, 
-            y_train=ctx.y_train, 
-            X_test=ctx.X_test, 
-            y_test=ctx.y_test, 
-            train_feature_weights=train_feature_weights, 
-            test_feature_weights=test_feature_weights
-        )
+#         return core.roar(
+#             model=ctx.model, 
+#             X_train=ctx.X_train, 
+#             y_train=ctx.y_train, 
+#             X_test=ctx.X_test, 
+#             y_test=ctx.y_test, 
+#             train_feature_weights=train_feature_weights, 
+#             test_feature_weights=test_feature_weights
+#         )
         
-    def build_properties(self, raw: dict) -> dict: 
-        return {
-            "Metric Description": "Remove and Retrain (ROAR) Score. Higher is better (indicates important features were accurately identified).", 
-            "ROAR AUC": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
-        }
+#     def build_properties(self, raw: dict) -> dict: 
+#         return {
+#             "Metric Description": "Remove and Retrain (ROAR) Score. Higher is better (indicates important features were accurately identified).", 
+#             "ROAR AUC": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
+#         }
 
-class InfidelityMetric(BaseMetric):
-    def __init__(self): 
-        super().__init__("infidelity", "score_infidelity")
+# class InfidelityMetric(BaseMetric):
+#     def __init__(self): 
+#         super().__init__("infidelity", "score_infidelity")
         
-    def compute(self, ctx: EvaluationContext) -> dict:
-        feature_weights = ctx.extras.get("feature_weights") # Se asumen los pesos sobre X_test
+#     def compute(self, ctx: EvaluationContext) -> dict:
+#         feature_weights = ctx.extras.get("feature_weights") # Se asumen los pesos sobre X_test
         
-        if feature_weights is None:
-            raise ValueError("Missing 'feature_weights' in ctx.extras for InfidelityMetric.")
+#         if feature_weights is None:
+#             raise ValueError("Missing 'feature_weights' in ctx.extras for InfidelityMetric.")
             
-        return core.compute_infidelity(
-            model=ctx.model, 
-            X_test=ctx.X_test, 
-            feature_weights=feature_weights
-        )
+#         return core.infidelity(
+#             model=ctx.model, 
+#             X_test=ctx.X_test, 
+#             feature_weights=feature_weights
+#         )
         
-    def build_properties(self, raw: dict) -> dict: 
-        return {
-            "Metric Description": "Measures if perturbations in important features proportionally affect the model's output. Lower is better.", 
-            "Infidelity Score": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
-        }
+#     def build_properties(self, raw: dict) -> dict: 
+#         return {
+#             "Metric Description": "Measures if perturbations in important features proportionally affect the model's output. Lower is better.", 
+#             "Infidelity Score": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
+#         }
 
 
 
@@ -414,7 +395,7 @@ def _get_or_compute_global(ctx: EvaluationContext) -> dict:
         raise ValueError(ctx.extras[_ERROR_KEY])
 
     try:
-        metrics = core.compute_global_explainability_metrics(importances, partial_dependencies, conditional_importances)
+        metrics = core.global_explainability_metrics(importances, partial_dependencies, conditional_importances)
         ctx.extras[_GLOBAL_KEY] = metrics
         return metrics
     except Exception as exc:
@@ -432,7 +413,7 @@ def _get_or_compute_local(ctx: EvaluationContext) -> dict:
         raise ValueError(ctx.extras[_ERROR_KEY])
 
     try:
-        metrics = core.compute_local_explainability_metrics(local_importances)
+        metrics = core.local_explainability_metrics(local_importances)
         ctx.extras[_LOCAL_KEY] = metrics
         return metrics
     except Exception as exc:
@@ -450,7 +431,7 @@ def _get_or_compute_surrogate(ctx: EvaluationContext) -> dict:
         raise ValueError(ctx.extras[_ERROR_KEY])
 
     try:
-        metrics = core.compute_surrogate_explainability_metrics(
+        metrics = core.surrogate_explainability_metrics(
             X_test=ctx.X_test, y_test=ctx.y_test, y_pred=ctx.y_pred_test,
             surrogate=surrogate, is_regression=ctx.extras.get("is_regression", False)
         )
@@ -550,42 +531,42 @@ class SurrogateFeatureStabilityMetric(BaseMetric):
 class WeightedAverageDepthMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_average_depth", "score_weighted_average_depth")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_weighted_average_depth(getattr(ctx.model, "tree_", None))
+        return core.weighted_average_depth(getattr(ctx.model, "tree_", None))
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Average depth of a tree weighted by samples.", "Value": f"{raw['value']:.6f}"}
 
 class WeightedAverageExplainabilityScoreMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_average_explainability_score", "score_weighted_average_explainability")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_weighted_average_explainability_score(getattr(ctx.model, "tree_", None))
+        return core.weighted_average_explainability_score(getattr(ctx.model, "tree_", None))
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Average explainability score of a tree.", "Value": f"{raw['value']:.6f}"}
 
 class WeightedTreeGiniMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_tree_gini", "score_weighted_tree_gini")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_weighted_tree_gini(getattr(ctx.model, "tree_", None))
+        return core.weighted_tree_gini(getattr(ctx.model, "tree_", None))
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Weighted Gini index for the tree (WGNI).", "Value": f"{raw['value']:.6f}"}
 
 class TreeDepthVarianceMetric(BaseMetric):
     def __init__(self): super().__init__("tree_depth_variance", "score_tree_depth_variance")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_tree_depth_variance(getattr(ctx.model, "tree_", None))
+        return core.tree_depth_variance(getattr(ctx.model, "tree_", None))
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Variance of the depths of the leaves.", "Value": f"{raw['value']:.6f}"}
 
 class TreeNumberOfRulesMetric(BaseMetric):
     def __init__(self): super().__init__("tree_number_of_rules", "score_tree_number_of_rules")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_tree_number_of_rules(ctx.model)
+        return core.tree_number_of_rules(ctx.model)
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Number of rules in the surrogate model.", "Value": f"{raw['value']:.0f}"}
 
 class TreeNumberOfFeaturesMetric(BaseMetric):
     def __init__(self): super().__init__("tree_number_of_features", "score_tree_number_of_features")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.compute_tree_number_of_features(ctx.model)
+        return core.tree_number_of_features(ctx.model)
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Number of features actively used.", "Value": f"{raw['value']:.0f}"}
 
@@ -611,7 +592,7 @@ def _get_or_compute_xai_consistency(ctx: EvaluationContext) -> dict:
 
     try:
         # Usamos X_test y y_test para la consistencia
-        metrics = core.compute_xai_consistency(
+        metrics = core.xai_consistency(
             model=ctx.model, 
             X=ctx.X_test, 
             y=ctx.y_test, 

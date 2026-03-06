@@ -15,15 +15,15 @@ from .privacy import PrivacyPillar
 # Privacy Metrics
 # ─────────────────────────────────────────────────────────────
 from .privacy_metrics_core import (
-    compute_epsilon_dp,
-    compute_epsilon_star,
-    compute_shapr,
-    compute_attribute_inference,
-    compute_privacy_risk,
-    compute_accuracy_ratio,
-    compute_k_anonymity,
-    compute_l_diversity,
-    compute_t_closeness,
+    epsilon_dp,
+    epsilon_star,
+    shapr,
+    attribute_inference,
+    privacy_risk,
+    accuracy_ratio,
+    k_anonymity,
+    l_diversity,
+    t_closeness,
 )
 
 __all__ = [
@@ -31,13 +31,13 @@ __all__ = [
     "PrivacyPillar",
 
     # Metrics
-    "compute_epsilon_dp",
-    "compute_epsilon_star",
-    "compute_shapr",
-    "compute_attribute_inference",
-    "compute_privacy_risk",
-    "compute_accuracy_ratio",
-    "compute_k_anonymity",
-    "compute_l_diversity",
-    "compute_t_closeness",
+    "epsilon_dp",
+    "epsilon_star",
+    "shapr",
+    "attribute_inference",
+    "privacy_risk",
+    "accuracy_ratio",
+    "k_anonymity",
+    "l_diversity",
+    "t_closeness",
 ]

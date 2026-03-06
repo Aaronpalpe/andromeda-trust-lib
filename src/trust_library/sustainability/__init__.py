@@ -22,10 +22,10 @@ from .sustainability_metrics_core import (
 # Sustainability Metrics
 # ─────────────────────────────────────────────────────────────
 from .sustainability_metrics_core import (
-    compute_energy_consumption,
-    compute_emissions,
-    compute_carbon_intensity,
-    #compute_energy_efficiency,
+    energy_consumption,
+    emissions,
+    carbon_intensity,
+    #energy_efficiency,
 )
 
 __all__ = [
@@ -36,8 +36,8 @@ __all__ = [
     "track_training_run",
 
     # Metrics
-    "compute_energy_consumption",
-    "compute_emissions",
-    "compute_carbon_intensity",
-    #"compute_energy_efficiency",
+    "energy_consumption",
+    "emissions",
+    "carbon_intensity",
+    #"energy_efficiency",
 ]

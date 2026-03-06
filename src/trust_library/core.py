@@ -13,6 +13,11 @@ from trust_library.explainability import ExplainabilityPillar
 from trust_library.robustness import RobustnessPillar
 from importlib import resources
 
+import math
+
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
 _PILLARS = {
     "fairness": FairnessPillar(),
@@ -48,39 +53,169 @@ class TrustEvaluator:
     # Public API
     # ─────────────────────────────────────────────────────────────────────────
 
-    def evaluate(self) -> dict:
+    def evaluate(self, pillars: list[str]= None, verbose: bool = False) -> dict:
         """Full evaluation: all pillars + trust score + explanation."""
-        pillar_results = self._compute_pillar_scores() # Diccionario compuesto por cada pilar, con su score agregado, sus métricas:score y metricas:propiedades.
+        if pillars is None:
+            pillars = list(_PILLARS.keys())
+        self._validate_pillars(pillars)
+        pillar_results = self._compute_pillar_scores(pillars) # Diccionario compuesto por cada pilar, con su score agregado, sus métricas:score y metricas:propiedades.
 
         pillar_scores = {name: data["score"] for name, data in pillar_results.items()} # Pillar:score
         trust_score   = self._compute_trust_score(pillar_scores) # Trust global
-        explanation   = self._build_score_explanation(pillar_results) # Fórmula
+        explanation   = self._build_score_explanation(pillar_results, verbose=verbose) # Fórmula
+
+        clean_metrics = {}
+        clean_properties = {}
+
+        for pillar, data in pillar_results.items():
+
+            metrics = {
+                m: v for m, v in data["metrics"].items()
+                if verbose or not self._is_nan(v)
+            }
+
+            properties = {
+                m: p for m, p in data["properties"].items()
+                if m in metrics
+            }
+            clean_metrics[pillar] = metrics
+            clean_properties[pillar] = properties
 
         self.result = {
             "trust_score":  trust_score,
             "pillar_score": pillar_scores,
-            "details":      {name: data["metrics"]    for name, data in pillar_results.items()},
-            "properties":   {name: data["properties"] for name, data in pillar_results.items()},
+            "details":      clean_metrics,
+            "properties":   clean_properties,
             "explanation":  explanation,
         }
 
         self._save_result()
         return self.result
 
-    def evaluate_pillars(self, pillars: list[str]) -> dict:
-        """Partial evaluation: only the requested pillars."""
-        self._validate_pillars(pillars)
-        return self._compute_pillar_scores(pillars)
+    # def evaluate_pillars(self, pillars: list[str]) -> dict:
+    #     """Partial evaluation: only the requested pillars."""
+    #     self._validate_pillars(pillars)
+    #     return self._compute_pillar_scores(pillars)
 
-    def run_analysis(self) -> dict: #¿Se puede quitar? Creo que ya está representado ocn los 2 de arriba
-        """Runs analyse() on every pillar and returns raw pillar results."""
-        return {
-            name: pillar.analyse(
-                self.context,
-                self.config.get("mappings", {}).get(name),
-            )
-            for name, pillar in _PILLARS.items()
+    # def run_analysis(self) -> dict: #¿Se puede quitar? Creo que ya está representado ocn los 2 de arriba
+    #     """Runs analyse() on every pillar and returns raw pillar results."""
+    #     return {
+    #         name: pillar.analyse(
+    #             self.context,
+    #             self.config.get("mappings", {}).get(name),
+    #         )
+    #         for name, pillar in _PILLARS.items()
+    #     }
+    
+    def plot_results(self) -> None:
+        """Display pillar scores and metric-level charts using Plotly."""
+        if self.result is None:
+            raise RuntimeError("No results available. Run evaluate() first.")
+
+        pillar_scores = self.result["pillar_score"]
+        details = self.result["details"]
+
+        # Colores fijos por pilar
+        pillar_colors = {
+            "fairness": "#1f77b4",
+            "accountability": "#b92323",
+            "privacy": "#CDCA22",
+            "sustainability": "#329729",
+            "explainability": "#c37a1b",
+            "robustness": "#8c564b",
         }
+
+        # ─────────────────────────────────────
+        # Pillar bar chart
+        # ─────────────────────────────────────
+        df_pillars = pd.DataFrame(
+            list(pillar_scores.items()),
+            columns=["Pillar", "Score"]
+        )
+
+        df_pillars["Color"] = df_pillars["Pillar"].map(pillar_colors)
+
+        fig_pillars = px.bar(
+            df_pillars,
+            x="Pillar",
+            y="Score",
+            text="Score",
+            range_y=[0, 5],
+            title="Trust Pillar Scores",
+        )
+
+        fig_pillars.update_traces(
+            marker_color=df_pillars["Color"],
+            texttemplate="%{text:.2f}",
+            textposition="outside"
+        )
+
+        fig_pillars.show()
+
+        # ─────────────────────────────────────
+        # Metric charts per pillar
+        # ─────────────────────────────────────
+        for pillar, metrics in details.items():
+
+            df_metrics = pd.DataFrame(
+                list(metrics.items()),
+                columns=["Metric", "Score"]
+            ).sort_values("Score")
+
+            fig = px.bar(
+                df_metrics,
+                x="Score",
+                y="Metric",
+                orientation="h",
+                text="Score",
+                color="Score",
+                color_continuous_scale="Viridis",
+                range_x=[0, 5],
+                title=f"{pillar.capitalize()} Metrics"
+            )
+
+            fig.update_traces(
+                texttemplate="%{text:.2f}",
+                textposition="outside"
+            )
+
+            fig.show()
+
+    def plot_radar(self) -> None:
+        """Display radar chart for pillar scores."""
+        if self.result is None:
+            raise RuntimeError("No results available. Run evaluate() first.")
+
+        pillar_scores = self.result["pillar_score"]
+
+        categories = list(pillar_scores.keys())
+        values = list(pillar_scores.values())
+
+        # cerrar el polígono
+        categories += [categories[0]]
+        values += [values[0]]
+
+        fig_radar = go.Figure()
+
+        fig_radar.add_trace(go.Scatterpolar(
+            r=values,
+            theta=categories,
+            fill="toself",
+            name="Model Score"
+        ))
+
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, 5]
+                )
+            ),
+            title="Trust Pillar Radar Chart",
+            showlegend=False
+        )
+
+        fig_radar.show()
 
     # ─────────────────────────────────────────────────────────────────────────
     # Private helpers
@@ -157,7 +292,7 @@ class TrustEvaluator:
             self.config.get("pillars", {}),
         )
 
-    def _build_score_explanation(self, pillar_results: dict) -> dict:
+    def _build_score_explanation(self, pillar_results: dict, verbose: bool = False) -> dict:
         explanation      = {}
         pillar_weights   = self.config.get("pillars", {})
         trust_formula_parts = []
@@ -173,6 +308,7 @@ class TrustEvaluator:
             metric_parts   = [
                 f"{metric_weights.get(metric_name, 1)}*{metric_name}({metric_value})"
                 for metric_name, metric_value in data["metrics"].items()
+                if not self._is_nan(metric_value) or verbose
             ]
 
             explanation[pillar_name] = {
@@ -194,3 +330,12 @@ class TrustEvaluator:
         unknown = [p for p in pillars if p not in _PILLARS]
         if unknown:
             raise ValueError(f"Unknown pillar(s): {unknown}. Available: {list(_PILLARS.keys())}")
+        
+    def _is_nan(self, value):
+        if value is None:
+            return True
+        if isinstance(value, float):
+            return math.isnan(value)
+        if isinstance(value, str):
+            return value.lower() == "nan"
+        return False

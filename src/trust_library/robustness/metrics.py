@@ -65,7 +65,7 @@ def _get_or_compute_hsj(ctx: EvaluationContext) -> dict:
         raise RuntimeError(ctx.extras[_HSJ_ERROR_KEY])
 
     try:
-        metrics = core.compute_hopskipjump_metrics(
+        metrics = core.hopskipjump_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
@@ -99,7 +99,7 @@ def _get_or_compute_clique(ctx: EvaluationContext) -> dict:
         params = {}
 
     try:
-        metrics = core.compute_clique_method_metrics(
+        metrics = core.clique_method_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
@@ -138,7 +138,7 @@ def _get_or_compute_clever(ctx: EvaluationContext) -> dict:
         classifier = ctx.model  # will raise a clear error in core if not gradient-capable
 
     try:
-        metrics = core.compute_clever_score_metrics(
+        metrics = core.clever_score_metrics(
             classifier=classifier,
             x=ctx.X_test,
             n_samples=int(params.get("n_samples", 5)),
@@ -168,7 +168,7 @@ def _get_or_compute_fgm(ctx: EvaluationContext) -> dict:
     params = ctx.extras.get(_FGM_PARAMS_KEY, {}) or {}
 
     try:
-        metrics = core.compute_fgm_attack_metrics(
+        metrics = core.fgm_attack_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
@@ -192,7 +192,7 @@ def _get_or_compute_cw(ctx: EvaluationContext) -> dict:
     params = ctx.extras.get(_CW_PARAMS_KEY, {}) or {}
 
     try:
-        metrics = core.compute_carlini_wagner_metrics(
+        metrics = core.carlini_wagner_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
@@ -215,7 +215,7 @@ def _get_or_compute_df(ctx: EvaluationContext) -> dict:
     params = ctx.extras.get(_DF_PARAMS_KEY, {}) or {}
 
     try:
-        metrics = core.compute_deepfool_metrics(
+        metrics = core.deepfool_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
@@ -240,7 +240,7 @@ def _get_or_compute_loss(ctx: EvaluationContext) -> dict:
     classifier = ctx.extras.get("art_classifier", ctx.model)
 
     try:
-        metrics = core.compute_loss_sensitivity_metrics(
+        metrics = core.loss_sensitivity_metrics(
             classifier=classifier,
             X_test=ctx.X_test,
         )
@@ -258,7 +258,7 @@ def _get_or_compute_confidence(ctx: EvaluationContext) -> dict:
         return cached
 
     try:
-        metrics = core.compute_confidence_score_metrics(
+        metrics = core.confidence_score_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
@@ -544,7 +544,7 @@ class PopulationStabilityIndexMetric(BaseMetric):
         if train_values is None or current_values is None:
             raise RuntimeError("PSI requires train and current distributions in ctx.extras.")
 
-        m = core.compute_psi_metrics(
+        m = core.psi_metrics(
             train_values=train_values,
             current_values=current_values,
             n_bins=ctx.extras.get("psi_bins", 10),
@@ -583,7 +583,7 @@ class EffectiveRobustnessMetric(BaseMetric):
         if acc1 is None or acc2 is None:
             raise RuntimeError("EffectiveRobustness requires acc_scenario_1 and acc_scenario_2.")
 
-        m = core.compute_effective_robustness(
+        m = core.effective_robustness(
             acc_scenario_1=acc1,
             acc_scenario_2=acc2,
             beta=beta,
@@ -611,7 +611,7 @@ def _get_or_compute_rgr(ctx: EvaluationContext) -> dict:
     params = ctx.extras.get(_RGR_PARAMS_KEY, {}) or {}
 
     try:
-        metrics = core.compute_rgr_metrics(
+        metrics = core.rgr_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             feature_index=int(params.get("feature_index", 0)),
@@ -637,7 +637,7 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
     params = ctx.extras.get(_ECE_PARAMS_KEY, {}) or {}
 
     try:
-        metrics = core.compute_ece_metrics(
+        metrics = core.ece_metrics(
             model=ctx.model,
             X_test=ctx.X_test,
             y_test=ctx.y_test,
