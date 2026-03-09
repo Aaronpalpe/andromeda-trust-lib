@@ -16,7 +16,9 @@ from aif360.datasets import BinaryLabelDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 from aif360.sklearn.metrics import (
     class_imbalance as class_imbalance_aif,
-    kl_divergence as kl_divergence_aif
+    kl_divergence as kl_divergence_aif,
+    conditional_demographic_disparity as conditional_demographic_disparity_aif,
+    between_group_generalized_entropy_error as between_group_generalized_entropy_error_aif
 )
 # from aif360.metrics import smoothed_empirical_differential_fairness, differential_fairness_bias_amplification
 
@@ -361,4 +363,59 @@ def bias_amplification(y_true: np.ndarray,
         "value": float(value),
         "bias_in_labels": float(bias_labels),
         "bias_in_predictions": float(bias_preds)
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Conditional Demographic Disparity (Vía AIF360)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def conditional_demographic_disparity(
+    y_true: np.ndarray, 
+    y_pred: np.ndarray, 
+    group_mask: np.ndarray
+) -> dict:
+    """
+    Conditional Demographic Disparity (CDD) usando AIF360 metrics.
+    Pasamos explícitamente y_true e y_pred respetando la firma de la API.
+    """
+    value = conditional_demographic_disparity_aif(
+        y_true=y_true, 
+        y_pred=y_pred, 
+        prot_attr=group_mask
+    )
+
+    n_prot = int(np.sum(group_mask))
+    n_unprot = int(len(group_mask) - n_prot)
+
+    return {
+        "value": float(value),
+        "n_protected": n_prot,
+        "n_unprotected": n_unprot
+    }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Between-Group Generalized Entropy Error (Vía AIF360)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def between_group_generalized_entropy_error(
+    y_true: np.ndarray, 
+    y_pred: np.ndarray, 
+    group_mask: np.ndarray, 
+    alpha: float = 2
+) -> dict:
+    """
+    Between-Group Generalized Entropy Error usando AIF360 metrics.
+    """
+    value = between_group_generalized_entropy_error_aif(
+        y_true=y_true, 
+        y_pred=y_pred, 
+        prot_attr=group_mask, 
+        priv_group=0,  # 0 (False) representa el grupo privilegiado en tu mask
+        alpha=alpha
+    )
+
+    return {
+        "value": float(value),
+        "alpha": alpha
     }

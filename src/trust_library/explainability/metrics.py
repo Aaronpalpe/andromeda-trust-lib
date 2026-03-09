@@ -114,7 +114,8 @@ class AlgorithmClassMetric(BaseMetric):
         super().__init__("algorithm_class", "score_algorithm_class") #AÑADIR
 
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.algorithm_class(ctx.model)
+        model_type = ctx.factsheet.get("general", {}).get("model_type", {}).get("value", None)
+        return core.algorithm_class(ctx.model, model_type=model_type)
 
     def custom_score(self, raw: dict):
         return raw.get("value")

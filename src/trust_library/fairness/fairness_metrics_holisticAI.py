@@ -19,7 +19,7 @@ from holisticai.bias.metrics import (
     disparate_impact as hai_disparate_impact,
     # four_fifths_rule,
     cohen_d,
-    # sd_rule,
+    z_test_diff as z_test_diff_hai,
     equal_opportunity_diff,
     #false_positive_rate_diff,
     average_odds_diff,
@@ -234,4 +234,26 @@ def coefficient_of_variation( # NO IGUAL QUE AIF---------------
 
     return {
         "value": float(val)
+    }
+
+
+def z_test_diff(
+    y_pred: np.ndarray,
+    group_mask: np.ndarray,
+) -> dict:
+    n_prot = int(group_mask.sum())
+    n_unprot = int((~group_mask).sum())
+    
+    if n_prot == 0 or n_unprot == 0:
+        return {"value": 0.0, "sr_protected": 0.0, "sr_unprotected": 0.0}
+
+    sr_prot = float(y_pred[group_mask].mean())
+    sr_unprot = float(y_pred[~group_mask].mean())
+    
+    val = z_test_diff_hai(group_mask, ~group_mask, y_pred)
+
+    return {
+        "value": float(val),
+        "sr_protected": sr_prot,
+        "sr_unprotected": sr_unprot,
     }

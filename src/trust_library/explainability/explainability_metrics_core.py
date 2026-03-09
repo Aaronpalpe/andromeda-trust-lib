@@ -155,8 +155,8 @@ def shap_based_metrics(
 # Structural Explainability Metrics
 # ============================================================
 
-def algorithm_class(model):
-    model_name = type(model).__name__
+def algorithm_class(model, model_type=None) -> dict:
+    model_name = model_type if model_type is not None else type(model).__name__
 
     # Ejemplo simple (puedes externalizarlo a config)
     mapping = {

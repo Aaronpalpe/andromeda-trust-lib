@@ -181,6 +181,71 @@ class TrustEvaluator:
 
             fig.show()
 
+    @staticmethod
+    def compare_all_bars(results: dict[str, dict]) -> None:
+        """
+        Compare trust score, pillars, and metrics of multiple models
+        using grouped bar charts.
+        """
+
+        rows = []
+
+        for model_name, result in results.items():
+
+            # Trust score
+            rows.append({
+                "Model": model_name,
+                "Category": "trust_score",
+                "Score": result["trust_score"]
+            })
+
+            # Pillars
+            for pillar, score in result["pillar_score"].items():
+                rows.append({
+                    "Model": model_name,
+                    "Category": pillar,
+                    "Score": score
+                })
+
+            # Metrics
+            for pillar, metrics in result["details"].items():
+                for metric, score in metrics.items():
+
+                    if score is None:
+                        continue
+
+                    rows.append({
+                        "Model": model_name,
+                        "Category": f"{pillar}.{metric}",
+                        "Score": score
+                    })
+
+        df = pd.DataFrame(rows)
+
+        fig = px.bar(
+            df,
+            x="Category",
+            y="Score",
+            color="Model",
+            barmode="group",
+            text="Score",
+            range_y=[0, 5],
+            title="Trust Evaluation Comparison"
+        )
+
+        fig.update_traces(
+            texttemplate="%{text:.2f}",
+            textposition="outside"
+        )
+
+        fig.update_layout(
+            xaxis_title="Metric / Pillar / Trust Score",
+            yaxis_title="Score",
+            xaxis_tickangle=-45
+        )
+
+        fig.show()
+
     def plot_radar(self) -> None:
         """Display radar chart for pillar scores."""
         if self.result is None:
@@ -216,6 +281,57 @@ class TrustEvaluator:
         )
 
         fig_radar.show()
+
+    @staticmethod
+    def compare_radar(results: dict[str, dict]) -> None:
+        """
+        Compare multiple models in a radar chart.
+
+        Parameters
+        ----------
+        results : dict
+            Dictionary mapping model names to evaluation results.
+
+            Example:
+            {
+                "RandomForest": result1,
+                "XGBoost": result2
+            }
+        """
+
+        fig = go.Figure()
+
+        for model_name, result in results.items():
+
+            pillar_scores = result["pillar_score"]
+
+            categories = list(pillar_scores.keys())
+            values = list(pillar_scores.values())
+
+            # cerrar polígono
+            categories_closed = categories + [categories[0]]
+            values_closed = values + [values[0]]
+
+            fig.add_trace(go.Scatterpolar(
+                r=values_closed,
+                theta=categories_closed,
+                fill="toself",
+                name=model_name,
+                opacity=0.4
+            ))
+
+        fig.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, 5]
+                )
+            ),
+            title="Trust Pillar Comparison",
+            showlegend=True
+        )
+
+        fig.show()
 
     # ─────────────────────────────────────────────────────────────────────────
     # Private helpers
@@ -323,8 +439,8 @@ class TrustEvaluator:
         return explanation
 
     def _save_result(self) -> None:
-        with open(self.output_path, "w") as f:
-            json.dump(utils.to_json_safe(self.result), f, indent=4)
+        with open(self.output_path, "w", encoding="utf-8") as f:
+            json.dump(utils.to_json_safe(self.result), f, indent=4, ensure_ascii=False)
 
     def _validate_pillars(self, pillars: list[str]) -> None:
         unknown = [p for p in pillars if p not in _PILLARS]
@@ -339,3 +455,4 @@ class TrustEvaluator:
         if isinstance(value, str):
             return value.lower() == "nan"
         return False
+    

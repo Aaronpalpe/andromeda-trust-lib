@@ -72,6 +72,8 @@ from .fairness_metrics_core import (
     bias_amplification,
     cohens_d,
     smoothed_edf,
+    between_group_generalized_entropy_error,
+    z_test_diff,
 )
 
 __all__ = [
@@ -96,6 +98,7 @@ __all__ = [
     "theil_index",
     "coefficient_of_variation",
     "kl_divergence",
+    "conditional_demographic_disparity",
 
     # Individual fairness
     "individual_consistency",
@@ -112,4 +115,6 @@ __all__ = [
     "bias_amplification",
     "cohens_d",
     "smoothed_edf",
+    "between_group_generalized_entropy_error",
+    "z_test_diff",
 ]
