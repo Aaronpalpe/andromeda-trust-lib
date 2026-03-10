@@ -108,6 +108,19 @@ class TopKConcentrationMetric(BaseMetric):
             "Explainer": raw.get("explainer"),
         }
 
+class InteractionStrengthMetric(BaseMetric):
+    def __init__(self): super().__init__("interaction_strength", "score_interaction_strength")
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute(ctx)
+        return {"value": float(m["interaction_strength"]), **m}
+    def build_properties(self, raw: dict) -> dict: 
+        return {"Metric Description": "Proportion of SHAP importance coming from feature interactions.", 
+                "Value": f"{raw['value']:.6f}",
+                "N Features": int(raw.get("n_features", 0)),
+                "Sample Size": int(raw.get("sample_size", 0)),
+                "Explainer": raw.get("explainer"),
+                }
+    
 
 class AlgorithmClassMetric(BaseMetric):
     def __init__(self):
@@ -234,13 +247,6 @@ class TreeDepthMetric(BaseMetric):
     def build_properties(self, raw: dict) -> dict: 
         return {"Metric Description": "Maximum depth of the tree model.", "Value": f"{raw['value']:.0f}"}
 
-# class InteractionStrengthMetric(BaseMetric):
-#     def __init__(self): super().__init__("interaction_strength", "score_interaction_strength")
-#     def compute(self, ctx: EvaluationContext) -> dict:
-#         return core.interaction_strength(ctx.model, ctx.X_test)
-#     def build_properties(self, raw: dict) -> dict: 
-#         return {"Metric Description": "Proportion of SHAP importance coming from feature interactions.", "Value": f"{raw['value']:.6f}"}
-
 
 # =============================================================================
 # Instance-Based Fidelity Metrics Wrappers
@@ -349,180 +355,294 @@ class MonotonicityMetric(BaseMetric):
 #             "ROAR AUC": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
 #         }
 
-# class InfidelityMetric(BaseMetric):
-#     def __init__(self): 
-#         super().__init__("infidelity", "score_infidelity")
+class InfidelityMetric(BaseMetric):
+    def __init__(self): 
+        super().__init__("infidelity", "score_infidelity")
         
-#     def compute(self, ctx: EvaluationContext) -> dict:
-#         feature_weights = ctx.extras.get("feature_weights") # Se asumen los pesos sobre X_test
+    def compute(self, ctx: EvaluationContext) -> dict:
+        feature_weights = ctx.extras.get("feature_weights") # Se asumen los pesos sobre X_test
         
-#         if feature_weights is None:
-#             raise ValueError("Missing 'feature_weights' in ctx.extras for InfidelityMetric.")
+        if feature_weights is None:
+            raise ValueError("Missing 'feature_weights' in ctx.extras for InfidelityMetric.")
             
-#         return core.infidelity(
-#             model=ctx.model, 
-#             X_test=ctx.X_test, 
-#             feature_weights=feature_weights
-#         )
+        return core.infidelity(
+            model=ctx.model, 
+            X_test=ctx.X_test, 
+            feature_weights=feature_weights
+        )
         
-#     def build_properties(self, raw: dict) -> dict: 
-#         return {
-#             "Metric Description": "Measures if perturbations in important features proportionally affect the model's output. Lower is better.", 
-#             "Infidelity Score": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
-#         }
-
+    def build_properties(self, raw: dict) -> dict: 
+        return {
+            "Metric Description": "Measures if perturbations in important features proportionally affect the model's output. Lower is better.", 
+            "Infidelity Score": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
+        }
 
 
 _GLOBAL_KEY = "xai_global_metrics"
 _LOCAL_KEY = "xai_local_metrics"
 _SURROGATE_KEY = "xai_surrogate_metrics"
-_ERROR_KEY = "xai_advanced_error"
+
+# Separamos las claves de error para evitar fallos en cascada
+_GLOBAL_ERROR_KEY = "xai_global_error"
+_LOCAL_ERROR_KEY = "xai_local_error"
+_SURROGATE_ERROR_KEY = "xai_surrogate_error"
+_CONSISTENCY_ERROR_KEY = "xai_consistency_error"
 
 # =============================================================================
 # Cache Managers
 # =============================================================================
 
-def _get_or_compute_global(ctx: EvaluationContext) -> dict:
-    cached = ctx.extras.get(_GLOBAL_KEY)
-    if isinstance(cached, dict): return cached
-    if _ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_ERROR_KEY]))
+# =============================================================================
+# Cache Managers
+# =============================================================================
 
-    importances = ctx.extras.get("importances")
-    partial_dependencies = ctx.extras.get("partial_dependencies")
-    conditional_importances = ctx.extras.get("conditional_importances")
+# def _get_or_compute_global(ctx: EvaluationContext) -> dict:
+#     cached = ctx.extras.get(_GLOBAL_KEY)
+#     if isinstance(cached, dict): return cached
+#     if _GLOBAL_ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_GLOBAL_ERROR_KEY]))
+
+#     importances = ctx.extras.get("importances")
+#     partial_dependencies = ctx.extras.get("partial_dependencies")
+#     conditional_importances = ctx.extras.get("conditional_importances")
     
-    if importances is None:
-        ctx.extras[_ERROR_KEY] = "Missing global explainability objects in ctx.extras (importances, partial_dependencies...)"
-        raise ValueError(ctx.extras[_ERROR_KEY])
+#     if importances is None:
+#         ctx.extras[_GLOBAL_ERROR_KEY] = "Missing global explainability objects in ctx.extras (importances, partial_dependencies...)"
+#         raise ValueError(ctx.extras[_GLOBAL_ERROR_KEY])
 
-    try:
-        metrics = core.global_explainability_metrics(importances, partial_dependencies, conditional_importances)
-        ctx.extras[_GLOBAL_KEY] = metrics
-        return metrics
-    except Exception as exc:
-        ctx.extras[_ERROR_KEY] = str(exc)
-        raise
+#     try:
+#         metrics = core.global_explainability_metrics(importances, partial_dependencies, conditional_importances)
+#         ctx.extras[_GLOBAL_KEY] = metrics
+#         return metrics
+#     except Exception as exc:
+#         ctx.extras[_GLOBAL_ERROR_KEY] = str(exc)
+#         raise
 
-def _get_or_compute_local(ctx: EvaluationContext) -> dict:
-    cached = ctx.extras.get(_LOCAL_KEY)
-    if isinstance(cached, dict): return cached
-    if _ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_ERROR_KEY]))
+# def _get_or_compute_local(ctx: EvaluationContext) -> dict:
+#     cached = ctx.extras.get(_LOCAL_KEY)
+#     if isinstance(cached, dict): return cached
+#     if _LOCAL_ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_LOCAL_ERROR_KEY]))
 
-    local_importances = ctx.extras.get("local_importances")
-    if local_importances is None:
-        ctx.extras[_ERROR_KEY] = "Missing 'local_importances' in ctx.extras."
-        raise ValueError(ctx.extras[_ERROR_KEY])
+#     local_importances = ctx.extras.get("feature_weights")
+#     if local_importances is None:
+#         ctx.extras[_LOCAL_ERROR_KEY] = "Missing 'local_importances' in ctx.extras."
+#         raise ValueError(ctx.extras[_LOCAL_ERROR_KEY])
 
-    try:
-        metrics = core.local_explainability_metrics(local_importances)
-        ctx.extras[_LOCAL_KEY] = metrics
-        return metrics
-    except Exception as exc:
-        ctx.extras[_ERROR_KEY] = str(exc)
-        raise
+#     try:
+#         metrics = core.local_explainability_metrics(local_importances, ctx.X_test)
+#         ctx.extras[_LOCAL_KEY] = metrics
+#         return metrics
+#     except Exception as exc:
+#         ctx.extras[_LOCAL_ERROR_KEY] = str(exc)
+#         raise
 
-def _get_or_compute_surrogate(ctx: EvaluationContext) -> dict:
-    cached = ctx.extras.get(_SURROGATE_KEY)
-    if isinstance(cached, dict): return cached
-    if _ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_ERROR_KEY]))
+# def _get_or_compute_surrogate(ctx: EvaluationContext) -> dict:
+#     cached = ctx.extras.get(_SURROGATE_KEY)
+#     if isinstance(cached, dict): return cached
+#     if _SURROGATE_ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_SURROGATE_ERROR_KEY]))
 
-    surrogate = ctx.extras.get("surrogate")
-    if surrogate is None:
-        ctx.extras[_ERROR_KEY] = "Missing 'surrogate' model in ctx.extras."
-        raise ValueError(ctx.extras[_ERROR_KEY])
+#     surrogate = ctx.extras.get("surrogate")
+#     if surrogate is None:
+#         ctx.extras[_SURROGATE_ERROR_KEY] = "Missing 'surrogate' model in ctx.extras."
+#         raise ValueError(ctx.extras[_SURROGATE_ERROR_KEY])
 
-    try:
-        metrics = core.surrogate_explainability_metrics(
-            X_test=ctx.X_test, y_test=ctx.y_test, y_pred=ctx.y_pred_test,
-            surrogate=surrogate, is_regression=ctx.extras.get("is_regression", False)
-        )
-        ctx.extras[_SURROGATE_KEY] = metrics
-        return metrics
-    except Exception as exc:
-        ctx.extras[_ERROR_KEY] = str(exc)
-        raise
+#     try:
+#         metrics = core.surrogate_explainability_metrics(
+#             X_test=ctx.X_test, y_test=ctx.y_test, y_pred=ctx.y_pred_test,
+#             surrogate=surrogate, is_regression=ctx.extras.get("is_regression", False)
+#         )
+#         ctx.extras[_SURROGATE_KEY] = metrics
+#         return metrics
+#     except Exception as exc:
+#         ctx.extras[_SURROGATE_ERROR_KEY] = str(exc)
+#         raise
 
 
 # =============================================================================
 # Global Metrics Wrappers
 # =============================================================================
 
+_GLOBAL_KEY = "xai_global_metrics"
+_GLOBAL_ERROR_KEY = "xai_global_error"
+
+def _get_or_compute_global_xai(ctx: EvaluationContext) -> dict:
+    cached = ctx.extras.get(_GLOBAL_KEY)
+    if isinstance(cached, dict):
+        return cached
+
+    if _GLOBAL_ERROR_KEY in ctx.extras:
+        raise RuntimeError(str(ctx.extras[_GLOBAL_ERROR_KEY]))
+
+    try:
+        # Extraemos los datos precalculados asumiendo estructuras nativas de Python:
+        # global_importances: dict[str, float]
+        # conditional_importances: dict[group, dict[str, float]]
+        # pdp_averages: dict[str, list[float]]
+        # pdp_individuals: dict[str, list[list[float]]]
+        # pdp_grids: dict[str, list[float]]
+        global_imps = ctx.extras.get("global_importances", {})
+        cond_imps = ctx.extras.get("conditional_importances", {})
+        pdp_avgs = ctx.extras.get("pdp_averages", {})
+
+        global_vals = list(global_imps.values())
+        global_ranked = sorted(global_imps.keys(), key=lambda k: global_imps[k], reverse=True)
+        cond_ranked = {
+            g: sorted(imps.keys(), key=lambda k: imps[k], reverse=True) 
+            for g, imps in cond_imps.items()
+        }
+
+        metrics = {}
+        metrics["alpha_score"] = core.alpha_score(global_vals) if global_vals else np.nan
+        metrics["spread_ratio"] = core.spread_ratio(global_vals) if global_vals else np.nan
+        metrics["spread_divergence"] = core.spread_divergence(global_vals) if global_vals else np.nan
+        metrics["position_parity"] = core.position_parity(cond_ranked, global_ranked) if cond_ranked else np.nan
+        metrics["rank_alignment"] = core.rank_alignment(cond_imps, global_imps) if cond_imps else np.nan
+        metrics["xai_ease_score"] = core.xai_ease_score(pdp_avgs, global_ranked) if pdp_avgs else np.nan
+
+    except Exception as exc:
+        ctx.extras[_GLOBAL_ERROR_KEY] = str(exc)
+        raise
+
+    ctx.extras[_GLOBAL_KEY] = metrics
+    return metrics
+
+
 class AlphaImportanceScoreMetric(BaseMetric):
-    def __init__(self): super().__init__("alpha_score", "score_alpha_score")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_global(ctx)["alpha_score"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Alpha Importance Score.", "Value": f"{raw['value']:.6f}"}
+    def __init__(self):
+        super().__init__("alpha_score", "score_alpha_score")
 
-class XAIEaseScoreMetric(BaseMetric):
-    def __init__(self): super().__init__("xai_ease_score", "score_xai_ease_score")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_global(ctx)["xai_ease_score"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Interpretability ease of partial dependencies.", "Value": f"{raw['value']:.6f}"}
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute_global_xai(ctx)
+        return {"value": float(m["alpha_score"])}
 
-class PositionParityMetric(BaseMetric):
-    def __init__(self): super().__init__("position_parity", "score_position_parity")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_global(ctx)["position_parity"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Consistency in the order of feature importance.", "Value": f"{raw['value']:.6f}"}
+    def build_properties(self, raw: dict) -> dict:
+        return {
+            "Metric Description": "Smallest proportion of features that account for alpha (0.8) of the overall feature importance.",
+            "Value": f"{raw['value']:.4f}"
+        }
 
-class RankAlignmentMetric(BaseMetric):
-    def __init__(self): super().__init__("rank_alignment", "score_rank_alignment")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_global(ctx)["rank_alignment"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Overlap in top-k rankings across groups.", "Value": f"{raw['value']:.6f}"}
 
 class SpreadRatioMetric(BaseMetric):
-    def __init__(self): super().__init__("spread_ratio", "score_spread_ratio")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_global(ctx)["spread_ratio"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Spread ratio of feature importances.", "Value": f"{raw['value']:.6f}"}
+    def __init__(self):
+        super().__init__("spread_ratio", "score_spread_ratio")
+
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute_global_xai(ctx)
+        return {"value": float(m["spread_ratio"])}
+
+    def build_properties(self, raw: dict) -> dict:
+        return {
+            "Metric Description": "Degree of evenness in the distribution of feature importance values (0 to 1).",
+            "Value": f"{raw['value']:.4f}"
+        }
+
 
 class SpreadDivergenceMetric(BaseMetric):
-    def __init__(self): super().__init__("spread_divergence", "score_spread_divergence")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_global(ctx)["spread_divergence"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Divergence in the distribution of feature importance.", "Value": f"{raw['value']:.6f}"}
+    def __init__(self):
+        super().__init__("spread_divergence", "score_spread_divergence")
 
-class FluctuationRatioMetric(BaseMetric):
-    def __init__(self): super().__init__("fluctuation_ratio", "score_fluctuation_ratio")
     def compute(self, ctx: EvaluationContext) -> dict:
-        # Intenta obtenerlo del global, si no, del surrogate
-        try:
-            val = _get_or_compute_global(ctx)["fluctuation_ratio"]
-            if np.isnan(val): val = _get_or_compute_surrogate(ctx)["fluctuation_ratio"]
-        except Exception:
-            val = np.nan
-        return {"value": val}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Fluctuation ratio of importances.", "Value": f"{raw['value']:.6f}"}
+        m = _get_or_compute_global_xai(ctx)
+        return {"value": float(m["spread_divergence"])}
 
+    def build_properties(self, raw: dict) -> dict:
+        return {
+            "Metric Description": "Inverse of Jensen-Shannon distance for feature importances. Lower concentrates interpretability.",
+            "Value": f"{raw['value']:.4f}"
+        }
+
+
+class PositionParityMetric(BaseMetric):
+    def __init__(self):
+        super().__init__("position_parity", "score_position_parity")
+
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute_global_xai(ctx)
+        return {"value": float(m["position_parity"])}
+
+    def build_properties(self, raw: dict) -> dict:
+        return {
+            "Metric Description": "Measures how well top feature importances maintain ranking considering conditional classes/regions.",
+            "Value": f"{raw['value']:.4f}"
+        }
+
+
+class RankAlignmentMetric(BaseMetric):
+    def __init__(self):
+        super().__init__("rank_alignment", "score_rank_alignment")
+
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute_global_xai(ctx)
+        return {"value": float(m["rank_alignment"])}
+
+    def build_properties(self, raw: dict) -> dict:
+        return {
+            "Metric Description": "Jaccard similarity of top alpha features between global and conditional importances.",
+            "Value": f"{raw['value']:.4f}"
+        }
+
+
+class XAIEaseScoreMetric(BaseMetric):
+    def __init__(self):
+        super().__init__("xai_ease_score", "score_xai_ease_score")
+
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute_global_xai(ctx)
+        return {"value": float(m["xai_ease_score"])}
+
+    def build_properties(self, raw: dict) -> dict:
+        return {
+            "Metric Description": "Measures ease of explaining predictions using partial dependence plot similarity.",
+            "Value": f"{raw['value']:.4f}"
+        }
+
+
+# class FluctuationRatioMetric(BaseMetric):
+#     def __init__(self):
+#         super().__init__("fluctuation_ratio", "score_fluctuation_ratio")
+
+#     def compute(self, ctx: EvaluationContext) -> dict:
+#         m = _get_or_compute_global_xai(ctx)
+#         return {"value": float(m["fluctuation_ratio"])}
+
+#     def build_properties(self, raw: dict) -> dict:
+#         return {
+#             "Metric Description": "Average number of sign changes in the derivatives of individual conditional expectation curves.",
+#             "Value": f"{raw['value']:.4f}"
+#         }
 
 # =============================================================================
 # Local Metrics Wrappers
 # =============================================================================
 
-class RankConsistencyMetric(BaseMetric):
-    def __init__(self): super().__init__("rank_consistency", "score_rank_consistency")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_local(ctx)["rank_consistency"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Rank consistency across local explanations.", "Value": f"{raw['value']:.6f}"}
+# class RankConsistencyMetric(BaseMetric):
+#     def __init__(self): super().__init__("rank_consistency", "score_rank_consistency")
+#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_local(ctx)["rank_consistency"]}
+#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Rank consistency across local explanations.", "Value": f"{raw['value']:.6f}"}
 
-class ImportanceStabilityMetric(BaseMetric):
-    def __init__(self): super().__init__("importance_stability", "score_importance_stability")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_local(ctx)["importance_stability"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Stability of local feature importances.", "Value": f"{raw['value']:.6f}"}
+# class ImportanceStabilityMetric(BaseMetric):
+#     def __init__(self): super().__init__("importance_stability", "score_importance_stability")
+#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_local(ctx)["importance_stability"]}
+#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Stability of local feature importances.", "Value": f"{raw['value']:.6f}"}
 
 
 # =============================================================================
 # Surrogate Metrics Wrappers
 # =============================================================================
 
-class MSEDegradationMetric(BaseMetric):
-    def __init__(self): super().__init__("mse_degradation", "score_mse_degradation")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["mse_degradation"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Degradation in MSE using surrogate.", "Value": f"{raw['value']:.6f}"}
+# class MSEDegradationMetric(BaseMetric):
+#     def __init__(self): super().__init__("mse_degradation", "score_mse_degradation")
+#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["mse_degradation"]}
+#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Degradation in MSE using surrogate.", "Value": f"{raw['value']:.6f}"}
 
-class SurrogateFidelityMetric(BaseMetric):
-    def __init__(self): super().__init__("surrogate_fidelity", "score_surrogate_fidelity")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["surrogate_fidelity"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Fidelity of surrogate vs original model.", "Value": f"{raw['value']:.6f}"}
+# class SurrogateFidelityMetric(BaseMetric):
+#     def __init__(self): super().__init__("surrogate_fidelity", "score_surrogate_fidelity")
+#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["surrogate_fidelity"]}
+#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Fidelity of surrogate vs original model.", "Value": f"{raw['value']:.6f}"}
 
-class SurrogateFeatureStabilityMetric(BaseMetric):
-    def __init__(self): super().__init__("surrogate_feature_stability", "score_surrogate_feature_stability")
-    def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["surrogate_feature_stability"]}
-    def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Stability of features in surrogate.", "Value": f"{raw['value']:.6f}"}
+# class SurrogateFeatureStabilityMetric(BaseMetric):
+#     def __init__(self): super().__init__("surrogate_feature_stability", "score_surrogate_feature_stability")
+#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["surrogate_feature_stability"]}
+#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Stability of features in surrogate.", "Value": f"{raw['value']:.6f}"}
 
 
 # =============================================================================
@@ -582,8 +702,9 @@ def _get_or_compute_xai_consistency(ctx: EvaluationContext) -> dict:
     if isinstance(cached, dict):
         return cached
 
-    if _ERROR_KEY in ctx.extras:
-        raise RuntimeError(str(ctx.extras[_ERROR_KEY]))
+    # Aquí usamos su propia clave de error
+    if _CONSISTENCY_ERROR_KEY in ctx.extras:
+        raise RuntimeError(str(ctx.extras[_CONSISTENCY_ERROR_KEY]))
 
     # Determinamos si es clasificación o regresión basado en el modelo
     mode = 'classification' if hasattr(ctx.model, 'predict_proba') else 'regression'
@@ -603,7 +724,7 @@ def _get_or_compute_xai_consistency(ctx: EvaluationContext) -> dict:
         ctx.extras[_XAI_CONSISTENCY_KEY] = metrics
         return metrics
     except Exception as exc:
-        ctx.extras[_ERROR_KEY] = str(exc)
+        ctx.extras[_CONSISTENCY_ERROR_KEY] = str(exc)
         raise
 
 

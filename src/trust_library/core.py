@@ -53,7 +53,7 @@ class TrustEvaluator:
     # Public API
     # ─────────────────────────────────────────────────────────────────────────
 
-    def evaluate(self, pillars: list[str]= None, verbose: bool = False) -> dict:
+    def evaluate(self, pillars: list[str]= None, show_nan: bool = False) -> dict:
         """Full evaluation: all pillars + trust score + explanation."""
         if pillars is None:
             pillars = list(_PILLARS.keys())
@@ -62,7 +62,7 @@ class TrustEvaluator:
 
         pillar_scores = {name: data["score"] for name, data in pillar_results.items()} # Pillar:score
         trust_score   = self._compute_trust_score(pillar_scores) # Trust global
-        explanation   = self._build_score_explanation(pillar_results, verbose=verbose) # Fórmula
+        explanation   = self._build_score_explanation(pillar_results, show_nan=show_nan) # Fórmula
 
         clean_metrics = {}
         clean_properties = {}
@@ -71,7 +71,7 @@ class TrustEvaluator:
 
             metrics = {
                 m: v for m, v in data["metrics"].items()
-                if verbose or not self._is_nan(v)
+                if show_nan or not self._is_nan(v)
             }
 
             properties = {
@@ -180,71 +180,97 @@ class TrustEvaluator:
             )
 
             fig.show()
-
+                
     @staticmethod
     def compare_all_bars(results: dict[str, dict]) -> None:
         """
         Compare trust score, pillars, and metrics of multiple models
-        using grouped bar charts.
+        using separate bar charts.
         """
 
-        rows = []
-
+        # ────────────────
+        # Trust Score
+        # ────────────────
+        trust_rows = []
         for model_name, result in results.items():
-
-            # Trust score
-            rows.append({
+            trust_rows.append({
                 "Model": model_name,
-                "Category": "trust_score",
-                "Score": result["trust_score"]
+                "Trust Score": result["trust_score"]
             })
+        df_trust = pd.DataFrame(trust_rows)
 
-            # Pillars
+        fig_trust = px.bar(
+            df_trust,
+            x="Model",
+            y="Trust Score",
+            text="Trust Score",
+            range_y=[0, 5],
+            title="Trust Score Comparison"
+        )
+        fig_trust.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+        fig_trust.show()
+
+        # ────────────────
+        # Pillars
+        # ────────────────
+        pillar_rows = []
+        for model_name, result in results.items():
             for pillar, score in result["pillar_score"].items():
-                rows.append({
+                pillar_rows.append({
                     "Model": model_name,
-                    "Category": pillar,
+                    "Pillar": pillar.capitalize(),
                     "Score": score
                 })
+        df_pillars = pd.DataFrame(pillar_rows)
 
-            # Metrics
-            for pillar, metrics in result["details"].items():
-                for metric, score in metrics.items():
-
-                    if score is None:
-                        continue
-
-                    rows.append({
-                        "Model": model_name,
-                        "Category": f"{pillar}.{metric}",
-                        "Score": score
-                    })
-
-        df = pd.DataFrame(rows)
-
-        fig = px.bar(
-            df,
-            x="Category",
+        fig_pillars = px.bar(
+            df_pillars,
+            x="Pillar",
             y="Score",
             color="Model",
             barmode="group",
             text="Score",
             range_y=[0, 5],
-            title="Trust Evaluation Comparison"
+            title="Pillar Score Comparison"
         )
+        fig_pillars.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+        fig_pillars.show()
 
-        fig.update_traces(
-            texttemplate="%{text:.2f}",
-            textposition="outside"
-        )
+        # ────────────────
+        # Metrics per pillar
+        # ────────────────
+        pillars = set()
+        for result in results.values():
+            pillars.update(result["details"].keys())
 
-        fig.update_layout(
-            xaxis_title="Metric / Pillar / Trust Score",
-            yaxis_title="Score",
-            xaxis_tickangle=-45
-        )
+        for pillar in sorted(pillars):
+            metric_rows = []
+            for model_name, result in results.items():
+                metrics = result["details"].get(pillar, {})
+                for metric, score in metrics.items():
+                    if score is None:
+                        continue
+                    metric_rows.append({
+                        "Model": model_name,
+                        "Metric": metric,
+                        "Score": score
+                    })
+            if not metric_rows:
+                continue
+            df_metrics = pd.DataFrame(metric_rows)
 
-        fig.show()
+            fig_metrics = px.bar(
+                df_metrics,
+                x="Metric",
+                y="Score",
+                color="Model",
+                barmode="group",
+                text="Score",
+                range_y=[0, 5],
+                title=f"{pillar.capitalize()} Metrics Comparison"
+            )
+            fig_metrics.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+            fig_metrics.show()
 
     def plot_radar(self) -> None:
         """Display radar chart for pillar scores."""
@@ -408,7 +434,7 @@ class TrustEvaluator:
             self.config.get("pillars", {}),
         )
 
-    def _build_score_explanation(self, pillar_results: dict, verbose: bool = False) -> dict:
+    def _build_score_explanation(self, pillar_results: dict, show_nan: bool = False) -> dict:
         explanation      = {}
         pillar_weights   = self.config.get("pillars", {})
         trust_formula_parts = []
@@ -424,7 +450,7 @@ class TrustEvaluator:
             metric_parts   = [
                 f"{metric_weights.get(metric_name, 1)}*{metric_name}({metric_value})"
                 for metric_name, metric_value in data["metrics"].items()
-                if not self._is_nan(metric_value) or verbose
+                if not self._is_nan(metric_value) or show_nan
             ]
 
             explanation[pillar_name] = {

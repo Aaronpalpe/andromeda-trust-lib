@@ -25,14 +25,17 @@ from typing import Dict, Any
 from holisticai.utils.surrogate_models import get_features, get_number_of_rules
 from holisticai.explainability.metrics import classification_explainability_metrics
 from holisticai.explainability.metrics.local_feature_importance import classification_local_feature_importance_explainability_metrics
-from holisticai.explainability.metrics.surrogate import regression_surrogate_explainability_metrics
-from holisticai.explainability.metrics.surrogate import classification_surrogate_explainability_metrics
+# from holisticai.explainability.metrics.surrogate import regression_surrogate_explainability_metrics
+# from holisticai.explainability.metrics.surrogate import classification_surrogate_explainability_metrics
 
 import random
 import lime
 import lime.lime_tabular
 from sklearn.inspection import partial_dependence, permutation_importance
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+
+from holisticai.inspection import compute_partial_dependence, compute_permutation_importance, compute_conditional_permutation_importance
+from holisticai.utils import BinaryClassificationProxy
 
 # ============================================================
 # Silence SHAP
@@ -139,6 +142,31 @@ def shap_based_metrics(
     sorted_imp = np.sort(global_importance)[::-1]
     topk_concentration = 0.0 if total == 0.0 else float(sorted_imp[:k].sum() / total)
 
+    # --- Cálculo de fuerza de interacción ---
+    interaction_strength_value = np.nan
+    try:
+        # Convertir a tensor 3D si no lo es (PermutationExplainer devuelve 2D)
+        # Creamos un tensor diagonalizado para simular interacciones
+        # Esto es aproximado; SHAP real de interacción requiere TreeExplainer
+        if shap_values.ndim == 2:
+            # Creamos un tensor (n_samples, n_features, n_features) con diagonal = main effect
+            n_samples, n_features = shap_values.shape
+            shap_int = np.zeros((n_samples, n_features, n_features))
+            for i in range(n_features):
+                shap_int[:, i, i] = shap_values[:, i]
+        else:
+            shap_int = shap_values  # si ya es 3D
+
+        total = np.abs(shap_int).sum()
+        main_effect = np.sum(np.abs(np.diagonal(shap_int, axis1=1, axis2=2)))
+        interaction_strength_value = float((total - main_effect) / total) if total != 0 else 0.0
+    except Exception:
+        interaction_strength_value = np.nan
+
+    # --- Devuelve también base y valores locales ---
+    base_values = np.mean(X_eval.values, axis=0)
+    local_importances = shap_values
+
     return {
         "sparsity": sparsity,
         "feature_entropy": entropy_norm,
@@ -148,9 +176,52 @@ def shap_based_metrics(
         "sample_size": float(len(X_eval)),
         "shap_threshold": float(shap_threshold),
         "top_k": float(k),
+        "interaction_strength": float(interaction_strength_value),
+        "base_values": base_values,
+        "local_importances": local_importances,
     }
 
 
+def holistic_dependecies(model, y_pred, X):
+    """
+    Compute holistic explainability dependencies: global importances, conditional importances, and partial dependence.
+
+    Args:
+        model: sklearn-compatible model already fitted.
+        y_pred: predicted labels (y_pred) for X.
+        X: pandas DataFrame or numpy array with feature values.
+
+    Returns:
+        importances: permutation feature importances (global)
+        partial_dependencies: partial dependence for top features
+        conditional_importances: conditional permutation feature importances per label
+    """
+    X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X, columns=[f"x{i}" for i in range(X.shape[1])])
+    
+    # Definir proxy para estandarizar acceso a predicciones
+    proxy = BinaryClassificationProxy(
+        predict=model.predict,
+        predict_proba=model.predict_proba if hasattr(model, "predict_proba") else None,
+        classes=np.unique(y_pred)
+    )
+
+    # Global permutation importances
+    importances = compute_permutation_importance(X=X_df, y=y_pred, proxy=proxy)
+
+    # Conditional importances (por clase)
+    conditional_importances = compute_conditional_permutation_importance(X=X_df, y=y_pred, proxy=proxy)
+
+    # Partial dependence para las top N features (tomando top 3 por defecto)
+    top_n = 3
+    try:
+        top_feature_names = importances.top_n(top_n).feature_names
+    except Exception:
+        # fallback si no hay top_n definido
+        top_feature_names = X_df.columns[:top_n]
+
+    partial_dependencies = compute_partial_dependence(X_df, features=top_feature_names, proxy=proxy)
+
+    return importances, partial_dependencies, conditional_importances
 # ============================================================
 # Structural Explainability Metrics
 # ============================================================
@@ -351,6 +422,8 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
     Returns:
         float: correlation between attribute importance weights and corresponding effect on classifier.
     """
+    # Asegúrate de que todos tengan la misma longitud
+    assert len(x) == len(coefs) == len(base)
 
     #find predicted class
     pred_class = np.argmax(model.predict_proba(x.reshape(1,-1)), axis=1)[0]
@@ -491,122 +564,289 @@ def monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
 #     return {"value": float(area)}
 
 
-# def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
-#     """
-#     Computes the infidelity by evaluating whether perturbations to important features lead to proportional changes in model output.
-#     Implementation of https://arxiv.org/pdf/1901.09392.pdf, based on https://github.com/chihkuanyeh/saliency_evaluation/blob/master/infid_sen_utils.py
-#     """
-#     X_np = np.asarray(X_test)
-#     num_datapoints, num_features = X_np.shape
-#     infids = []
+def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
+    """
+    Computes the infidelity by evaluating whether perturbations to important features lead to proportional changes in model output.
+    Implementation of https://arxiv.org/pdf/1901.09392.pdf, based on https://github.com/chihkuanyeh/saliency_evaluation/blob/master/infid_sen_utils.py
+    """
+    X_np = np.asarray(X_test, dtype=float)
+    num_datapoints, num_features = X_np.shape
+    infids = []
     
-#     def get_exp(ind, exp):
-#         return exp[ind.astype(int)]
+    def get_exp(ind, exp):
+        return exp[ind.astype(int)]
 
-#     def set_zero_infid(array, size, point):
-#         ind = np.random.choice(size, point, replace=False)
-#         randd = np.random.normal(size=point) * 0.2 + array[ind]
-#         randd = np.minimum(array[ind], randd)
-#         randd = np.maximum(array[ind] - 1.0, randd)
-#         array[ind] -= randd
-#         return np.concatenate([array, ind, randd])
+    def set_zero_infid(array, size, point):
+        ind = np.random.choice(size, point, replace=False)
+        randd = np.random.normal(size=point) * 0.2 + array[ind]
+        randd = np.minimum(array[ind], randd)
+        randd = np.maximum(array[ind] - 1.0, randd)
+        array[ind] -= randd
+        
+        return np.concatenate((array, ind, randd))
 
-#     for i in range(num_datapoints):
-#         num_reps = 1000
-#         x_orig = np.tile(X_np[i], [num_reps, 1])
-#         x = X_np[i]
-#         expl_copy = np.copy(feature_weights[i])
+    for i in range(num_datapoints):
+        num_reps = 1000
+        x_orig = np.tile(X_np[i], [num_reps, 1])
+        x = X_np[i]
+        expl_copy = np.copy(feature_weights[i])
         
-#         val = np.apply_along_axis(set_zero_infid, 1, x_orig, num_features, num_features)
-#         x_ptb = val[:, :num_features]
-#         ind = val[:, num_features: 2*num_features]
-#         rand = val[:, 2*num_features: 3*num_features]
+        val = np.apply_along_axis(set_zero_infid, 1, x_orig, num_features, num_features)
+        x_ptb = np.apply_along_axis(set_zero_infid, 1, x_orig, num_features, num_features)
+        x_ptb = val[:, :num_features]
+        ind = val[:, num_features: 2*num_features]
+        rand = val[:, 2*num_features: 3*num_features]
         
-#         exp_sum = np.sum(rand * np.apply_along_axis(get_exp, 1, ind, expl_copy), axis=1)
-#         ks = np.ones(num_reps)
+        exp_sum = np.sum(rand * np.apply_along_axis(get_exp, 1, ind, expl_copy), axis=1)
+        ks = np.ones(num_reps)
         
-#         pdt = model.predict([x])[0]
-#         pdt_ptb = model.predict(x_ptb)
-#         pdt_diff = pdt - pdt_ptb
+        pdt = model.predict([x])[0]
+        pdt_ptb = model.predict(x_ptb)
+        pdt_diff = pdt - pdt_ptb
 
-#         # Evitamos divisiones por cero en el cálculo de beta
-#         denominator = np.mean(ks * exp_sum * exp_sum)
-#         beta = np.mean(ks * pdt_diff * exp_sum) / (denominator if denominator != 0 else 1e-10)
-#         exp_sum *= beta
+        # Evitamos divisiones por cero en el cálculo de beta
+        denominator = np.mean(ks * exp_sum * exp_sum)
+        beta = np.mean(ks * pdt_diff * exp_sum) / (denominator if denominator != 0 else 1e-10)
+        exp_sum *= beta
         
-#         infid = np.mean(ks * np.square(pdt_diff - exp_sum)) / np.mean(ks)
-#         infids.append(infid)
+        infid = np.mean(ks * np.square(pdt_diff - exp_sum)) / np.mean(ks)
+        infids.append(infid)
         
-#     return {"value": float(np.mean(infids))}
+    return {"value": float(np.mean(infids))}
 
 ##########
 ## HOLISTICAI
 #########
 
-def _extract_metric_from_df(df: pd.DataFrame, metric_name: str) -> float:
-    """Helper para extraer un valor específico de los DataFrames de holisticai."""
-    if df is None or df.empty:
-        return np.nan
+# def _extract_metric_from_df(df: pd.DataFrame, metric_name: str) -> float:
+#     """Helper para extraer un valor específico de los DataFrames de holisticai."""
+#     if df is None or df.empty:
+#         return np.nan
     
-    if 'value' in df.columns:
-        if 'metric' in df.columns:
-            row = df[df['metric'].str.contains(metric_name, case=False, na=False)]
-            if not row.empty:
-                return float(row['value'].iloc[0])
-        else:
-            for idx in df.index:
-                if metric_name.lower() in str(idx).lower():
-                    return float(df.loc[idx, 'value'])
-    return np.nan
+#     if 'value' in df.columns:
+#         if 'metric' in df.columns:
+#             row = df[df['metric'].str.contains(metric_name, case=False, na=False)]
+#             if not row.empty:
+#                 return float(row['value'].iloc[0])
+#         else:
+#             for idx in df.index:
+#                 if metric_name.lower() in str(idx).lower():
+#                     return float(df.loc[idx, 'value'])
+#     return np.nan
 
 # =============================================================================
 # Global Explainability Metrics
 # =============================================================================
 
-def global_explainability_metrics(importances, partial_dependencies, conditional_importances) -> Dict[str, float]:
-    df_metrics = classification_explainability_metrics(importances, partial_dependencies, conditional_importances)
+# def global_explainability_metrics(importances, partial_dependencies, conditional_importances) -> Dict[str, float]:
+#     importances_df = pd.DataFrame.from_dict(importances, orient='index', columns=['top_alpha'])
+#     df_metrics = classification_explainability_metrics(importances_df, partial_dependencies, conditional_importances)
     
-    return {
-        "alpha_score": _extract_metric_from_df(df_metrics, "Alpha Importance Score"),
-        "xai_ease_score": _extract_metric_from_df(df_metrics, "XAI Ease Score"),
-        "position_parity": _extract_metric_from_df(df_metrics, "Position Parity"),
-        "rank_alignment": _extract_metric_from_df(df_metrics, "Rank Alignment"),
-        "spread_ratio": _extract_metric_from_df(df_metrics, "Spread Ratio"),
-        "spread_divergence": _extract_metric_from_df(df_metrics, "Spread Divergence"),
-        "fluctuation_ratio": _extract_metric_from_df(df_metrics, "Fluctuation Ratio") # Si aplica globalmente
-    }
+#     return {
+#         "alpha_score": _extract_metric_from_df(df_metrics, "Alpha Importance Score"),
+#         "xai_ease_score": _extract_metric_from_df(df_metrics, "XAI Ease Score"),
+#         "position_parity": _extract_metric_from_df(df_metrics, "Position Parity"),
+#         "rank_alignment": _extract_metric_from_df(df_metrics, "Rank Alignment"),
+#         "spread_ratio": _extract_metric_from_df(df_metrics, "Spread Ratio"),
+#         "spread_divergence": _extract_metric_from_df(df_metrics, "Spread Divergence"),
+#         "fluctuation_ratio": _extract_metric_from_df(df_metrics, "Fluctuation Ratio") # Si aplica globalmente
+#     }
 
 # =============================================================================
 # Local Explainability Metrics
 # =============================================================================
 
-def local_explainability_metrics(local_importances) -> Dict[str, float]:
-    df_metrics = classification_local_feature_importance_explainability_metrics(local_importances)
-    
-    return {
-        "rank_consistency": _extract_metric_from_df(df_metrics, "Rank Consistency"),
-        "importance_stability": _extract_metric_from_df(df_metrics, "Importance Stability")
-    }
+
+# def local_explainability_metrics(local_importances, X) -> Dict[str, float]:
+#     local_importances_df = pd.DataFrame(local_importances, columns=X.columns)
+#     metrics_local = classification_local_feature_importance_explainability_metrics(local_importances_df)    
+#     return {
+#         "rank_consistency": _extract_metric_from_df(metrics_local, "Rank Consistency"),
+#         "importance_stability": _extract_metric_from_df(metrics_local, "Importance Stability")
+#     }
 
 # =============================================================================
 # Surrogate Accuracy/Fidelity Metrics
 # =============================================================================
 
-def surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate, is_regression: bool = False) -> Dict[str, float]:
-    if is_regression:
-        df_metrics = regression_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
-    else:
-        df_metrics = classification_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
+# def surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate, is_regression: bool = False) -> Dict[str, float]:
+#     if is_regression:
+#         df_metrics = regression_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
+#     else:
+#         df_metrics = classification_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
         
-    return {
-        "mse_degradation": _extract_metric_from_df(df_metrics, "MSE Degradation"),
-        "surrogate_fidelity": _extract_metric_from_df(df_metrics, "Surrogate Fidelity"),
-        "surrogate_feature_stability": _extract_metric_from_df(df_metrics, "Surrogate Feature Stability"),
-        "spread_divergence": _extract_metric_from_df(df_metrics, "Spread Divergence"), 
-        "fluctuation_ratio": _extract_metric_from_df(df_metrics, "Fluctuation Ratio"), 
-        "rank_alignment": _extract_metric_from_df(df_metrics, "Rank Alignment"), 
-        "alpha_score": _extract_metric_from_df(df_metrics, "Alpha Score")
-    }
+#     return {
+#         "mse_degradation": _extract_metric_from_df(df_metrics, "MSE Degradation"),
+#         "surrogate_fidelity": _extract_metric_from_df(df_metrics, "Surrogate Fidelity"),
+#         "surrogate_feature_stability": _extract_metric_from_df(df_metrics, "Surrogate Feature Stability"),
+#         "spread_divergence": _extract_metric_from_df(df_metrics, "Spread Divergence"), 
+#         "fluctuation_ratio": _extract_metric_from_df(df_metrics, "Fluctuation Ratio"), 
+#         "rank_alignment": _extract_metric_from_df(df_metrics, "Rank Alignment"), 
+#         "alpha_score": _extract_metric_from_df(df_metrics, "Alpha Score")
+#     }
+
+
+
+import numpy as np
+import pandas as pd
+from scipy.spatial.distance import jensenshannon
+from scipy.stats import entropy
+from scipy.interpolate import interp1d
+
+# =============================================================================
+# Alpha Score
+# =============================================================================
+
+def alpha_score(feature_importances: list, alpha: float = 0.8) -> float:
+    vals = np.array(feature_importances, dtype=float)
+    vals = vals[vals > 0]
+    if len(vals) == 0:
+        return 0.0
+    
+    vals_sorted = np.sort(vals)[::-1]
+    cum_sum = np.cumsum(vals_sorted)
+    threshold = alpha * np.sum(vals_sorted)
+    idx = np.searchsorted(cum_sum, threshold)
+    
+    return (idx + 1) / len(feature_importances)
+
+
+# =============================================================================
+# Spread Ratio & Spread Divergence
+# =============================================================================
+
+def _spread_base(feature_importances: list, divergence: bool = True) -> float:
+    tol = 1e-8
+    vals = np.array(feature_importances, dtype=float)
+    
+    if len(vals) == 0 or np.sum(vals) < tol:
+        return 1.0 if divergence else 0.0
+    if len(vals) == 1:
+        return 1.0
+
+    weights = vals / np.sum(vals)
+    equal_weights = np.ones(len(vals)) / len(vals)
+
+    if divergence:
+        metric = jensenshannon(weights, equal_weights, base=2)
+    else:
+        metric = entropy(weights) / entropy(equal_weights)
+    return float(metric)
+
+def spread_ratio(feature_importances: list) -> float:
+    return _spread_base(feature_importances, divergence=False)
+
+def spread_divergence(feature_importances: list) -> float:
+    return _spread_base(feature_importances, divergence=True)
+
+
+# =============================================================================
+# Position Parity
+# =============================================================================
+
+def position_parity(conditional_rankings: dict, global_ranking: list) -> float:
+    conditional_position_parity = {}
+    for group_name, cond_features in conditional_rankings.items():
+        match_order = [c == r for c, r in zip(cond_features, global_ranking)]
+        if not match_order: continue
+        m_order_cum = np.cumsum(match_order) / np.arange(1, len(match_order) + 1)
+        conditional_position_parity[group_name] = np.mean(m_order_cum)
+        
+    if not conditional_position_parity:
+        return 1.0
+    return float(np.mean(list(conditional_position_parity.values())))
+
+
+# =============================================================================
+# Rank Alignment
+# =============================================================================
+
+def _get_top_alpha_features(importances_dict: dict, alpha: float) -> set:
+    sorted_items = sorted(importances_dict.items(), key=lambda x: abs(x[1]), reverse=True)
+    total = sum(abs(v) for k, v in sorted_items)
+    cum = 0
+    top = []
+    for k, v in sorted_items:
+        top.append(k)
+        cum += abs(v)
+        if cum >= alpha * total:
+            break
+    return set(top)
+
+def rank_alignment(conditional_importances: dict, global_importances: dict, alpha: float = 0.8, aggregation: bool = True):
+    top_global = _get_top_alpha_features(global_importances, alpha)
+    similarities = []
+    
+    for group, cond_imps in conditional_importances.items():
+        top_cond = _get_top_alpha_features(cond_imps, alpha)
+        intersection = len(top_global.intersection(top_cond))
+        union = len(top_global.union(top_cond))
+        similarities.append(intersection / union if union > 0 else 0.0)
+
+    if aggregation:
+        return float(np.mean(similarities)) if similarities else 1.0
+    return similarities
+
+
+# =============================================================================
+# XAI Ease Score
+# =============================================================================
+
+def calculate_discrete_derivative(y_values):
+    dy = np.diff(y_values)
+    dx = np.ones_like(dy)
+    return dy / dx
+
+def cosine_similarity(v1, v2):
+    norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
+    if norm1 == 0 or norm2 == 0: return 0.0
+    return np.dot(v1, v2) / (norm1 * norm2)
+
+def compare_tangents(points):
+    num_sections = 3
+    n = len(points)
+    if n < num_sections:
+        return (1, 1), True
+
+    cut1 = n // 3
+    cut2 = 2 * n // 3
+    sections = [points[:cut1 + 1], points[cut1:cut2 + 1], points[cut2:]]
+    slopes = []
+    
+    for section in sections:
+        if len(section) > 1:
+            avg_slope = np.mean(calculate_discrete_derivative(section))
+        else:
+            avg_slope = 0
+        slopes.append(avg_slope + 1e-5)
+
+    similarities = [cosine_similarity([slopes[i]], [slopes[i + 1]]) for i in range(len(slopes) - 1)]
+    return similarities, False
+
+def xai_ease_score(pdp_averages: dict, global_ranked_features: list) -> float:
+    threshold = 0.0
+    levels = ["Hard", "Medium", "Easy"]
+    scores_list = []
+
+    for feat in global_ranked_features:
+        if feat not in pdp_averages: continue
+        r, few_points = compare_tangents(pdp_averages[feat])
+        score_val = sum([1 for rr in r if rr > threshold])
+        scores_list.append({"feature": feat, "scores": levels[score_val]})
+
+    if not scores_list: return 1.0
+
+    df = pd.DataFrame(scores_list)
+    counts = df.groupby("scores")["feature"].count()
+    total = counts.sum()
+
+    values = []
+    for level in levels:
+        cnt = counts.get(level, 0)
+        prop = cnt / total
+        values.append(levels.index(level) * prop)
+
+    return float(sum(values) / 2) # max_score is 2
 
 # =============================================================================
 # Helper Functions for Trees
