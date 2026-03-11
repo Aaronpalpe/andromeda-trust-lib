@@ -8,7 +8,6 @@ import warnings
 import numpy as np
 import pandas as pd
 import shap
-from sklearn.metrics import accuracy_score
 
 def _safe_import_shap():
     try:
@@ -23,19 +22,17 @@ def _safe_import_shap():
 from sklearn.base import clone
 from typing import Dict, Any
 from holisticai.utils.surrogate_models import get_features, get_number_of_rules
-from holisticai.explainability.metrics import classification_explainability_metrics
-from holisticai.explainability.metrics.local_feature_importance import classification_local_feature_importance_explainability_metrics
-# from holisticai.explainability.metrics.surrogate import regression_surrogate_explainability_metrics
-# from holisticai.explainability.metrics.surrogate import classification_surrogate_explainability_metrics
 
 import random
 import lime
 import lime.lime_tabular
-from sklearn.inspection import partial_dependence, permutation_importance
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from sklearn.inspection import partial_dependence
 
 from holisticai.inspection import compute_partial_dependence, compute_permutation_importance, compute_conditional_permutation_importance
 from holisticai.utils import BinaryClassificationProxy
+
+from scipy.spatial.distance import jensenshannon
+from scipy.stats import entropy
 
 # ============================================================
 # Silence SHAP
@@ -437,7 +434,11 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
         x_copy_pr = model.predict_proba(x_copy.reshape(1,-1))
         pred_probs[ind] = x_copy_pr[0][pred_class]
 
-    corr = -np.corrcoef(coefs, pred_probs)[0, 1]
+    # corr = -np.corrcoef(coefs, pred_probs)[0, 1]
+    if np.std(coefs) == 0 or np.std(pred_probs) == 0:
+        corr = 0.0  # Si no hay variación, no hay correlación
+    else:
+        corr = -np.corrcoef(coefs, pred_probs)[0, 1]
 
     return {
         "value": float(corr),
@@ -490,79 +491,6 @@ def monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
         "pred_probs": pred_probs,
     }
 
-# =============================================================================
-# Perturbation & Correlation Metrics (Xplique-style) 
-# ============================================================================= 
-
-# def shapley_corr(feature_weights: np.ndarray, ground_truth_weights: np.ndarray) -> Dict[str, float]:
-#     """
-#     Calcula la correlación de Pearson entre los pesos de las características explicadas 
-#     y unos pesos que se consideran el 'ground truth'.
-#     """
-#     feature_weights = np.asarray(feature_weights)
-#     ground_truth_weights = np.asarray(ground_truth_weights)
-    
-#     corr = [np.corrcoef(a, b)[0, 1] for a, b in zip(feature_weights, ground_truth_weights)]
-#     corr = np.nan_to_num(corr, nan=0.0, posinf=0.0, neginf=0.0)
-    
-#     return {"value": float(np.mean(corr))}
-
-# def roar(model, X_train, y_train, X_test, y_test, train_feature_weights, test_feature_weights) -> Dict[str, float]: # DIFIERE
-#     """
-#     Implementation of ROAR, remove and retrain - https://arxiv.org/abs/1806.10758
-#     Remove the features deemed most important, then remove them from the data and retrain.
-#     Evaluate the performance degradation using AUC.
-#     A higher roar score is better.
-#     """
-    
-#     X_train_np = np.asarray(X_train).copy()
-#     X_test_np = np.asarray(X_test).copy()
-#     y_train_np = np.asarray(y_train)
-#     y_test_np = np.asarray(y_test)
-    
-#     # Combinamos para obtener las medias globales de las características (Interventional conditional)
-#     X_all = np.vstack([X_train_np, X_test_np])
-#     avg_feature_values = X_all.mean(axis=0)
-#     num_features = X_all.shape[1]
-    
-#     cutoffs = [0, 0.1, 0.3, 0.5, 0.7, 0.9]
-#     losses = []
-    
-#     for cutoff_percent in cutoffs:
-#         cutoff = int(cutoff_percent * num_features)
-#         X_train_new = X_train_np.copy()
-#         X_test_new = X_test_np.copy()
-        
-#         # Enmascaramos características en el conjunto de entrenamiento
-#         for i in range(len(X_train_new)):
-#             sorted_indices = np.argsort(np.abs(train_feature_weights[i]))[::-1]
-#             indices_to_remove = sorted_indices[:cutoff]
-#             X_train_new[i, indices_to_remove] = avg_feature_values[indices_to_remove]
-            
-#         # Enmascaramos características en el conjunto de prueba
-#         for i in range(len(X_test_new)):
-#             sorted_indices = np.argsort(np.abs(test_feature_weights[i]))[::-1]
-#             indices_to_remove = sorted_indices[:cutoff]
-#             X_test_new[i, indices_to_remove] = avg_feature_values[indices_to_remove]
-            
-#         # Clonamos el modelo original sin entrenar, lo ajustamos y predecimos
-#         model_new = clone(model)
-#         model_new.fit(X_train_new, y_train_np.ravel())
-#         preds = model_new.predict(X_test_new)
-        
-#         # Pérdida usando MAE (acorde al script original evaluate_model)
-#         loss = np.mean(np.abs(y_test_np - preds))
-#         losses.append(loss)
-        
-#     # Calculamos el AUC de la curva de pérdidas
-#     area = 0.0
-#     for i in range(1, len(cutoffs)):
-#         length = (losses[i] + losses[i - 1]) / 2
-#         width = cutoffs[i] - cutoffs[i - 1]
-#         area += length * width
-        
-#     return {"value": float(area)}
-
 
 def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
     """
@@ -577,14 +505,15 @@ def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
         return exp[ind.astype(int)]
 
     def set_zero_infid(array, size, point):
+        arr_copy = array.copy()
         ind = np.random.choice(size, point, replace=False)
-        randd = np.random.normal(size=point) * 0.2 + array[ind]
-        randd = np.minimum(array[ind], randd)
-        randd = np.maximum(array[ind] - 1.0, randd)
-        array[ind] -= randd
-        
-        return np.concatenate((array, ind, randd))
-
+        randd = np.random.normal(size=point) * 0.2 + arr_copy[ind]
+        randd = np.minimum(arr_copy[ind], randd)
+        randd = np.maximum(arr_copy[ind] - 1.0, randd)
+        arr_copy[ind] -= randd
+        return np.concatenate((arr_copy, ind, randd))
+    
+    num_datapoints = min(len(X_np), len(feature_weights))
     for i in range(num_datapoints):
         num_reps = 1000
         x_orig = np.tile(X_np[i], [num_reps, 1])
@@ -617,81 +546,6 @@ def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
 ##########
 ## HOLISTICAI
 #########
-
-# def _extract_metric_from_df(df: pd.DataFrame, metric_name: str) -> float:
-#     """Helper para extraer un valor específico de los DataFrames de holisticai."""
-#     if df is None or df.empty:
-#         return np.nan
-    
-#     if 'value' in df.columns:
-#         if 'metric' in df.columns:
-#             row = df[df['metric'].str.contains(metric_name, case=False, na=False)]
-#             if not row.empty:
-#                 return float(row['value'].iloc[0])
-#         else:
-#             for idx in df.index:
-#                 if metric_name.lower() in str(idx).lower():
-#                     return float(df.loc[idx, 'value'])
-#     return np.nan
-
-# =============================================================================
-# Global Explainability Metrics
-# =============================================================================
-
-# def global_explainability_metrics(importances, partial_dependencies, conditional_importances) -> Dict[str, float]:
-#     importances_df = pd.DataFrame.from_dict(importances, orient='index', columns=['top_alpha'])
-#     df_metrics = classification_explainability_metrics(importances_df, partial_dependencies, conditional_importances)
-    
-#     return {
-#         "alpha_score": _extract_metric_from_df(df_metrics, "Alpha Importance Score"),
-#         "xai_ease_score": _extract_metric_from_df(df_metrics, "XAI Ease Score"),
-#         "position_parity": _extract_metric_from_df(df_metrics, "Position Parity"),
-#         "rank_alignment": _extract_metric_from_df(df_metrics, "Rank Alignment"),
-#         "spread_ratio": _extract_metric_from_df(df_metrics, "Spread Ratio"),
-#         "spread_divergence": _extract_metric_from_df(df_metrics, "Spread Divergence"),
-#         "fluctuation_ratio": _extract_metric_from_df(df_metrics, "Fluctuation Ratio") # Si aplica globalmente
-#     }
-
-# =============================================================================
-# Local Explainability Metrics
-# =============================================================================
-
-
-# def local_explainability_metrics(local_importances, X) -> Dict[str, float]:
-#     local_importances_df = pd.DataFrame(local_importances, columns=X.columns)
-#     metrics_local = classification_local_feature_importance_explainability_metrics(local_importances_df)    
-#     return {
-#         "rank_consistency": _extract_metric_from_df(metrics_local, "Rank Consistency"),
-#         "importance_stability": _extract_metric_from_df(metrics_local, "Importance Stability")
-#     }
-
-# =============================================================================
-# Surrogate Accuracy/Fidelity Metrics
-# =============================================================================
-
-# def surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate, is_regression: bool = False) -> Dict[str, float]:
-#     if is_regression:
-#         df_metrics = regression_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
-#     else:
-#         df_metrics = classification_surrogate_explainability_metrics(X_test, y_test, y_pred, surrogate)
-        
-#     return {
-#         "mse_degradation": _extract_metric_from_df(df_metrics, "MSE Degradation"),
-#         "surrogate_fidelity": _extract_metric_from_df(df_metrics, "Surrogate Fidelity"),
-#         "surrogate_feature_stability": _extract_metric_from_df(df_metrics, "Surrogate Feature Stability"),
-#         "spread_divergence": _extract_metric_from_df(df_metrics, "Spread Divergence"), 
-#         "fluctuation_ratio": _extract_metric_from_df(df_metrics, "Fluctuation Ratio"), 
-#         "rank_alignment": _extract_metric_from_df(df_metrics, "Rank Alignment"), 
-#         "alpha_score": _extract_metric_from_df(df_metrics, "Alpha Score")
-#     }
-
-
-
-import numpy as np
-import pandas as pd
-from scipy.spatial.distance import jensenshannon
-from scipy.stats import entropy
-from scipy.interpolate import interp1d
 
 # =============================================================================
 # Alpha Score
@@ -1086,7 +940,7 @@ def tree_number_of_rules(surrogate) -> Dict[str, float]:
         int: The number of rules present in the surrogate model.
     """
     if surrogate is None: return {"value": np.nan}
-    return {"value": float(get_number_of_rules(surrogate))}
+    return {"value": float(get_number_of_rules(surrogate.tree_))}
 
 def tree_number_of_features(surrogate) -> Dict[str, float]:
     """
@@ -1101,7 +955,7 @@ def tree_number_of_features(surrogate) -> Dict[str, float]:
         int: The number of features used in the surrogate model.
     """
     if surrogate is None: return {"value": np.nan}
-    features = get_features(surrogate)
+    features = get_features(surrogate.tree_)
     return {"value": float(len(np.unique(features[features >= 0])))}
 
 

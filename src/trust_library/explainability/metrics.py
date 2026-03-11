@@ -200,25 +200,6 @@ class FeatureRelevanceMetric(BaseMetric):
 # Additional Explainability & Surrogate Metrics Wrappers
 # =============================================================================
 
-# class PerformanceDifferenceMetric(BaseMetric):
-#     def __init__(self): 
-#         super().__init__("performance_difference", "score_performance_difference")
-        
-#     def compute(self, ctx: EvaluationContext) -> dict:
-#         surrogate = ctx.extras.get("surrogate")
-#         if surrogate is None:
-#             raise ValueError("Missing 'surrogate' in ctx.extras.")
-            
-#         return core.performance_difference(ctx.model, surrogate, ctx.X_test, ctx.y_test)
-        
-#     def build_properties(self, raw: dict) -> dict: 
-#         return {
-#             "Metric Description": "Difference in accuracy between original model and surrogate explainer.", 
-#             "Performance Difference": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A",
-#             "Original Perf": f"{raw.get('perf_original', 0):.4f}",
-#             "Surrogate Perf": f"{raw.get('perf_explainer', 0):.4f}"
-#         }
-
 class NumberOfRulesMetric(BaseMetric):
     def __init__(self): super().__init__("number_of_rules", "score_number_of_rules")
     def compute(self, ctx: EvaluationContext) -> dict:
@@ -306,54 +287,8 @@ class MonotonicityMetric(BaseMetric):
         }
     
 # =============================================================================
-# Perturbation & Correlation Metrics Wrappers (Xplique-style)
+# Perturbation & Correlation Metrics Wrappers (Xplique)
 # =============================================================================
-
-# class ShapleyCorrMetric(BaseMetric):
-#     def __init__(self): 
-#         super().__init__("shapley_corr", "score_shapley_corr")
-        
-#     def compute(self, ctx: EvaluationContext) -> dict:
-#         feature_weights = ctx.extras.get("feature_weights")
-#         ground_truth_weights = ctx.extras.get("ground_truth_weights")
-        
-#         if feature_weights is None or ground_truth_weights is None:
-#             raise ValueError("Missing 'feature_weights' or 'ground_truth_weights' in ctx.extras for ShapleyCorrMetric.")
-            
-#         return core.shapley_corr(feature_weights, ground_truth_weights)
-        
-#     def build_properties(self, raw: dict) -> dict: 
-#         return {
-#             "Metric Description": "Pearson correlation between generated feature weights and ground truth weights.", 
-#             "Shapley Correlation": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
-#         }
-
-# class ROARMetric(BaseMetric):
-#     def __init__(self): 
-#         super().__init__("roar", "score_roar")
-        
-#     def compute(self, ctx: EvaluationContext) -> dict:
-#         train_feature_weights = ctx.extras.get("train_feature_weights")
-#         test_feature_weights = ctx.extras.get("test_feature_weights")
-        
-#         if train_feature_weights is None or test_feature_weights is None:
-#             raise ValueError("Missing 'train_feature_weights' or 'test_feature_weights' in ctx.extras for ROARMetric.")
-            
-#         return core.roar(
-#             model=ctx.model, 
-#             X_train=ctx.X_train, 
-#             y_train=ctx.y_train, 
-#             X_test=ctx.X_test, 
-#             y_test=ctx.y_test, 
-#             train_feature_weights=train_feature_weights, 
-#             test_feature_weights=test_feature_weights
-#         )
-        
-#     def build_properties(self, raw: dict) -> dict: 
-#         return {
-#             "Metric Description": "Remove and Retrain (ROAR) Score. Higher is better (indicates important features were accurately identified).", 
-#             "ROAR AUC": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
-#         }
 
 class InfidelityMetric(BaseMetric):
     def __init__(self): 
@@ -379,83 +314,8 @@ class InfidelityMetric(BaseMetric):
 
 
 _GLOBAL_KEY = "xai_global_metrics"
-_LOCAL_KEY = "xai_local_metrics"
-_SURROGATE_KEY = "xai_surrogate_metrics"
-
-# Separamos las claves de error para evitar fallos en cascada
 _GLOBAL_ERROR_KEY = "xai_global_error"
-_LOCAL_ERROR_KEY = "xai_local_error"
-_SURROGATE_ERROR_KEY = "xai_surrogate_error"
 _CONSISTENCY_ERROR_KEY = "xai_consistency_error"
-
-# =============================================================================
-# Cache Managers
-# =============================================================================
-
-# =============================================================================
-# Cache Managers
-# =============================================================================
-
-# def _get_or_compute_global(ctx: EvaluationContext) -> dict:
-#     cached = ctx.extras.get(_GLOBAL_KEY)
-#     if isinstance(cached, dict): return cached
-#     if _GLOBAL_ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_GLOBAL_ERROR_KEY]))
-
-#     importances = ctx.extras.get("importances")
-#     partial_dependencies = ctx.extras.get("partial_dependencies")
-#     conditional_importances = ctx.extras.get("conditional_importances")
-    
-#     if importances is None:
-#         ctx.extras[_GLOBAL_ERROR_KEY] = "Missing global explainability objects in ctx.extras (importances, partial_dependencies...)"
-#         raise ValueError(ctx.extras[_GLOBAL_ERROR_KEY])
-
-#     try:
-#         metrics = core.global_explainability_metrics(importances, partial_dependencies, conditional_importances)
-#         ctx.extras[_GLOBAL_KEY] = metrics
-#         return metrics
-#     except Exception as exc:
-#         ctx.extras[_GLOBAL_ERROR_KEY] = str(exc)
-#         raise
-
-# def _get_or_compute_local(ctx: EvaluationContext) -> dict:
-#     cached = ctx.extras.get(_LOCAL_KEY)
-#     if isinstance(cached, dict): return cached
-#     if _LOCAL_ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_LOCAL_ERROR_KEY]))
-
-#     local_importances = ctx.extras.get("feature_weights")
-#     if local_importances is None:
-#         ctx.extras[_LOCAL_ERROR_KEY] = "Missing 'local_importances' in ctx.extras."
-#         raise ValueError(ctx.extras[_LOCAL_ERROR_KEY])
-
-#     try:
-#         metrics = core.local_explainability_metrics(local_importances, ctx.X_test)
-#         ctx.extras[_LOCAL_KEY] = metrics
-#         return metrics
-#     except Exception as exc:
-#         ctx.extras[_LOCAL_ERROR_KEY] = str(exc)
-#         raise
-
-# def _get_or_compute_surrogate(ctx: EvaluationContext) -> dict:
-#     cached = ctx.extras.get(_SURROGATE_KEY)
-#     if isinstance(cached, dict): return cached
-#     if _SURROGATE_ERROR_KEY in ctx.extras: raise RuntimeError(str(ctx.extras[_SURROGATE_ERROR_KEY]))
-
-#     surrogate = ctx.extras.get("surrogate")
-#     if surrogate is None:
-#         ctx.extras[_SURROGATE_ERROR_KEY] = "Missing 'surrogate' model in ctx.extras."
-#         raise ValueError(ctx.extras[_SURROGATE_ERROR_KEY])
-
-#     try:
-#         metrics = core.surrogate_explainability_metrics(
-#             X_test=ctx.X_test, y_test=ctx.y_test, y_pred=ctx.y_pred_test,
-#             surrogate=surrogate, is_regression=ctx.extras.get("is_regression", False)
-#         )
-#         ctx.extras[_SURROGATE_KEY] = metrics
-#         return metrics
-#     except Exception as exc:
-#         ctx.extras[_SURROGATE_ERROR_KEY] = str(exc)
-#         raise
-
 
 # =============================================================================
 # Global Metrics Wrappers
@@ -595,56 +455,6 @@ class XAIEaseScoreMetric(BaseMetric):
             "Value": f"{raw['value']:.4f}"
         }
 
-
-# class FluctuationRatioMetric(BaseMetric):
-#     def __init__(self):
-#         super().__init__("fluctuation_ratio", "score_fluctuation_ratio")
-
-#     def compute(self, ctx: EvaluationContext) -> dict:
-#         m = _get_or_compute_global_xai(ctx)
-#         return {"value": float(m["fluctuation_ratio"])}
-
-#     def build_properties(self, raw: dict) -> dict:
-#         return {
-#             "Metric Description": "Average number of sign changes in the derivatives of individual conditional expectation curves.",
-#             "Value": f"{raw['value']:.4f}"
-#         }
-
-# =============================================================================
-# Local Metrics Wrappers
-# =============================================================================
-
-# class RankConsistencyMetric(BaseMetric):
-#     def __init__(self): super().__init__("rank_consistency", "score_rank_consistency")
-#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_local(ctx)["rank_consistency"]}
-#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Rank consistency across local explanations.", "Value": f"{raw['value']:.6f}"}
-
-# class ImportanceStabilityMetric(BaseMetric):
-#     def __init__(self): super().__init__("importance_stability", "score_importance_stability")
-#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_local(ctx)["importance_stability"]}
-#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Stability of local feature importances.", "Value": f"{raw['value']:.6f}"}
-
-
-# =============================================================================
-# Surrogate Metrics Wrappers
-# =============================================================================
-
-# class MSEDegradationMetric(BaseMetric):
-#     def __init__(self): super().__init__("mse_degradation", "score_mse_degradation")
-#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["mse_degradation"]}
-#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Degradation in MSE using surrogate.", "Value": f"{raw['value']:.6f}"}
-
-# class SurrogateFidelityMetric(BaseMetric):
-#     def __init__(self): super().__init__("surrogate_fidelity", "score_surrogate_fidelity")
-#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["surrogate_fidelity"]}
-#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Fidelity of surrogate vs original model.", "Value": f"{raw['value']:.6f}"}
-
-# class SurrogateFeatureStabilityMetric(BaseMetric):
-#     def __init__(self): super().__init__("surrogate_feature_stability", "score_surrogate_feature_stability")
-#     def compute(self, ctx: EvaluationContext) -> dict: return {"value": _get_or_compute_surrogate(ctx)["surrogate_feature_stability"]}
-#     def build_properties(self, raw: dict) -> dict: return {"Metric Description": "Stability of features in surrogate.", "Value": f"{raw['value']:.6f}"}
-
-
 # =============================================================================
 # Tree Structural Metrics Wrappers
 # =============================================================================
@@ -710,7 +520,7 @@ def _get_or_compute_xai_consistency(ctx: EvaluationContext) -> dict:
     mode = 'classification' if hasattr(ctx.model, 'predict_proba') else 'regression'
     
     # Parámetro 'k' por defecto a 5 si no se pasa por extras
-    k = ctx.extras.get("xai_consistency_k", 5)
+    k = ctx.extras.get("xai_consistency_k", 3)
 
     try:
         # Usamos X_test y y_test para la consistencia
