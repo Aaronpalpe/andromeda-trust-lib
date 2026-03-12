@@ -10,9 +10,9 @@ import pandas as pd
 
 from sklearn.metrics import confusion_matrix
 from art.metrics import loss_sensitivity
-from art.attacks.evasion import FastGradientMethod
+from art.attacks.evasion import CarliniL2Method, FastGradientMethod
 from art.estimators.classification.scikitlearn import ScikitlearnClassifier
-# from art.attacks.evasion import CarliniL2Method
+from art.estimators.classification import SklearnClassifier
 from art.attacks.evasion import DeepFool
 from scipy.stats import kendalltau, spearmanr
 
@@ -138,7 +138,32 @@ def hopskipjump_metrics(
     init_eval: int = 10,
     init_size: int = 10,
     norm: int | float | str = 2,
+    beta: float = 1.0,
 ) -> dict:
+    '''
+    For a given model this function calculates the HopSkipJump attack metrics.
+    First from the test data selects a random test subset.
+    Then measures the accuracy of the model on this subset.
+    Next creates HopSkipJump attacks on this test set and measures the model's
+    accuracy on the attacks. Compares the before attack and after attack accuracies.
+    Returns a dictionary with the following
+    metrics:
+        Args:
+            model: ML-model (compatible with ART).
+            X_test: Test features.
+            y_test: Test labels.
+            X_train: Optional train features (for feature-wise clipping).
+            n_samples: Number of test samples to use for evaluation (random subset).
+            seed: Random seed for reproducibility.
+            max_iter: Maximum number of iterations for HSJ attack.
+            max_eval: Maximum number of model evaluations for HSJ attack.
+            init_eval: Number of evaluations for initial HSJ attack.
+            init_size: Number of samples for initial HSJ attack.
+            norm: Norm to use for HSJ attack (e.g., 1, 2, np.inf).
+            beta: Scaling factor for accuracy drop calculation (default 1.0, set <1.0 to reduce drop).
+        Returns:
+            Dictionary with HSJ attack metrics
+    '''
     HopSkipJump, BlackBoxClassifier = _safe_import_art_blackbox()
 
     X_test_df = _ensure_dataframe(X_test)
@@ -186,6 +211,7 @@ def hopskipjump_metrics(
                 "init_size": int(init_size),
                 "norm": norm,
                 "seed": int(seed),
+                "beta": float(beta),
             },
         }
 
@@ -238,7 +264,7 @@ def hopskipjump_metrics(
     y_pred_adv_full = y_pred_clean_full.copy()
     y_pred_adv_full[correct_mask] = y_pred_adv_correct
     adv_acc_full = float((y_pred_adv_full == y_eval).mean())
-    accuracy_drop_pct = float(max(0.0, clean_acc_full - adv_acc_full) * 100.0)
+    accuracy_drop_pct = float(max(0.0, clean_acc_full - adv_acc_full*beta) * 100.0)
 
     # Perturbation magnitudes
     delta = np.asarray(X_adv, dtype=np.float32) - np.asarray(X_correct, dtype=np.float32)
@@ -282,7 +308,7 @@ def hopskipjump_metrics(
         },
     }
 
-
+# Only for DT, RF, GBDT models
 def clique_method_metrics(
     *,
     model,
@@ -291,14 +317,38 @@ def clique_method_metrics(
     X_train=None,
     n_samples: int = 200,
     seed: int = 42,
-    eps_init: float = 0.1,
-    norm: float = np.inf,
-    nb_search_steps: int = 10,
+    eps_init: float = 0.5,
+    norm: float = 1,
+    nb_search_steps: int = 5,
     max_clique: int = 2,
     max_level: int = 2,
 ) -> dict:
+    """For a given ensemble tree-based model this function calculates the Clique score.
+    It uses RobustnessVerificationTreeModelsCliqueMethod function from
+    IBM art library to calculate the score. Date must be normalized.
+
+    Args:
+        model: ML-model (Tree-based).
+        X_test: Test features.
+        y_test: Test labels.
+        X_train: Optional train features (for feature-wise clipping).
+        n_samples: Number of test samples to use for evaluation (random subset).
+        seed: Random seed for reproducibility.
+        eps_init: Initial perturbation size for the attack.
+        norm: Norm to use for measuring perturbations (e.g., 1, 2, np.inf).
+        nb_search_steps: Number of search steps for the attack.
+        max_clique: Maximum clique size to consider.
+        max_level: Maximum tree level to consider.
+
+    Returns:
+        Clique score
+    """
+    X_df = _ensure_dataframe(X_test)
+    X_np = _to_numpy_float(X_df)
+    if np.min(X_np) < 0.0 or np.max(X_np) > 1.0:
+        raise ValueError("Clique Method requires input features to be normalized to [0, 1].")
     RobustnessVerificationTreeModelsCliqueMethod, _ = _safe_import_art_metrics()
-    ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
+    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
 
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
@@ -316,7 +366,7 @@ def clique_method_metrics(
         X_train = X_df
     clip_min, clip_max = _featurewise_clip_values(X_train)
 
-    art_clf = ScikitlearnClassifier(model=model, clip_values=(clip_min, clip_max))
+    art_clf = SklearnClassifier(model=model, clip_values=(clip_min, clip_max))
     verifier = RobustnessVerificationTreeModelsCliqueMethod(classifier=art_clf, verbose=False)
 
     X_np = _to_numpy_float(X_eval)
@@ -348,18 +398,33 @@ def clique_method_metrics(
         },
     }
 
-
+# Only for NN models
 def clever_score_metrics(
     *,
     classifier,
     x,
-    n_samples: int = 5,
+    n_samples: int = 10,
     seed: int = 42,
-    nb_batches: int = 10,
-    batch_size: int = 32,
-    radius: float = 0.5,
-    norm: int = 2,
+    nb_batches: int = 1,
+    batch_size: int = 1,
+    radius: float = 500,
+    norm: int = 1,
 ) -> dict:
+    """For a given Keras-NN model this function calculates the Untargeted-Clever score.
+    It uses clever_u function from IBM art library.
+    Returns a score according to the thresholds.
+        Args:
+            classifier: ML-model (Keras).
+            x: Test features.
+            n_samples: Number of test samples to use for evaluation (random subset).
+            seed: Random seed for reproducibility.
+            nb_batches: Number of batches to use for CLEVER estimation.
+            batch_size: Batch size to use for CLEVER estimation.
+            radius: Radius to use for CLEVER estimation.
+            norm: Norm to use for CLEVER estimation (e.g., 1, 2, np.inf).
+        Returns:
+            Clever score
+    """
     _, clever_u = _safe_import_art_metrics()
 
     if not (hasattr(classifier, "class_gradient") and hasattr(classifier, "loss_gradient")):
@@ -389,7 +454,7 @@ def clever_score_metrics(
                 verbose=False,
             )
             scores.append(float(s))
-
+    # ANTES SE DEVOLVIA EL MINIMO
     return {
         "clever_score_mean": float(np.mean(scores)) if scores else 0.0,
         "clever_score_std": float(np.std(scores)) if scores else 0.0,
@@ -434,34 +499,38 @@ def confidence_score_metrics(*, model, X_test, y_test):
         "metric": "ConfidenceScore",
     }
 
-
+# Only for NN models
 def loss_sensitivity_metrics(*, classifier, X_test):
     """For a given Keras-NN model this function calculates the Loss Sensitivity score.
     It uses loss_sensitivity function from IBM art library.
     Returns a score according to the thresholds.
         Args:
-            model: ML-model (Keras).
-            train_data: pd.DataFrame containing the data.
-            test_data: pd.DataFrame containing the data.
-            threshold: list of threshold values
+            classifier: ML-model (Keras).
+            X_test: Test features.
 
         Returns:
             Loss Sensitivity score
     """
+    try:
+        X_df = _ensure_dataframe(X_test)
+        X_np = _to_numpy_float(X_df)
 
-    X_df = _ensure_dataframe(X_test)
-    X_np = _to_numpy_float(X_df)
+        y_pred = classifier.predict(X_np)
 
-    y_pred = classifier.predict(X_np)
+        value = float(loss_sensitivity(classifier, X_np, y_pred))
 
-    value = float(loss_sensitivity(classifier, X_np, y_pred))
+        return {
+            "loss_sensitivity": value,
+            "metric": "LossSensitivity",
+        }
+    except Exception as e:
+        return {
+            "loss_sensitivity": float("nan"),
+            "metric": "LossSensitivity",
+            "error": "Non Computable: Can only be calculated on compatible NN models.",
+        }
 
-    return {
-        "loss_sensitivity": value,
-        "metric": "LossSensitivity",
-    }
-
-
+# Only for NN, LG, SVM models
 def fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42):
     """For a given model this function calculates the fast gradient attack score.
     First from the test data selects a random small test subset.
@@ -481,7 +550,6 @@ def fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42)
         FSG Before attack accuracy
         FSG After attack accuracy
     """
-
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
 
@@ -510,7 +578,7 @@ def fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42)
         "metric": "FGM",
     }
 
-
+# Only for NN, LG, SVM models
 def carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
     """For a given model this function calculates the CW attack score.
     First from the test data selects a random small test subset.
@@ -557,7 +625,7 @@ def carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
         "metric": "CarliniWagner",
     }
 
-
+# Only for NN, LG, SVM models
 def deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
     """For a given model this function calculates the deepfool attack score.
     First from the test data selects a random small test subset.
@@ -604,187 +672,47 @@ def deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
         "metric": "DeepFool",
     }
 
-
-
-# def clever_score(model, train_data, test_data, thresholds):
-# """For a given Keras-NN model this function calculates the Untargeted-Clever score.
-# It uses clever_u function from IBM art library.
-# Returns a score according to the thresholds.
-#     Args:
-#         model: ML-model (Keras).
-#         train_data: pd.DataFrame containing the data.
-#         test_data: pd.DataFrame containing the data.
-#         threshold: list of threshold values
-
-#     Returns:
-#         Clever score
-# """
-#     try:
-#         X_test = test_data.iloc[:,:-1]
-#         X_train = train_data.iloc[:, :-1]
-#         classifier = KerasClassifier(model, False)
-
-#         min_score = 100
-
-#         randomX = X_test.sample(10)
-#         randomX = np.array(randomX)
-
-#         for x in randomX:
-#             temp = clever_u(classifier=classifier, x=x, nb_batches=1, batch_size=1, radius=500, norm=1)
-#             if min_score > temp:
-#                 min_score = temp
-#         score = np.digitize(min_score, thresholds) + 1
-#         return result(score=int(score), properties={"clever_score": info("CLEVER Score", "{:.2f}".format(min_score)),
-#                                                     "depends_on": info("Depends on", "Model")})
-#     except Exception as e:
-#         print(e)
-#         return result(score=np.nan, properties={"non_computable": info("Non Computable Because",
-#                                                                        "Can only be calculated on Keras models.")})
-
-# def loss_sensitivity_score(model, train_data, test_data, thresholds):
-#     """For a given Keras-NN model this function calculates the Loss Sensitivity score.
-#     It uses loss_sensitivity function from IBM art library.
-#     Returns a score according to the thresholds.
-#         Args:
-#             model: ML-model (Keras).
-#             train_data: pd.DataFrame containing the data.
-#             test_data: pd.DataFrame containing the data.
-#             threshold: list of threshold values
-
-#         Returns:
-#             Loss Sensitivity score
+# LO QUE SE HAN DESPLAZADO LOS DATOS DE TRAIN, NOSOTROS SOLO UN MOMENTO
+# def psi_metrics(
+#     *,
+#     train_values,
+#     current_values,
+#     n_bins: int = 10,
+#     eps: float = 1e-8,
+# ) -> dict:
 #     """
-#     try:
-#         X_test = test_data.iloc[:,:-1]
-#         X_test = np.array(X_test)
-#         y = model.predict(X_test)
-
-#         classifier = KerasClassifier(model=model, use_logits=False)
-#         l_s = loss_sensitivity(classifier, X_test, y)
-#         score = np.digitize(l_s, thresholds, right=True) + 1
-#         return result(score=int(score), properties={"loss_sensitivity": info("Average gradient value of the loss function", "{:.2f}".format(l_s)),
-#                                                     "depends_on": info("Depends on", "Model")})
-#     except Exception as e:
-#         print(e)
-#         return result(score=np.nan, properties={"non_computable": info("Non Computable Because",
-#                                                                        "Can only be calculated on Keras models.")})
-
-
-# def clique_method(model, train_data, test_data, thresholds, factsheet):
-#     """For a given tree-based model this function calculates the Clique score.
-#     First checks the factsheet to see if the score is already calculated.
-#     If not it uses RobustnessVerificationTreeModelsCliqueMethod function from
-#     IBM art library to calculate the score. Returns a score according to the thresholds.
-
-#     Args:
-#         model: ML-model (Tree-based).
-#         train_data: pd.DataFrame containing the data.
-#         test_data: pd.DataFrame containing the data.
-#         threshold: list of threshold values
-#         factsheet: factsheet dict
-
-#     Returns:
-#         Clique score
-#         Error bound
-#         Error
+#     Population Stability Index between two 1D distributions.
 #     """
-#     with open('configs/mappings/robustness/default.json', 'r') as f:
-#           default_map = json.loads(f.read())
-    
-#     if thresholds == default_map["score_clique_method"]["thresholds"]["value"]:
-#         if "scores" in factsheet.keys() and "properties" in factsheet.keys():
-#             score = factsheet["scores"]["robustness"]["clique_method"]
-#             properties = factsheet["properties"]["robustness"]["clique_method"]
-#             return result(score=score, properties=properties)
-    
-#     try:
-#         X_test = test_data.iloc[:, :-1]
-#         y_test = test_data.iloc[:, -1:]
-#         classifier = SklearnClassifier(model)
-#         rt = RobustnessVerificationTreeModelsCliqueMethod(classifier=classifier, verbose=True)
 
-#         bound, error = rt.verify(x=X_test.to_numpy()[100:103], y=y_test[100:103].to_numpy(), eps_init=0.5, norm=1,
-#                                  nb_search_steps=5, max_clique=2, max_level=2)
-#         score = np.digitize(bound, thresholds) + 1
-#         return result(score=int(score), properties={
-#             "error_bound": info("Average error bound", "{:.2f}".format(bound)),
-#             "error": info("Error", "{:.1f}".format(error)),
-#             "depends_on": info("Depends on", "Model")
-#         })
-#     except:
-#         return result(score=np.nan, properties={"non_computable": info("Non Computable Because", "Can only be calculated on Tree-Based models.")})
+#     train = np.asarray(train_values).reshape(-1)
+#     current = np.asarray(current_values).reshape(-1)
 
+#     # bins definidos sobre train (práctica estándar)
+#     breakpoints = np.linspace(
+#         np.min(train),
+#         np.max(train),
+#         n_bins + 1
+#     )
 
+#     p_counts, _ = np.histogram(train, bins=breakpoints)
+#     q_counts, _ = np.histogram(current, bins=breakpoints)
 
-def psi_metrics(
-    *,
-    train_values,
-    current_values,
-    n_bins: int = 10,
-    eps: float = 1e-8,
-) -> dict:
-    """
-    Population Stability Index between two 1D distributions.
-    """
+#     p = p_counts / max(len(train), 1)
+#     q = q_counts / max(len(current), 1)
 
-    train = np.asarray(train_values).reshape(-1)
-    current = np.asarray(current_values).reshape(-1)
+#     # evitar log(0)
+#     p = np.clip(p, eps, None)
+#     q = np.clip(q, eps, None)
 
-    # bins definidos sobre train (práctica estándar)
-    breakpoints = np.linspace(
-        np.min(train),
-        np.max(train),
-        n_bins + 1
-    )
-
-    p_counts, _ = np.histogram(train, bins=breakpoints)
-    q_counts, _ = np.histogram(current, bins=breakpoints)
-
-    p = p_counts / max(len(train), 1)
-    q = q_counts / max(len(current), 1)
-
-    # evitar log(0)
-    p = np.clip(p, eps, None)
-    q = np.clip(q, eps, None)
-
-    psi = float(np.sum((p - q) * np.log(p / q)))
-
-    return {
-        "psi": psi,
-        "n_bins": int(n_bins),
-        "metric": "PSI",
-    }
-
-# def robustness_ratio(*, clean_acc: float, perturbed_acc: float) -> dict:
-#     if clean_acc <= 0:
-#         ratio = 0.0
-#     else:
-#         ratio = float(perturbed_acc / clean_acc)
+#     psi = float(np.sum((p - q) * np.log(p / q)))
 
 #     return {
-#         "robustness_ratio": ratio,
-#         "clean_accuracy": clean_acc,
-#         "perturbed_accuracy": perturbed_acc,
-#         "metric": "RobustnessScore",
+#         "psi": psi,
+#         "n_bins": int(n_bins),
+#         "metric": "PSI",
 #     }
 
-def effective_robustness(
-    *,
-    acc_scenario_1: float,
-    acc_scenario_2: float,
-    beta: float = 1.0,
-) -> dict:
-
-    value = float(acc_scenario_2 - beta * acc_scenario_1)
-
-    return {
-        "effective_robustness": value,
-        "acc_scenario_1": acc_scenario_1,
-        "acc_scenario_2": acc_scenario_2,
-        "beta": beta,
-        "metric": "EffectiveRobustness",
-    }
-
+# NECESITO TORCH PARA PROBARLO Y NO SON ROBUSTEZ
 # def neuron_coverage(
 #     *,
 #     model,
@@ -876,65 +804,6 @@ def effective_robustness(
 #         "bknc": len(bottom_neurons) / max(total_neurons, 1),
 #         "metric": "TKNC_BKNC",
 #     }
-
-def rgr_metrics(
-    *,
-    model,
-    X_test,
-    feature_index: int,
-    perturbation: float = 0.01,
-    method: str = "additive",  # "additive" | "multiplicative"
-    ranking_method: str = "kendall",  # "kendall" | "spearman"
-) -> dict:
-    """
-    Rank-based Global Robustness (RGR).
-    Measures stability of prediction ranking under structured feature perturbation.
-    """
-    X_df = _ensure_dataframe(X_test).copy()
-
-    if feature_index < 0 or feature_index >= X_df.shape[1]:
-        raise ValueError("feature_index out of range.")
-
-    # --- Original predictions ---
-    y_original = np.asarray(model.predict(X_df)).reshape(-1)
-
-    # If classification labels → convert to numeric scores
-    # If model has predict_proba use max prob
-    if hasattr(model, "predict_proba"):
-        y_original = np.max(model.predict_proba(X_df), axis=1)
-
-    # --- Perturb one feature ---
-    if method == "additive":
-        X_df.iloc[:, feature_index] += perturbation
-    elif method == "multiplicative":
-        X_df.iloc[:, feature_index] *= (1.0 + perturbation)
-    else:
-        raise ValueError("method must be 'additive' or 'multiplicative'")
-
-    # --- Perturbed predictions ---
-    y_pert = np.asarray(model.predict(X_df)).reshape(-1)
-
-    if hasattr(model, "predict_proba"):
-        y_pert = np.max(model.predict_proba(X_df), axis=1)
-
-    # --- Rank correlation ---
-    if ranking_method == "kendall":
-        corr, _ = kendalltau(y_original, y_pert)
-    elif ranking_method == "spearman":
-        corr, _ = spearmanr(y_original, y_pert)
-    else:
-        raise ValueError("ranking_method must be 'kendall' or 'spearman'")
-
-    corr = 0.0 if corr is None or np.isnan(corr) else float(corr)
-
-    return {
-        "rgr_score": corr,
-        "feature_index": int(feature_index),
-        "perturbation": float(perturbation),
-        "method": method,
-        "ranking_method": ranking_method,
-        "metric": "RGR",
-    }
 
 def ece_metrics(
     *,

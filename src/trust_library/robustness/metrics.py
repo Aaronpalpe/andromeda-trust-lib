@@ -44,6 +44,10 @@ _CONF_KEY = "robustness_confidence_metrics"
 _CONF_ERROR_KEY = "robustness_confidence_error"
 
 
+_ECE_KEY = "calibration_ece_metrics"
+_ECE_PARAMS_KEY = "calibration_ece_params"
+_ECE_ERROR_KEY = "calibration_ece_error"
+    
 # ============================================================
 # CACHED COMPUTES
 # ============================================================
@@ -77,6 +81,7 @@ def _get_or_compute_hsj(ctx: EvaluationContext) -> dict:
             init_eval=int(params.get("init_eval", 10)),
             init_size=int(params.get("init_size", 10)),
             norm=params.get("norm", 2),
+            beta=float(params.get("beta", 1.0)),
         )
     except Exception as exc:
         ctx.extras[_HSJ_ERROR_KEY] = str(exc)
@@ -156,9 +161,6 @@ def _get_or_compute_clever(ctx: EvaluationContext) -> dict:
     return metrics
 
 
-# ============================================================
-# CACHED COMPUTES
-# ============================================================
 
 def _get_or_compute_fgm(ctx: EvaluationContext) -> dict:
     cached = ctx.extras.get(_FGM_KEY)
@@ -270,6 +272,30 @@ def _get_or_compute_confidence(ctx: EvaluationContext) -> dict:
     ctx.extras[_CONF_KEY] = metrics
     return metrics
 
+def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
+    cached = ctx.extras.get(_ECE_KEY)
+    if isinstance(cached, dict):
+        return cached
+
+    if _ECE_ERROR_KEY in ctx.extras:
+        raise RuntimeError(str(ctx.extras[_ECE_ERROR_KEY]))
+
+    params = ctx.extras.get(_ECE_PARAMS_KEY, {}) or {}
+
+    try:
+        metrics = core.ece_metrics(
+            model=ctx.model,
+            X_test=ctx.X_test,
+            y_test=ctx.y_test,
+            n_bins=int(params.get("n_bins", 10)),
+        )
+    except Exception as exc:
+        ctx.extras[_ECE_ERROR_KEY] = str(exc)
+        raise
+
+    ctx.extras[_ECE_KEY] = metrics
+    return metrics
+
 # ============================================================
 # PROPERTIES HELPERS
 # ============================================================
@@ -298,7 +324,7 @@ def _hsj_common_props(raw: dict) -> dict:
 # HSJ-derived metrics
 # ============================================================
 
-class HopSkipJumpAccuracyDropMetric(BaseMetric):
+class HopSkipJumpAccuracyDropMetric(BaseMetric): # EffectiveRobustnessMetric
     """Accuracy drop (%) on evaluation subset after HSJ (lower is better)."""
 
     def __init__(self):
@@ -507,7 +533,17 @@ class DeepFoolAttackMetric(BaseMetric):
     def build_properties(self, raw: dict) -> dict:
         return raw
 
+class ConfidenceScoreMetric(BaseMetric):
+    def __init__(self):
+        super().__init__("confidence_score", "score_confidence_score")
 
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute_confidence(ctx)
+        return {"value": float(m["confidence_score"]), **m}
+
+    def build_properties(self, raw: dict) -> dict:
+        return raw
+    
 class LossSensitivityMetric(BaseMetric):
     def __init__(self):
         super().__init__("loss_sensitivity", "score_loss_sensitivity")
@@ -520,37 +556,24 @@ class LossSensitivityMetric(BaseMetric):
         return raw
 
 
-class ConfidenceScoreMetric(BaseMetric):
-    def __init__(self):
-        super().__init__("confidence_score", "score_confidence_score")
+# class PopulationStabilityIndexMetric(BaseMetric):
+#     def __init__(self):
+#         super().__init__("psi", "score_psi")
 
-    def compute(self, ctx: EvaluationContext) -> dict:
-        m = _get_or_compute_confidence(ctx)
-        return {"value": float(m["confidence_score"]), **m}
+#     def compute(self, ctx: EvaluationContext) -> dict:
+#         train_values = ctx.extras.get("psi_train_distribution")
+#         current_values = ctx.extras.get("psi_current_distribution")
 
-    def build_properties(self, raw: dict) -> dict:
-        return raw
-    
+#         if train_values is None or current_values is None:
+#             raise RuntimeError("PSI requires train and current distributions in ctx.extras.")
 
+#         m = core.psi_metrics(
+#             train_values=train_values,
+#             current_values=current_values,
+#             n_bins=ctx.extras.get("psi_bins", 10),
+#         )
 
-class PopulationStabilityIndexMetric(BaseMetric):
-    def __init__(self):
-        super().__init__("psi", "score_psi")
-
-    def compute(self, ctx: EvaluationContext) -> dict:
-        train_values = ctx.extras.get("psi_train_distribution")
-        current_values = ctx.extras.get("psi_current_distribution")
-
-        if train_values is None or current_values is None:
-            raise RuntimeError("PSI requires train and current distributions in ctx.extras.")
-
-        m = core.psi_metrics(
-            train_values=train_values,
-            current_values=current_values,
-            n_bins=ctx.extras.get("psi_bins", 10),
-        )
-
-        return {"value": m["psi"], **m}
+#         return {"value": m["psi"], **m}
     
 class RobustnessRatioHSJMetric(BaseMetric):
     def __init__(self):
@@ -569,115 +592,17 @@ class RobustnessRatioHSJMetric(BaseMetric):
             "clean_accuracy": clean,
             "adv_accuracy": adv,
         }
-    
-
-class EffectiveRobustnessMetric(BaseMetric):
-    def __init__(self):
-        super().__init__("effective_robustness", "score_effective_robustness")
-
-    def compute(self, ctx: EvaluationContext) -> dict:
-        acc1 = ctx.extras.get("acc_scenario_1")
-        acc2 = ctx.extras.get("acc_scenario_2")
-        beta = ctx.extras.get("beta", 1.0)
-
-        if acc1 is None or acc2 is None:
-            raise RuntimeError("EffectiveRobustness requires acc_scenario_1 and acc_scenario_2.")
-
-        m = core.effective_robustness(
-            acc_scenario_1=acc1,
-            acc_scenario_2=acc2,
-            beta=beta,
-        )
-
-        return {"value": m["effective_robustness"], **m}
-
-
-_RGR_KEY = "robustness_rgr_metrics"
-_RGR_PARAMS_KEY = "robustness_rgr_params"
-_RGR_ERROR_KEY = "robustness_rgr_error"
-
-_ECE_KEY = "calibration_ece_metrics"
-_ECE_PARAMS_KEY = "calibration_ece_params"
-_ECE_ERROR_KEY = "calibration_ece_error"
-
-def _get_or_compute_rgr(ctx: EvaluationContext) -> dict:
-    cached = ctx.extras.get(_RGR_KEY)
-    if isinstance(cached, dict):
-        return cached
-
-    if _RGR_ERROR_KEY in ctx.extras:
-        raise RuntimeError(str(ctx.extras[_RGR_ERROR_KEY]))
-
-    params = ctx.extras.get(_RGR_PARAMS_KEY, {}) or {}
-
-    try:
-        metrics = core.rgr_metrics(
-            model=ctx.model,
-            X_test=ctx.X_test,
-            feature_index=int(params.get("feature_index", 0)),
-            perturbation=float(params.get("perturbation", 0.01)),
-            method=params.get("method", "additive"),
-            ranking_method=params.get("ranking_method", "kendall"),
-        )
-    except Exception as exc:
-        ctx.extras[_RGR_ERROR_KEY] = str(exc)
-        raise
-
-    ctx.extras[_RGR_KEY] = metrics
-    return metrics
-
-def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
-    cached = ctx.extras.get(_ECE_KEY)
-    if isinstance(cached, dict):
-        return cached
-
-    if _ECE_ERROR_KEY in ctx.extras:
-        raise RuntimeError(str(ctx.extras[_ECE_ERROR_KEY]))
-
-    params = ctx.extras.get(_ECE_PARAMS_KEY, {}) or {}
-
-    try:
-        metrics = core.ece_metrics(
-            model=ctx.model,
-            X_test=ctx.X_test,
-            y_test=ctx.y_test,
-            n_bins=int(params.get("n_bins", 10)),
-        )
-    except Exception as exc:
-        ctx.extras[_ECE_ERROR_KEY] = str(exc)
-        raise
-
-    ctx.extras[_ECE_KEY] = metrics
-    return metrics
-
-
-class RankGlobalRobustnessMetric(BaseMetric):
-    """
-    Rank-based Global Robustness (RGR).
-    Measures ranking stability under single-feature perturbation.
-    Higher is better (1 = identical ranking).
-    """
-
-    def __init__(self):
-        super().__init__("rgr", "score_rgr")
-
-    def compute(self, ctx: EvaluationContext) -> dict:
-        m = _get_or_compute_rgr(ctx)
-        return {"value": float(m.get("rgr_score", 0.0)), **m}
-
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": (
-                "Rank Global Robustness (RGR): stability of prediction ranking "
-                "after perturbing one feature. 1 indicates identical ranking."
+                "Robustness Ratio (HSJ): ratio of adversarial accuracy to clean accuracy after HSJ attack. "
+                "Higher is more robust; 1.0 means no drop, 0.0 means completely broken."
             ),
             "Value": float(raw.get("value", 0.0)),
-            "Feature Index": raw.get("feature_index"),
-            "Perturbation": raw.get("perturbation"),
-            "Ranking Method": raw.get("ranking_method"),
-            "Metric": raw.get("metric"),
+            "Clean Accuracy": float(raw.get("clean_accuracy", 0.0)),
+            "Adversarial Accuracy": float(raw.get("adv_accuracy", 0.0)),
         }
-    
+
 
 class ExpectedCalibrationErrorMetric(BaseMetric):
     """

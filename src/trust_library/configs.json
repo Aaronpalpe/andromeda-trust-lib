@@ -1,381 +1,302 @@
 {
     "pillars": {
-        "fairness": 0.25,
-        "explainability": 0.25,
-        "privacy": 0.25,
-        "robustness": 0.25,
-        "accountability": 0.25,
-        "sustainability": 0.25
+        "fairness": 0.2,
+        "explainability": 0.2,
+        "privacy": 0.2,
+        "robustness": 0.2,
+        "accountability": 0.2,
+        "sustainability": 0.2
     },
-
     "weights": {
         "fairness": {
-            "underfitting": 0.35,
-            "overfitting": 0.15,
+            "underfitting": 0.1,
+            "overfitting": 0.1,
+            "class_balance": 0.03,
             "statistical_parity_difference": 0.15,
-            "equal_opportunity_difference": 0.2,
-            "average_odds_difference": 0.1,
-            "disparate_impact": 0.1,
-            "class_balance": 0.1,
-            "accuracy_parity": 0.1,
-            "predictive_parity": 0.1,
-            "treatment_equality": 0.1,
-            "calibration_gap": 0.1,
-            "well_calibration_error": 0.1,
-            "theil_index": 0.1,
-            "coefficient_variation": 0.1,
-            "individual_consistency": 0.1,
-            "class_imbalance": 0.1,
-            "kl_divergence": 0.1,
-            "conditional_dp": 0.1,
-            "smoothed_edf": 0.1,
+            "disparate_impact": 0.15,
+            "equal_opportunity_difference": 0.1,
+            "average_odds_difference": 0.05,
+            "accuracy_parity": 0.05,
+            "predictive_parity": 0.05,
+            "treatment_equality": 0.05,
+            "calibration_gap": 0.02,
+            "well_calibration_error": 0.02,
+            "generalized_entropy_index": 0.01,
+            "theil_index": 0.01,
+            "coefficient_of_variation": 0.01,
+            "individual_consistency": 0.01,
+            "class_imbalance": 0.02,
+            "kl_divergence": 0.01,
+            "conditional_demographic_disparity": 0.01,
+            "smoothed_edf": 0.01,
             "bias_amplification": 0.1,
-            "between_group_ge": 0.1,
-            "cohens_d": 0.1,
-            "two_sd_rule": 0.1
+            "between_group_generalized_entropy_error": 0.01,
+            "cohens_d": 0.01,
+            "z_test_diff": 0.01
         },
         "explainability": {
-            "algorithm_class": 0.55,
-            "correlated_features": 0.15,
-            "model_size": 0.15,
-            "feature_relevance": 0.15,
-
-            "sparsity": 0.4,
-            "feature_entropy": 0.2,
-            "topk_concentration": 0.4
+            "sparsity": 0.08,
+            "feature_entropy": 0.08,
+            "topk_concentration": 0.08,
+            "algorithm_class": 0.12,
+            "correlated_features": 0.08,
+            "model_size": 0.08,
+            "feature_relevance": 0.08,
+            "number_of_rules": 0.06,
+            "average_rule_length": 0.06,
+            "rule_stats": 0.06,
+            "tree_depth": 0.06,
+            "interaction_strength": 0.06,
+            "faithfulness": 0.08,
+            "monotonicity": 0.08,
+            "infidelity": 0.08,
+            "alpha_score": 0.08,
+            "xai_ease_score": 0.08,
+            "position_parity": 0.08,
+            "rank_alignment": 0.08,
+            "spread_ratio": 0.08,
+            "spread_divergence": 0.08,
+            "weighted_average_depth": 0.06,
+            "weighted_average_explainability_score": 0.06,
+            "weighted_tree_gini": 0.06,
+            "tree_depth_variance": 0.06,
+            "tree_number_of_rules": 0.06,
+            "tree_number_of_features": 0.06,
+            "xai_consistency_score": 0.08
         },
         "privacy": {
-            "epsilon": 0.5,
-            "epsilon_star": 0.5,
-            "shapr_score": 0.5,
-            "attribute_inference_score": 0.5,
-            "accuracy_ratio_score": 0.5
+            "epsilon_dp": 0.2,
+            "epsilon_star": 0.2,
+            "shapr": 0.2,
+            "attribute_inference": 0.2,
+            "accuracy_ratio": 0.2,
+            "privacy_risk": 0.2,
+            "k_anonymity": 0.2,
+            "l_diversity": 0.2,
+            "t_closeness": 0.2
         },
         "robustness": {
-            "confidence_score": 0.2,
+            "er_hopskipjump_attack": 0.2,
+            "attack_success_rate": 0.2,
+            "adversarial_accuracy": 0.2,
+            "empirical_robustness_l2": 0.2,
+            "empirical_robustness_linf": 0.2,
             "clique_method": 0.2,
-            "loss_sensitivity": 0.2,
             "clever_score": 0.2,
             "er_fast_gradient_attack": 0.2,
             "er_carlini_wagner_attack": 0.2,
             "er_deepfool_attack": 0.2,
-            "er_hopskipjump_attack": 0.2
+            "loss_sensitivity": 0.2,
+            "confidence_score": 0.2,
+            "robustness_ratio_hsj": 0.2,
+            "expected_calibration_error": 0.2
         },
         "accountability": {
-            "normalization": 0.2,
-            "missing_data": 0.2,
-            "regularization": 0.2,
-            "train_test_split": 0.2,
-            "factsheet_completeness": 0.2
+            "train_test_split": 0.15,
+            "missing_data": 0.15,
+            "normalization": 0.15,
+            "regularization": 0.15,
+            "factsheet_completeness": 0.4
         },
         "sustainability": {
+            "energy_consumed": 0.25,
             "emissions": 0.5,
-            "energy": 0.25,
             "carbon_intensity": 0.25
         }
-
     },
     "mappings": {
         "fairness": {
             "score_underfitting": {
                 "thresholds": {
-                    "value": [
-                        0.8,
-                        0.85,
-                        0.9,
-                        0.95
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.8, 0.85, 0.9, 0.95],
+                    "description": "Test accuracy thresholds. Higher is better.",
+                    "label": "Underfitting Thresholds"
                 }
             },
             "score_overfitting": {
                 "thresholds": {
-                    "value": [
-                        0.04,
-                        0.03,
-                        0.02,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
-                }
-            },
-            "score_statistical_parity_difference": {
-                "thresholds": {
-                    "value": [
-                        0.075,
-                        0.05,
-                        0.025,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
-                }
-            },
-            "score_equal_opportunity_difference": {
-                "thresholds": {
-                    "value": [
-                        0.15,
-                        0.1,
-                        0.05,
-                        0.03,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
-                }
-            },
-            "score_average_odds_difference": {
-                "thresholds": {
-                    "value": [
-                        0.15,
-                        0.1,
-                        0.05,
-                        0.03,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
-                }
-            },
-            "score_disparate_impact": {
-                "thresholds": {
-                    "value": [
-                        0.8,
-                        0.85,
-                        0.9,
-                        0.95
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.04, 0.03, 0.02, 0.01],
+                    "description": "Train-test accuracy gap thresholds. Lower is better.",
+                    "label": "Overfitting Gap Thresholds"
                 }
             },
             "score_class_balance": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.2,
-                        0.3,
-                        0.4
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.1, 0.25, 0.5, 0.8],
+                    "description": "Class distribution balance ratio thresholds. Higher is better.",
+                    "label": "Class Balance Thresholds"
+                }
+            },
+            "score_statistical_parity_difference": {
+                "thresholds": {
+                    "value": [0.15, 0.1, 0.05, 0.03],
+                    "description": "Absolute statistical parity difference thresholds. Lower is better.",
+                    "label": "Statistical Parity Difference Thresholds"
+                }
+            },
+            "score_disparate_impact": {
+                "thresholds": {
+                    "value": [0.6, 0.75, 0.85, 0.95],
+                    "description": "Disparate impact ratio thresholds (closer to 1 is better).",
+                    "label": "Disparate Impact Thresholds"
+                }
+            },
+            "score_equal_opportunity_difference": {
+                "thresholds": {
+                    "value": [0.15, 0.1, 0.05, 0.03],
+                    "description": "Absolute equal opportunity difference thresholds. Lower is better.",
+                    "label": "Equal Opportunity Difference Thresholds"
+                }
+            },
+            "score_average_odds_difference": {
+                "thresholds": {
+                    "value": [0.15, 0.1, 0.05, 0.03],
+                    "description": "Absolute average odds difference thresholds. Lower is better.",
+                    "label": "Average Odds Difference Thresholds"
                 }
             },
             "score_accuracy_parity": {
                 "thresholds": {
-                    "value": [
-                        0.05,
-                        0.03,
-                        0.02,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.15, 0.1, 0.05, 0.03],
+                    "description": "Absolute accuracy parity gap thresholds. Lower is better.",
+                    "label": "Accuracy Parity Thresholds"
                 }
             },
             "score_predictive_parity": {
                 "thresholds": {
-                    "value": [
-                        0.05,
-                        0.03,
-                        0.02,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.15, 0.1, 0.05, 0.02],
+                    "description": "Absolute predictive parity gap thresholds. Lower is better.",
+                    "label": "Predictive Parity Thresholds"
                 }
             },
             "score_treatment_equality": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.2, 0.1, 0.05, 0.02],
+                    "description": "Absolute treatment equality difference thresholds. Lower is better.",
+                    "label": "Treatment Equality Thresholds"
                 }
             },
             "score_calibration_gap": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.15, 0.1, 0.05, 0.02],
+                    "description": "Calibration gap thresholds. Lower is better.",
+                    "label": "Calibration Gap Thresholds"
                 }
             },
             "score_well_calibration_error": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.15, 0.1, 0.05, 0.02],
+                    "description": "Expected calibration error thresholds. Lower is better.",
+                    "label": "Well Calibration Error Thresholds"
                 }
             },
-
+            "score_generalized_entropy_index": {
+                "thresholds": {
+                    "value": [0.15, 0.1, 0.05, 0.02],
+                    "description": "Generalized entropy index thresholds. Lower is better.",
+                    "label": "Generalized Entropy Index Thresholds"
+                }
+            },
             "score_theil_index": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.15, 0.1, 0.05, 0.02],
+                    "description": "Theil index thresholds. Lower is better.",
+                    "label": "Theil Index Thresholds"
                 }
             },
             "score_coefficient_of_variation": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.2, 0.15, 0.1, 0.05],
+                    "description": "Coefficient of variation thresholds. Lower is better.",
+                    "label": "Coefficient of Variation Thresholds"
                 }
             },
             "score_individual_consistency": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
-                }
-            },
-            "class_imbalance": {
-                "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.6, 0.75, 0.85, 0.95],
+                    "description": "Individual consistency thresholds. Higher is better.",
+                    "label": "Individual Consistency Thresholds"
                 }
             },
             "score_kl_divergence": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.5, 0.2, 0.1, 0.05],
+                    "description": "KL divergence thresholds between group label distributions. Lower is better.",
+                    "label": "KL Divergence Thresholds"
                 }
             },
-            "score_conditional_dp": {
+            "score_conditional_demographic_disparity": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.2, 0.1, 0.05, 0.02],
+                    "description": "Conditional demographic disparity thresholds. Lower is better.",
+                    "label": "Conditional Demographic Disparity Thresholds"
                 }
             },
             "score_smoothed_edf": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.2, 0.1, 0.05, 0.02],
+                    "description": "Smoothed EDF log-ratio thresholds. Lower is better.",
+                    "label": "Smoothed EDF Thresholds"
                 }
             },
             "score_bias_amplification": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.15, 0.1, 0.05, 0.01],
+                    "description": "Bias amplification thresholds. Lower is better.",
+                    "label": "Bias Amplification Thresholds"
                 }
             },
-            "score_between_group_ge": {
+            "score_between_group_generalized_entropy_error": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.05,
-                        0.03,
-                        0.01,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.15, 0.1, 0.05, 0.02],
+                    "description": "Between-group generalized entropy error thresholds. Lower is better.",
+                    "label": "Between-Group GEI Error Thresholds"
                 }
             },
             "score_cohens_d": {
                 "thresholds": {
-                    "value": [
-                        0.8,
-                        0.5,
-                        0.2,
-                        0.1,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.8, 0.5, 0.2, 0.05],
+                    "description": "Absolute Cohen's d thresholds (large to negligible effect). Lower is better.",
+                    "label": "Cohen's D Thresholds"
                 }
             },
-            "score_two_sd_rule": {
+            "score_z_test_diff": {
                 "thresholds": {
-                    "value": [
-                        0.8,
-                        0.5,
-                        0.2,
-                        0.1,
-                        0
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [3.0, 2.58, 1.96, 1.0],
+                    "description": "Absolute z-statistic thresholds. Lower is better.",
+                    "label": "Z-Test Difference Thresholds"
+                }
+            },
+            "score_class_imbalance": {
+                "thresholds": {
+                    "value": [0.4, 0.3, 0.2, 0.1],
+                    "description": "Protected vs. unprotected group size imbalance thresholds. Lower is better.",
+                    "label": "Class Imbalance Thresholds"
                 }
             }
         },
         "explainability": {
+            "score_sparsity": {
+                "thresholds": {
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Fraction of active features (|SHAP| above threshold). Lower is better.",
+                    "label": "Sparsity Thresholds"
+                }
+            },
+            "score_feature_entropy": {
+                "thresholds": {
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Normalized entropy of feature importance. Lower is better.",
+                    "label": "Feature Entropy Thresholds"
+                }
+            },
+            "score_topk_concentration": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Share of total importance captured by top-k features. Higher is better.",
+                    "label": "Top-K Concentration Thresholds"
+                }
+            },
             "score_algorithm_class": {
                 "clf_type_score": {
                     "value": {
@@ -392,260 +313,362 @@
                         "LinearRegression": 3.5,
                         "Sequential": 1
                     },
-                    "description": "Mapping of Learning techniques to the level of explainability based on on literature research and qualitative analysis of each learning technique. For more information see gh-pages/explainability/taxonomy",
-                    "label": "Score Mapping"
-                }
-            },
-            "score_model_size": {
-                "thresholds": {
-                    "value": [
-                        100,
-                        50,
-                        25,
-                        15
-                    ],
-                    "description": "Thresholds of how to map model size to a score from 1-5. Example if 10 is the first number it means that a model with 10 or less features would get the best score(5) and if 500 was the last number it would mean that a model with 500 or more features would get the worst score (1), analog for the numbers in between",
-                    "label": "Score Thresholds"
+                    "description": "Mapping from model families to explainability scores based on interpretability literature.",
+                    "label": "Algorithm Class Mapping"
                 }
             },
             "score_correlated_features": {
                 "high_cor": {
                     "value": 0.95,
-                    "description": "Threshold value to classify a correlation as highly correlated. Default value is 0.95 meaning every correlation equal or higher than 0.9 would be considered highly correlated",
+                    "description": "Correlation threshold to classify a pair as highly correlated.",
                     "label": "High Correlation Threshold"
                 },
                 "thresholds": {
-                    "value": [
-                        0.05,
-                        0.15,
-                        0.25,
-                        0.4
-                    ],
-                    "description": "Thresholds of how to map the percentage of highly correlated features (>= high_cor or default 0.9) to a score from 1-5. Example if 0.05 is the first number it means that training dataset with 5% or less highly correlated variables would get the best score(5) and if 0.4 was the last number it would mean that a training dataset 40% or more highly correlated features would get the worst score (1), analog for the numbers in between",
-                    "label": "Score Thresholds"
+                    "value": [0.4, 0.25, 0.15, 0.05],
+                    "description": "Fraction of highly correlated features. Lower is better.",
+                    "label": "Correlated Features Thresholds"
+                }
+            },
+            "score_model_size": {
+                "thresholds": {
+                    "value": [100, 50, 25, 15],
+                    "description": "Number of input features. Smaller models are usually easier to interpret.",
+                    "label": "Model Size Thresholds"
                 }
             },
             "score_feature_relevance": {
                 "thresholds": {
-                    "value": [
-                        0.05,
-                        0.1,
-                        0.15,
-                        0.2
-                    ],
-                    "description": "Map the fraction of many features make up 60% of all importance to a Score from 1-5. If the first number in the list is 0.05 it means that 5% or less features make up more than 60% of all importance, which would be a very skewed distribution of the feature importance and result in the worst score of 1, and if the next number is 0.1 it means if the fraction is between 5%-10% the Score would be a 2, analog the other thresholds",
-                    "label": "Score Thresholds"
+                    "value": [0.05, 0.1, 0.15, 0.2],
+                    "description": "Fraction of features needed to explain ~60% of total importance. Higher indicates less concentration.",
+                    "label": "Feature Relevance Thresholds"
                 },
                 "threshold_outlier": {
                     "value": 0.03,
-                    "description": "The threshold for a score penalty if there are too many outliers in the feature importance distribution. For example if the threshold is 0.03 it means taht if 3% or more features are outliers a penalty with tha value #penalty_outlier would be substacted from the score",
-                    "label": "Threshold for outliers"
+                    "description": "Outlier-rate threshold to apply optional score penalty.",
+                    "label": "Outlier Rate Threshold"
                 },
                 "penalty_outlier": {
                     "value": 0,
-                    "description": "The penalty that should be applied if the the number of outliers in the feature importance distribution is equal or greater than the #threshold_outlier. For example if this value is 0.5 it would mean if the the theshold is reached 0.5 points will be substacted from score. If the number is set to 0 no penalty will be applied",
-                    "label": "Penalty for outliers"
+                    "description": "Penalty applied when outlier-rate threshold is exceeded.",
+                    "label": "Outlier Penalty"
                 }
             },
-
+            "score_number_of_rules": {
+                "thresholds": {
+                    "value": [100, 50, 20, 10],
+                    "description": "Number of extracted decision rules. Lower is better.",
+                    "label": "Number of Rules Thresholds"
+                }
+            },
+            "score_average_rule_length": {
+                "thresholds": {
+                    "value": [12, 8, 5, 3],
+                    "description": "Average rule length/depth. Lower is better.",
+                    "label": "Average Rule Length Thresholds"
+                }
+            },
+            "score_rule_stats": {
+                "thresholds": {
+                    "value": [12, 8, 5, 3],
+                    "description": "Aggregate rule complexity (average length). Lower is better.",
+                    "label": "Rule Statistics Thresholds"
+                }
+            },
+            "score_tree_depth": {
+                "thresholds": {
+                    "value": [15, 10, 6, 4],
+                    "description": "Maximum tree depth. Lower is better.",
+                    "label": "Tree Depth Thresholds"
+                }
+            },
+            "score_interaction_strength": {
+                "thresholds": {
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Fraction of explanation mass due to interactions. Lower often implies simpler explanations.",
+                    "label": "Interaction Strength Thresholds"
+                }
+            },
+            "score_faithfulness": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Correlation between attribution relevance and model behavior. Higher is better.",
+                    "label": "Faithfulness Thresholds"
+                }
+            },
+            "score_monotonicity": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Proportion of monotonic explanation behavior across feature additions. Higher is better.",
+                    "label": "Monotonicity Thresholds"
+                }
+            },
+            "score_infidelity": {
+                "thresholds": {
+                    "value": [0.4, 0.25, 0.15, 0.05],
+                    "description": "Infidelity under perturbations. Lower is better.",
+                    "label": "Infidelity Thresholds"
+                }
+            },
+            "score_alpha_score": {
+                "thresholds": {
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Minimum feature fraction needed to explain alpha mass. Lower is better.",
+                    "label": "Alpha Importance Score Thresholds"
+                }
+            },
+            "score_xai_ease_score": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Ease-of-explanation score from PDP alignment. Higher is better.",
+                    "label": "XAI Ease Score Thresholds"
+                }
+            },
+            "score_position_parity": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Consistency of top-feature positions across conditions. Higher is better.",
+                    "label": "Position Parity Thresholds"
+                }
+            },
+            "score_rank_alignment": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Alignment between global and conditional rankings. Higher is better.",
+                    "label": "Rank Alignment Thresholds"
+                }
+            },
+            "score_spread_ratio": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Evenness of feature-importance distribution. Higher is better.",
+                    "label": "Spread Ratio Thresholds"
+                }
+            },
+            "score_spread_divergence": {
+                "thresholds": {
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Divergence-based spread metric. Lower is better.",
+                    "label": "Spread Divergence Thresholds"
+                }
+            },
+            "score_weighted_average_depth": {
+                "thresholds": {
+                    "value": [12, 8, 5, 3],
+                    "description": "Sample-weighted average depth. Lower is better.",
+                    "label": "Weighted Average Depth Thresholds"
+                }
+            },
+            "score_weighted_average_explainability": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Weighted explainability quality score. Higher is better.",
+                    "label": "Weighted Average Explainability Thresholds"
+                }
+            },
+            "score_weighted_tree_gini": {
+                "thresholds": {
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Weighted tree impurity metric. Lower is better.",
+                    "label": "Weighted Tree Gini Thresholds"
+                }
+            },
+            "score_tree_depth_variance": {
+                "thresholds": {
+                    "value": [8, 4, 2, 1],
+                    "description": "Variance of leaf depths. Lower is better.",
+                    "label": "Tree Depth Variance Thresholds"
+                }
+            },
+            "score_tree_number_of_rules": {
+                "thresholds": {
+                    "value": [100, 50, 20, 10],
+                    "description": "Number of surrogate rules. Lower is better.",
+                    "label": "Tree Number of Rules Thresholds"
+                }
+            },
+            "score_tree_number_of_features": {
+                "thresholds": {
+                    "value": [100, 50, 20, 10],
+                    "description": "Number of actively used features. Lower is better.",
+                    "label": "Tree Number of Features Thresholds"
+                }
+            },
+            "score_xai_consistency": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Agreement across XAI methods (e.g., Jaccard-based). Higher is better.",
+                    "label": "XAI Consistency Thresholds"
+                }
+            },
             "params": {
                 "n_samples": 50,
                 "shap_threshold": 0.001,
                 "top_k": 5,
                 "seed": 42
-            },
-
-            "score_sparsity": {
-                "thresholds": {
-                    "value": [
-                        0.8,
-                        0.6,
-                        0.4,
-                        0.2,
-                        0
-                    ]
-                }
-            },
-            "score_feature_entropy": {
-                "thresholds": {
-                    "value": [
-                        0.8,
-                        0.6,
-                        0.4,
-                        0.2,
-                        0
-                    ]
-                }
-            },
-            "score_topk_concentration": {
-                "thresholds": {
-                    "value": [
-                        0.2,
-                        0.4,
-                        0.6,
-                        0.8,
-                        1.0
-                    ]
-                }
             }
         },
         "privacy": {
             "score_epsilon_dp": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.5,
-                        1,
-                        2
-                    ],
-                    "description": "Thresholds of how to map the value of epsilon to a score from 1-5. Example if the first number is 0.1 it means that a model with epsilon value of 0.1 or less would get the best score(5) and if 10 was the last number it would mean that a model with epsilon value of 10 or more would get the worst score (1), analog for the numbers in between",
-                    "label": "Score Thresholds"
+                    "value": [2, 1, 0.5, 0.1],
+                    "description": "Differential privacy epsilon thresholds. Lower is better.",
+                    "label": "Epsilon-DP Thresholds"
                 }
             },
             "score_epsilon_star": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.5,
-                        1,
-                        2
-                    ],
-                    "description": "Thresholds of how to map the value of epsilon score to a score from 1-5. Example if the first number is 0.1 it means that a model with epsilon score value of 0.1 or less would get the best score(5) and if 10 was the last number it would mean that a model with epsilon score value of 10 or more would get the worst score (1), analog for the numbers in between",
-                    "label": "Score Thresholds"
+                    "value": [2, 1, 0.5, 0.1],
+                    "description": "Empirical epsilon* thresholds. Lower is better.",
+                    "label": "Epsilon-Star Thresholds"
                 }
             },
             "score_shapr": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.3,
-                        0.5,
-                        0.7
-                    ],
-                    "description": "Thresholds of how to map the SHAPR score to a score from 1-5. Example if the first number is 0.1 it means that a model with SHAPR score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with SHAPR score of 0.7 or more would get the worst score (1), analog for the numbers in between",
-                    "label": "Score Thresholds"
+                    "value": [0.7, 0.5, 0.3, 0.1],
+                    "description": "SHAPr membership risk thresholds. Lower is better.",
+                    "label": "SHAPr Risk Thresholds"
                 }
             },
             "score_attribute_inference": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.3,
-                        0.5,
-                        0.7
-                    ],
-                    "description": "Thresholds of how to map the attribute inference attack score to a score from 1-5. Example if the first number is 0.1 it means that a model with attribute inference attack score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with attribute inference attack score of 0.7 or more would get the worst score (1), analog for the numbers in between",
-                    "label": "Score Thresholds"
+                    "value": [0.7, 0.5, 0.3, 0.1],
+                    "description": "Attribute inference attack accuracy thresholds. Lower is better.",
+                    "label": "Attribute Inference Thresholds"
                 }
             },
             "score_accuracy_ratio": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.3,
-                        0.5,
-                        0.7
-                    ],
-                    "description": "Thresholds of how to map the accuracy ratio attack score to a score from 1-5. Example if the first number is 0.1 it means that a model with accuracy ratio attack score of 0.1 or less would get the best score(5) and if 0.7 was the last number it would mean that a model with accuracy ratio attack score of 0.7 or more would get the worst score (1), analog for the numbers in between",
-                    "label": "Score Thresholds"
+                    "value": [0.7, 0.8, 0.9, 0.97],
+                    "description": "Accuracy ratio under data minimization. Higher is better.",
+                    "label": "Accuracy Ratio Thresholds"
+                }
+            },
+            "score_privacy_risk": {
+                "thresholds": {
+                    "value": [0.7, 0.5, 0.3, 0.1],
+                    "description": "Membership privacy risk thresholds. Lower is better.",
+                    "label": "Privacy Risk Thresholds"
+                }
+            },
+            "score_k_anonymity": {
+                "thresholds": {
+                    "value": [2, 5, 10, 20],
+                    "description": "k-anonymity thresholds. Higher is better.",
+                    "label": "K-Anonymity Thresholds"
+                }
+            },
+            "score_l_diversity": {
+                "thresholds": {
+                    "value": [1, 2, 3, 5],
+                    "description": "l-diversity thresholds. Higher is better.",
+                    "label": "L-Diversity Thresholds"
+                }
+            },
+            "score_t_closeness": {
+                "thresholds": {
+                    "value": [0.7, 0.5, 0.3, 0.1],
+                    "description": "t-closeness thresholds. Lower is better.",
+                    "label": "T-Closeness Thresholds"
                 }
             }
         },
         "robustness": {
-            "score_clique_method": {
+            "score_hopskipjump_attack": {
                 "thresholds": {
-                    "value": [
-                        0.01,
-                        0.1,
-                        0.25,
-                        0.5
-                    ],
-                    "description": "Thresholds of how to map the result of the clique method from 1-5.",
-                    "label": "Score Thresholds"
+                    "value": [80, 60, 40, 20],
+                    "description": "Accuracy-drop percentage points after HopSkipJump attack. Lower is better.",
+                    "label": "HSJ Accuracy Drop Thresholds"
                 }
             },
-            "score_loss_sensitivity": {
+            "score_attack_success_rate": {
                 "thresholds": {
-                    "value": [
-                        2,
-                        1.5,
-                        1,
-                        0.5
-                    ],
-                    "description": "Thresholds of how to map loss sensitivity from 1-5. Smaller value means higher robustness.",
-                    "label": "Score Thresholds"
+                    "value": [80, 60, 40, 20],
+                    "description": "Attack success rate after HopSkipJump. Lower is better.",
+                    "label": "Attack Success Rate Thresholds"
+                }
+            },
+            "score_adversarial_accuracy": {
+                "thresholds": {
+                    "value": [20, 40, 60, 80],
+                    "description": "Adversarial accuracy percentage. Higher is better.",
+                    "label": "Adversarial Accuracy Thresholds"
+                }
+            },
+            "score_empirical_robustness_l2": {
+                "thresholds": {
+                    "value": [0.05, 0.1, 0.2, 0.4],
+                    "description": "Empirical robustness under L2 norm (successful attacks). Higher is better.",
+                    "label": "Empirical Robustness L2 Thresholds"
+                }
+            },
+            "score_empirical_robustness_linf": {
+                "thresholds": {
+                    "value": [0.01, 0.03, 0.05, 0.1],
+                    "description": "Empirical robustness under Linf norm (successful attacks). Higher is better.",
+                    "label": "Empirical Robustness Linf Thresholds"
+                }
+            },
+            "score_clique_method": {
+                "thresholds": {
+                    "value": [0.5, 0.25, 0.1, 0.01],
+                    "description": "Clique-method verification error thresholds. Lower is better.",
+                    "label": "Clique Method Thresholds"
                 }
             },
             "score_clever_score": {
                 "thresholds": {
-                    "value": [
-                        0.2,
-                        0.5,
-                        1,
-                        2.5
-                    ],
-                    "description": "Thresholds of how to map CLEVER score from 1-5.",
-                    "label": "Score Thresholds"
-                }
-            },
-            "score_confidence_score": {
-                "thresholds": {
-                    "value": [
-                        20,
-                        40,
-                        60,
-                        80
-                    ],
-                    "description": "Thresholds of how to map confidence score from 1-5. Better confidence score means higher robustness.",
-                    "label": "Score Thresholds"
+                    "value": [0.2, 0.5, 1, 2.5],
+                    "description": "CLEVER score thresholds. Higher is better.",
+                    "label": "CLEVER Score Thresholds"
                 }
             },
             "score_fast_gradient_attack": {
                 "thresholds": {
-                    "value": [
-                        80,
-                        60,
-                        40,
-                        20
-                    ],
-                    "description": "Thresholds of how to map difference between before-after attack accuracies from 1-5. Example: If the before attack accuracy is 85% and after attack accuracy is again 85% it means model is so robust that attack was not successful at all. The difference is 0 and hence this would result in a score of 5 (best score). However if the before attack accuracy was 100% and after attack accuracy is 0% then the model is not robust. The difference is 100% and it would result in score 0 (worst score)",
-                    "label": "Score Thresholds"
+                    "value": [80, 60, 40, 20],
+                    "description": "Accuracy-drop percentage points after FGSM/fast gradient attack. Lower is better.",
+                    "label": "Fast Gradient Attack Thresholds"
                 }
             },
             "score_carlini_wagner_attack": {
                 "thresholds": {
-                    "value": [
-                        80,
-                        60,
-                        40,
-                        20
-                    ],
-                    "description": "Thresholds of how to map difference between before-after attack accuracies from 1-5. Example: If the before attack accuracy is 85% and after attack accuracy is again 85% it means model is so robust that attack was not successful at all. The difference is 0 and hence this would result in a score of 5 (best score). However if the before attack accuracy was 100% and after attack accuracy is 0% then the model is not robust. The difference is 100% and it would result in score 0 (worst score)",
-                    "label": "Score Thresholds"
+                    "value": [80, 60, 40, 20],
+                    "description": "Accuracy-drop percentage points after Carlini-Wagner attack. Lower is better.",
+                    "label": "Carlini-Wagner Attack Thresholds"
                 }
             },
             "score_deepfool_attack": {
                 "thresholds": {
-                    "value": [
-                        80,
-                        60,
-                        40,
-                        20
-                    ],
-                    "description": "Thresholds of how to map difference between before-after attack accuracies from 1-5. Example: If the before attack accuracy is 85% and after attack accuracy is again 85% it means model is so robust that attack was not successful at all. The difference is 0 and hence this would result in a score of 5 (best score). However if the before attack accuracy was 100% and after attack accuracy is 0% then the model is not robust. The difference is 100% and it would result in score 0 (worst score)",
-                    "label": "Score Thresholds"
+                    "value": [80, 60, 40, 20],
+                    "description": "Accuracy-drop percentage points after DeepFool attack. Lower is better.",
+                    "label": "DeepFool Attack Thresholds"
                 }
             },
-             "score_hopskipjump_attack": {
+            "score_loss_sensitivity": {
                 "thresholds": {
-                    "value": [
-                        80,
-                        60,
-                        40,
-                        20
-                    ],
-                    "description": "Thresholds to map accuracy drop (percentage points) after ART HopSkipJump attack to a score from 1-5. 0 drop => best score.",
-                    "label": "Score Thresholds"
+                    "value": [2, 1.5, 1, 0.5],
+                    "description": "Loss sensitivity thresholds. Lower is better.",
+                    "label": "Loss Sensitivity Thresholds"
+                }
+            },
+            "score_confidence_score": {
+                "thresholds": {
+                    "value": [20, 40, 60, 80],
+                    "description": "Average confidence on correct predictions. Higher is better.",
+                    "label": "Confidence Score Thresholds"
+                }
+            },
+            "score_robustness_ratio_hsj": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Ratio of adversarial to clean accuracy after HSJ attack. Higher is better.",
+                    "label": "Robustness Ratio HSJ Thresholds"
+                }
+            },
+            "score_expected_calibration_error": {
+                "thresholds": {
+                    "value": [0.2, 0.1, 0.05, 0.02],
+                    "description": "Expected calibration error thresholds. Lower is better.",
+                    "label": "Expected Calibration Error Thresholds"
                 }
             },
             "params": {
@@ -659,6 +682,29 @@
             }
         },
         "accountability": {
+            "score_train_test_split": {
+                "mappings": {
+                    "value": {
+                        "50-60 95-97": 1,
+                        "60-75 90-95": 2,
+                        "70-75 85-90": 3,
+                        "75-79 81-85": 4,
+                        "79-81": 5
+                    },
+                    "description": "Mapping from train/test split quality bands to scores.",
+                    "label": "Train-Test Split Mapping"
+                }
+            },
+            "score_missing_data": {
+                "mappings": {
+                    "value": {
+                        "null_values_exist": 1,
+                        "no_null_values": 5
+                    },
+                    "description": "Mapping from missing-data status to score.",
+                    "label": "Missing Data Mapping"
+                }
+            },
             "score_normalization": {
                 "mappings": {
                     "value": {
@@ -672,77 +718,40 @@
                     "label": "Score Thresholds"
                 }
             },
-            "score_missing_data": {
-                "mappings": {
-                    "value": {
-                        "null_values_exist": 1,
-                        "no_null_values": 5
-                    },
-                    "description": "Dictionary of how to map missing data to scores between 1-5.",
-                    "label": "Score Thresholds"
-                }
-            },
             "score_regularization": {
                 "parameter_regularization_technique": {
                     "value": "The value of the parameter_XY",
                     "description": "The description of the paramter and its impact"
                 }
             },
-            "score_train_test_split": {
-                "mappings": {
-                    "value": {
-                        "50-60 95-97": 1,
-                        "60-75 90-95": 2,
-                        "70-75 85-90": 3,
-                        "75-79 81-85": 4,
-                        "79-81": 5
-                    },
-                    "description": "Thresholds of how to map the train-test split to a score between 1-5.",
-                    "label": "Score Thresholds"
-                }
-            },
             "score_factsheet_completeness": {
                 "parameter_split": {
-                    "value": "The value of the parameter_XY",
-                    "description": "The description of the paramter and its impact"
+                    "value": "model_specific",
+                    "description": "Factsheet completeness is scored through custom logic in the metric implementation.",
+                    "label": "Factsheet Completeness Metadata"
                 }
             }
         },
         "sustainability": {
-            "score_emissions": {
-                "thresholds": {
-                    "value": [
-                        0.05,
-                        0.1,
-                        0.2,
-                        0.4
-                    ],
-                    "description": "",
-                    "label": ""
-                }
-            },
             "score_energy": {
                 "thresholds": {
-                    "value": [
-                        0.1,
-                        0.2,
-                        0.4,
-                        0.8
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.8, 0.4, 0.2, 0.1],
+                    "description": "Energy consumption (kWh) thresholds. Lower is better.",
+                    "label": "Energy Consumption Thresholds"
+                }
+            },
+            "score_emissions": {
+                "thresholds": {
+                    "value": [0.4, 0.2, 0.1, 0.05],
+                    "description": "CO2 emissions (kgCO2e) thresholds. Lower is better.",
+                    "label": "Emissions Thresholds"
                 }
             },
             "score_carbon_intensity": {
                 "thresholds": {
-                    "value": [
-                        0.2,
-                        0.4,
-                        0.6,
-                        0.8
-                    ],
-                    "description": "",
-                    "label": ""
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Carbon intensity (kgCO2/kWh) thresholds. Lower is better.",
+                    "label": "Carbon Intensity Thresholds"
                 }
             }
         }

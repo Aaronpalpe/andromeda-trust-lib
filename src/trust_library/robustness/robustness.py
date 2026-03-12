@@ -20,10 +20,8 @@ from .metrics import (
     LossSensitivityMetric,
     ConfidenceScoreMetric,
     # PopulationStabilityIndexMetric,
-    # RobustnessRatioHSJMetric,
-    # EffectiveRobustnessMetric,
-    # RankGlobalRobustnessMetric,
-    # ExpectedCalibrationErrorMetric,
+    RobustnessRatioHSJMetric,
+    ExpectedCalibrationErrorMetric,
 
 )
 
@@ -38,7 +36,7 @@ class RobustnessPillar(Pillar):
     def get_metrics(self) -> List[Any]:
         return [
             # HSJ-derived
-            HopSkipJumpAccuracyDropMetric(),           # accuracy_drop_pct
+            HopSkipJumpAccuracyDropMetric(),           # accuracy_drop_pct/effective_robustness
             HopSkipJumpASRMetric(),                    # asr_pct
             HopSkipJumpAdversarialAccuracyMetric(),    # adv_accuracy
             HopSkipJumpEmpiricalRobustnessL2Metric(),  # er_l2_success
@@ -55,10 +53,8 @@ class RobustnessPillar(Pillar):
             LossSensitivityMetric(),                   # loss_sensitivity
             ConfidenceScoreMetric(),                  # confidence_score
             # PopulationStabilityIndexMetric(),          # population_stability_index
-            # RobustnessRatioHSJMetric(),                # robustness_ratio_hsj
-            # EffectiveRobustnessMetric(),              # effective_robustness
-            # RankGlobalRobustnessMetric(),             # rank_global_robustness
-            # ExpectedCalibrationErrorMetric(),         # expected_calibration_error
+            RobustnessRatioHSJMetric(),                # robustness_ratio_hsj
+            ExpectedCalibrationErrorMetric(),         # expected_calibration_error
         ]
 
     def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:

@@ -860,3 +860,7 @@ def z_test_diff(
         "sr_protected": sr_prot,
         "sr_unprotected": sr_unprot,
     }
+
+
+# Para regresión: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_regression.py#L56
+# Para multiclase: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_multiclass.py
