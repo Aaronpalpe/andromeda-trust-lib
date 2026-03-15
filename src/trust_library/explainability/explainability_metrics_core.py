@@ -158,7 +158,7 @@ def shap_based_metrics(
         main_effect = np.sum(np.abs(np.diagonal(shap_int, axis1=1, axis2=2)))
         interaction_strength_value = float((total - main_effect) / total) if total != 0 else 0.0
     except Exception:
-        interaction_strength_value = np.nan
+        raise ValueError("Error computing interaction strength. Ensure SHAP values are in expected format.")
 
     # --- Devuelve también base y valores locales ---
     base_values = np.mean(X_eval.values, axis=0)
@@ -227,20 +227,21 @@ def algorithm_class(model, model_type=None) -> dict:
     model_name = model_type if model_type is not None else type(model).__name__
 
     # Ejemplo simple (puedes externalizarlo a config)
-    mapping = {
-        "LogisticRegression": 5,
-        "LinearRegression": 5,
-        "DecisionTreeClassifier": 3,
-        "RandomForestClassifier": 2,
-    }
+    # mapping = {
+    #     "LogisticRegression": 5,
+    #     "LinearRegression": 5,
+    #     "DecisionTreeClassifier": 3,
+    #     "RandomForestClassifier": 2,
+    # }
 
     return {
-        "value": mapping.get(model_name, np.nan),
+        #"value": mapping.get(model_name, np.nan),
         "model_type": model_name,
     }
 
 
-def correlated_features(X_train, X_test, high_cor=0.9):
+def correlated_features(X_train, X_test, high_cor=0.95):
+    print("Calculating correlated features with threshold:", high_cor)
     X_comb = pd.concat([X_train, X_test])
     corr_matrix = X_comb.corr().abs()
 
@@ -264,45 +265,85 @@ def model_size(X_train):
     }
 
 
+# def feature_relevance(
+#     model,
+#     X_train,
+#     y_train,
+#     threshold_outlier=0.03,
+# ):
+#     # if hasattr(model, "coef_"):
+#     #     model.fit(X_train, y_train)
+#     #     importance = np.abs(model.coef_[0])
+
+#     # elif hasattr(model, "feature_importances_"):
+#     #     importance = np.abs(model.feature_importances_)
+
+#     # else:
+#     #     return {"value": np.nan}
+
+#     if hasattr(model, "feature_importances_"):
+#         importance = np.abs(model.feature_importances_)
+#     elif hasattr(model, "coef_"):
+#         importance = np.abs(model.coef_).flatten()
+#     else:
+#         raise ValueError("Model does not provide feature importances.")
+    
+#     q1, q3 = np.percentile(importance, [25, 75])
+#     iqr = q3 - q1
+#     lower = q1 - 1.5 * iqr
+#     upper = q3 + 1.5 * iqr
+
+#     n_outliers = np.sum((importance < lower) | (importance > upper))
+
+#     cumulative = np.cumsum(np.sort(importance)[::-1])
+#     total = importance.sum()
+
+#     # pct_dominant = np.sum(cumulative < 0.6 * total) / len(importance)
+
+#     # pct_dominant = (np.searchsorted(cumulative, 0.6 * total) + 1) / len(importance)
+
+#     # Número de características necesarias para llegar al 60% acumulado
+#     n_dominant = np.searchsorted(cumulative, 0.6 * total) + 1
+    
+#     # Porcentaje de características que NO alcanzan el 60%
+#     pct_marginal = 1 - n_dominant / len(importance)
+
+#     return {
+#         "value": float(pct_marginal),
+#         "n_outliers": int(n_outliers),
+#         "importances": importance.tolist(),
+#     }
+#     # dist_score = np.digitize(pct_dist, thresholds, right=False) + 1 
+    
+#     # if n_outliers/len(importance) >= threshold_outlier (0.03):
+#     #     dist_score -= penalty_outlier (0.5)
+
+#     # NECESITA FIT
+
 def feature_relevance(
     model,
     X_train,
     y_train,
-    threshold_outlier=0.03,
+    threshold_outlier=0.03, 
 ):
-    if hasattr(model, "coef_"):
-        model.fit(X_train, y_train)
-        importance = np.abs(model.coef_[0])
-
-    elif hasattr(model, "feature_importances_"):
+    if hasattr(model, "feature_importances_"):
         importance = np.abs(model.feature_importances_)
-
+    elif hasattr(model, "coef_"):
+        importance = np.abs(model.coef_).flatten()
     else:
-        return {"value": np.nan}
-
-    q1, q3 = np.percentile(importance, [25, 75])
-    iqr = q3 - q1
-    lower = q1 - 1.5 * iqr
-    upper = q3 + 1.5 * iqr
-
-    n_outliers = np.sum((importance < lower) | (importance > upper))
-
-    cumulative = np.cumsum(np.sort(importance)[::-1])
-    total = importance.sum()
-    pct_dominant = np.sum(cumulative < 0.6 * total) / len(importance)
+        raise ValueError("Model does not provide feature importances.")
+    
+    # Identificar características irrelevantes según el umbral
+    irrelevant_features = np.sum(importance <= threshold_outlier)
+    
+    # Porcentaje de características irrelevantes
+    pct_irrelevant = irrelevant_features / len(importance)
 
     return {
-        "value": float(pct_dominant),
-        "n_outliers": int(n_outliers),
+        "value": float(pct_irrelevant),
+        "n_outliers": int(irrelevant_features),
         "importances": importance.tolist(),
     }
-    # dist_score = np.digitize(pct_dist, thresholds, right=False) + 1 
-    
-    # if n_outliers/len(importance) >= threshold_outlier (0.03):
-    #     dist_score -= penalty_outlier (0.5)
-
-    # NECESITA FIT
-
 
 
 # def performance_difference(f, g, X_test, y_test):
@@ -326,12 +367,12 @@ def number_of_rules(tree_model) -> dict:
         n_rules = tree_model.get_n_leaves()
         return {"value": float(n_rules), "n_rules": float(n_rules)}
     else:
-        return {"value": np.nan, "n_rules": np.nan}
+        raise ValueError("Model does not provide number of rules.")
 
 
 def average_rule_length(tree_model) -> dict:
     if not hasattr(tree_model, "tree_"):
-        return {"value": np.nan, "avg_rule_length": np.nan}
+        raise ValueError("Model does not provide tree structure.")
         
     children_left = tree_model.tree_.children_left
     children_right = tree_model.tree_.children_right
@@ -353,8 +394,8 @@ def average_rule_length(tree_model) -> dict:
 
 def rule_stats(rule_model) -> dict:
     if not hasattr(rule_model, "rules_"):
-        return {"value": np.nan, "n_rules": 0, "avg_rule_length": np.nan}
-        
+        raise ValueError("Model does not provide rule information.")
+
     rules = rule_model.rules_
     n_rules = len(rules)
     lengths = [len(rule.conditions) for rule in rules] if n_rules > 0 else [0]
@@ -370,7 +411,7 @@ def tree_depth(tree_model) -> dict:
         depth = tree_model.get_depth()
         return {"value": float(depth), "max_depth": float(depth)}
     else:
-        return {"value": np.nan, "max_depth": np.nan}
+        raise ValueError("Model does not provide tree depth.")
 
 # def interaction_strength(model, X) -> dict:
 #     try:
@@ -389,7 +430,7 @@ def tree_depth(tree_model) -> dict:
         
 #         return {"value": float(interaction_strength)}
 #     except Exception:
-#         return {"value": np.nan}
+#         raise ValueError("Error computing interaction strength. Ensure SHAP values are in expected format.")
 
 ###########################
 ## AIX 360 ¿FIT? XPLIQUE todo el dataset
@@ -834,7 +875,7 @@ def weighted_average_depth(tree) -> Dict[str, float]:
         Shallow decision trees for explainable k-means clustering.
         Pattern Recognition, 137, 109239.
     """
-    if tree is None: return {"value": np.nan}
+    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
     depths, counts = get_depths_counts(0, tree, [], [])
     n_samples = sum(counts)
     if n_samples == 0: return {"value": 0.0}
@@ -861,10 +902,10 @@ def weighted_average_explainability_score(tree) -> Dict[str, float]:
         Shallow decision trees for explainable k-means clustering.
         Pattern Recognition, 137, 109239.
     """
-    if tree is None: return {"value": np.nan}
+    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
     depths, counts = get_cuts_counts(0, tree, [], [], set())
     n_samples = sum(counts)
-    if n_samples == 0: return {"value": 0.0}
+    if n_samples == 0: raise ValueError("No samples to calculate weighted average explainability score.")
     return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum())}
 
 def weighted_tree_gini(tree) -> Dict[str, float]: # ALGO DIFERENTE
@@ -882,7 +923,7 @@ def weighted_tree_gini(tree) -> Dict[str, float]: # ALGO DIFERENTE
     dict
         A dictionary containing the weighted Gini index of the tree.
     """ 
-    if tree is None: return {"value": np.nan}
+    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
     
     is_classification = tree.n_classes[0] > 1
     weighted_impurity = 0.0
@@ -922,9 +963,9 @@ def tree_depth_variance(tree) -> Dict[str, float]:
         A dictionary containing the variance of the leaf depths.
 
     """
-    if tree is None: return {"value": np.nan}
+    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
     depths, _ = get_depths_counts(0, tree, [], [])
-    if not depths: return {"value": 0.0}
+    if not depths: raise ValueError("No leaf nodes to calculate depth variance.")
     return {"value": float(np.mean((depths - np.mean(depths)) ** 2))}
 
 def tree_number_of_rules(surrogate) -> Dict[str, float]:
@@ -939,7 +980,7 @@ def tree_number_of_rules(surrogate) -> Dict[str, float]:
     -------
         int: The number of rules present in the surrogate model.
     """
-    if surrogate is None: return {"value": np.nan}
+    if surrogate is None: raise ValueError("Surrogate cannot be None.")
     return {"value": float(get_number_of_rules(surrogate.tree_))}
 
 def tree_number_of_features(surrogate) -> Dict[str, float]:
@@ -954,7 +995,7 @@ def tree_number_of_features(surrogate) -> Dict[str, float]:
     -------
         int: The number of features used in the surrogate model.
     """
-    if surrogate is None: return {"value": np.nan}
+    if surrogate is None: raise ValueError("Surrogate cannot be None.")
     features = get_features(surrogate.tree_)
     return {"value": float(len(np.unique(features[features >= 0])))}
 

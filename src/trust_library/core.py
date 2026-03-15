@@ -203,6 +203,7 @@ class TrustEvaluator:
             df_trust,
             x="Model",
             y="Trust Score",
+            color="Model",
             text="Trust Score",
             range_y=[0, 5],
             title="Trust Score Comparison"

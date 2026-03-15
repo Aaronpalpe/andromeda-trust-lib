@@ -6,13 +6,13 @@ import pandas as pd
 from sklearn.metrics import roc_curve
 
 from holisticai.security.metrics import (
-    k_anonymity,
-    l_diversity,
     attribute_attack_score,
     data_minimization_score,
     privacy_risk_score,
     shapr_score,
 )
+from holisticai.security.metrics import k_anonymity as hol_k_anonymity
+from holisticai.security.metrics import l_diversity as hol_l_diversity
 
 # =============================================================================
 # Epsilon DP Leakage
@@ -294,7 +294,7 @@ def k_anonymity(
     """
     Compute k-anonymity for a dataset.
     """
-    counts = k_anonymity(df, quasi_identifiers)
+    counts = hol_k_anonymity(df, quasi_identifiers)
     # counts = df[quasi_identifiers].value_counts() # How many times each combination of quasi-identifiers appears.
 
     if isinstance(counts, pd.Series):
@@ -320,7 +320,7 @@ def l_diversity(
     """
     Compute l-diversity for sensitive attributes in a dataset.
     """
-    result = l_diversity(df, quasi_identifiers, sensitive_attributes)
+    result = hol_l_diversity(df, quasi_identifiers, sensitive_attributes)
     # df_grouped = df.groupby(quasi_identifiers, as_index=False)
     # result = {
     #         s: sorted([len(row["unique"]) for _, row in df_grouped[s].agg(["unique"]).dropna().iterrows()])

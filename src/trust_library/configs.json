@@ -298,7 +298,7 @@
                 }
             },
             "score_algorithm_class": {
-                "clf_type_score": {
+                "mappings": {
                     "value": {
                         "RandomForestClassifier": 4,
                         "KNeighborsClassifier": 3,

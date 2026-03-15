@@ -298,6 +298,7 @@ def hopskipjump_metrics(
         "n_attacked": float(n_correct),
         "attack": "HopSkipJump",
         "sample_size": float(n_total),
+        "note": "HSJ attack metrics on correctly classified subset. Full subset adv accuracy also reported.",
         "params": {
             "max_iter": int(max_iter),
             "max_eval": int(max_eval),
@@ -524,11 +525,7 @@ def loss_sensitivity_metrics(*, classifier, X_test):
             "metric": "LossSensitivity",
         }
     except Exception as e:
-        return {
-            "loss_sensitivity": float("nan"),
-            "metric": "LossSensitivity",
-            "error": "Non Computable: Can only be calculated on compatible NN models.",
-        }
+        raise RuntimeError(f"Loss Sensitivity metric requires an ART classifier with predict method (e.g., PyTorchClassifier / TensorFlowV2Classifier). Error: {str(e)}")
 
 # Only for NN, LG, SVM models
 def fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42):

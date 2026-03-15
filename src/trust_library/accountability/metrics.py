@@ -57,6 +57,16 @@ class MissingDataMetric(BaseMetric):
             )
         }
 
+    def compute_score(self, raw: Dict[str, Any], config: Dict[str, Any]) -> float:
+        mappings = (
+            config.get(self.score_config_key, {})
+            .get("mappings", {})
+            .get("value", {})
+        )
+        missing = 'null_values_exist' if raw["value"] > 0 else 'no_null_values'
+
+        return mappings.get(missing)
+    
     def build_properties(self, raw: Dict[str, int]) -> Dict[str, Any]:
         return {
             "Depends on": "Training and Test Data",

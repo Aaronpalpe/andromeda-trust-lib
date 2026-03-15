@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 from trust_library.base_metric import BaseMetric
 from trust_library.utils import EvaluationContext
@@ -130,13 +131,22 @@ class AlgorithmClassMetric(BaseMetric):
         model_type = ctx.factsheet.get("general", {}).get("model_type", {}).get("value", None)
         return core.algorithm_class(ctx.model, model_type=model_type)
 
-    def custom_score(self, raw: dict):
-        return raw.get("value")
+    # def custom_score(self, raw: dict):
+    #     return raw.get("value")
+
+    def compute_score(self, raw: Dict[str, Any], config: Dict[str, Any]) -> float:
+        mappings = (
+            config.get(self.score_config_key, {})
+            .get("mappings", {})
+            .get("value", {})
+        )
+
+        return mappings.get(raw["model_type"])
     
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Score assigned based on model class type.",
-            "Value": f"{raw['value']:.6f}",
+            #"Value": f"{raw['value']:.6f}",
             "Depends on" : "Model",
             "Model Type": raw.get("model_type"),
         }
@@ -150,6 +160,7 @@ class CorrelatedFeaturesMetric(BaseMetric):
         return core.correlated_features(
             X_train=ctx.X_train,
             X_test=ctx.X_test,
+            high_cor=0.95,#float(ctx.factsheet.get(self.score_config_key, {}).get("high_cor").get("value", 0.9)),
         )
 
     def build_properties(self, raw: dict) -> dict:
@@ -184,6 +195,7 @@ class FeatureRelevanceMetric(BaseMetric):
             model=ctx.model,
             X_train=ctx.X_train,
             y_train=ctx.y_train,
+            threshold_outlier=0.03, #float(ctx.factsheet.get(self.score_config_key, {}).get("threshold_outlier", {}).get("value", 0.03)),
         )
 
     def build_properties(self, raw: dict) -> dict:
