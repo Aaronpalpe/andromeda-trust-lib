@@ -160,7 +160,7 @@ class CorrelatedFeaturesMetric(BaseMetric):
         return core.correlated_features(
             X_train=ctx.X_train,
             X_test=ctx.X_test,
-            high_cor=0.95,#float(ctx.factsheet.get(self.score_config_key, {}).get("high_cor").get("value", 0.9)),
+            high_cor=ctx.extras.get("high_cor")
         )
 
     def build_properties(self, raw: dict) -> dict:
@@ -195,7 +195,7 @@ class FeatureRelevanceMetric(BaseMetric):
             model=ctx.model,
             X_train=ctx.X_train,
             y_train=ctx.y_train,
-            threshold_outlier=0.03, #float(ctx.factsheet.get(self.score_config_key, {}).get("threshold_outlier", {}).get("value", 0.03)),
+            threshold_outlier= ctx.extras.get("threshold_outlier")
         )
 
     def build_properties(self, raw: dict) -> dict:
@@ -538,6 +538,7 @@ def _get_or_compute_xai_consistency(ctx: EvaluationContext) -> dict:
         # Usamos X_test y y_test para la consistencia
         metrics = core.xai_consistency(
             model=ctx.model, 
+            shap_values=ctx.extras.get("feature_weights"),
             X=ctx.X_test, 
             y=ctx.y_test, 
             k=k, 

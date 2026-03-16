@@ -67,6 +67,10 @@ class ExplainabilityPillar(Pillar):
         shap_threshold = float(params.get("shap_threshold", 1e-3))
         top_k = int(params.get("top_k", 5))
         seed = int(params.get("seed", 42))
+        threshold_outlier = float(params.get("threshold_outlier_feature_relevance", 0.03))
+        penalty_outlier = float(params.get("penalty_outlier_feature_relevance", 0))
+        high_cor = float(params.get("high_cor_correlated_features", 0.95))
+
 
         # Store params for lazy computation in metrics (and for reproducibility)
         context.extras["explainability_params"] = {
@@ -74,6 +78,9 @@ class ExplainabilityPillar(Pillar):
             "shap_threshold": shap_threshold,
             "top_k": top_k,
             "seed": seed,
+            "threshold_outlier": threshold_outlier,
+            "penalty_outlier": penalty_outlier,
+            "high_cor": high_cor,
         }
 
         # Best-effort eager compute (but never let it crash the whole evaluation)

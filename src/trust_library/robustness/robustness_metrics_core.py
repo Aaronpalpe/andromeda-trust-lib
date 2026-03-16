@@ -15,6 +15,7 @@ from art.estimators.classification.scikitlearn import ScikitlearnClassifier
 from art.estimators.classification import SklearnClassifier
 from art.attacks.evasion import DeepFool
 from scipy.stats import kendalltau, spearmanr
+import time
 
 def _safe_import_art_blackbox():
     """Import ART components for black-box HSJ."""
@@ -164,6 +165,8 @@ def hopskipjump_metrics(
         Returns:
             Dictionary with HSJ attack metrics
     '''
+    # Medimos tiempo de ejecución de esta función para evaluar su eficiencia
+    t0 = time.time()
     HopSkipJump, BlackBoxClassifier = _safe_import_art_blackbox()
 
     X_test_df = _ensure_dataframe(X_test)
@@ -282,7 +285,8 @@ def hopskipjump_metrics(
     else:
         er_l2_success = 0.0
         er_linf_success = 0.0
-
+    t1 = time.time()
+    print(f"HopSkipJump metrics computed in {t1 - t0:.2f} seconds on {n_total} samples with {n_correct} attacked.")
     return {
         "clean_accuracy": clean_acc_full,
         "adv_accuracy": adv_acc_full,

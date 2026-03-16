@@ -318,11 +318,6 @@
                 }
             },
             "score_correlated_features": {
-                "high_cor": {
-                    "value": 0.95,
-                    "description": "Correlation threshold to classify a pair as highly correlated.",
-                    "label": "High Correlation Threshold"
-                },
                 "thresholds": {
                     "value": [0.4, 0.25, 0.15, 0.05],
                     "description": "Fraction of highly correlated features. Lower is better.",
@@ -339,18 +334,8 @@
             "score_feature_relevance": {
                 "thresholds": {
                     "value": [0.05, 0.1, 0.15, 0.2],
-                    "description": "Fraction of features needed to explain ~60% of total importance. Higher indicates less concentration.",
+                    "description": "Fraction of features needed to explain 60% of total importance. Higher indicates less concentration.",
                     "label": "Feature Relevance Thresholds"
-                },
-                "threshold_outlier": {
-                    "value": 0.03,
-                    "description": "Outlier-rate threshold to apply optional score penalty.",
-                    "label": "Outlier Rate Threshold"
-                },
-                "penalty_outlier": {
-                    "value": 0,
-                    "description": "Penalty applied when outlier-rate threshold is exceeded.",
-                    "label": "Outlier Penalty"
                 }
             },
             "score_number_of_rules": {
@@ -504,7 +489,10 @@
                 "n_samples": 50,
                 "shap_threshold": 0.001,
                 "top_k": 5,
-                "seed": 42
+                "seed": 42,
+                "threshold_outlier_feature_relevance": 0.03,
+                "penalty_outlier_feature_relevance": 0,
+                "high_cor_correlated_features": 0.95
             }
         },
         "privacy": {

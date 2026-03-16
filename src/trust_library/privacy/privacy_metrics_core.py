@@ -56,17 +56,25 @@ def _calculate_losses(model, X, y) -> np.ndarray:
 
 def epsilon_star(
     model,
-    X_train,
-    y_train,
-    X_test,
-    y_test,
+    X_train : pd.DataFrame,
+    y_train : pd.Series,
+    X_test : pd.DataFrame,
+    y_test : pd.Series,
 ) -> Dict[str, float]:
     """
     Compute empirical epsilon* based on Loss Distribution as Definition 2 of the paper.
     """
+    idx = np.random.choice(len(X_train), min(5000, len(X_train)), replace=False) # Por eficiencia
+    X_train_small = X_train.iloc[idx]
+    y_train_small = y_train.iloc[idx] if hasattr(y_train, "iloc") else y_train[idx]
 
-    loss_train = _calculate_losses(model, X_train, y_train)
-    loss_test  = _calculate_losses(model, X_test, y_test)
+    idx = np.random.choice(len(X_test), min(5000, len(X_test)), replace=False)
+
+    X_test_small = X_test.iloc[idx]
+    y_test_small = y_test.iloc[idx] if hasattr(y_test, "iloc") else y_test[idx]
+
+    loss_train = _calculate_losses(model, X_train_small, y_train_small)
+    loss_test  = _calculate_losses(model, X_test_small, y_test_small)
 
     scores = np.concatenate([-loss_train, -loss_test])
     y_true = np.concatenate([np.ones(len(loss_train)), np.zeros(len(loss_test))])
@@ -132,6 +140,8 @@ def shapr(
         y_test[idx_test],
         y_pred_train,
         y_pred_test,
+        batch_size=200, # Por eficiencia
+        train_size=0.1  # Por eficiencia
     )
 
     mean_phi = float(np.mean(phi))

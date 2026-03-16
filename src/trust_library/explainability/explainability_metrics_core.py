@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import time
 import warnings
 
 import numpy as np
@@ -88,7 +89,8 @@ def shap_based_metrics(
       - explainer
       - sample_size
     """
-
+    # Medimos el tiempo de ejecución de esta función para evaluar su eficiencia
+    t0 = time.time()
     shap = _safe_import_shap()
     X_full = _ensure_dataframe(X)
 
@@ -163,6 +165,9 @@ def shap_based_metrics(
     # --- Devuelve también base y valores locales ---
     base_values = np.mean(X_eval.values, axis=0)
     local_importances = shap_values
+
+    t1 = time.time()
+    print(f"SHAP-based metrics computed in {t1 - t0:.2f} seconds on {len(X_eval)} samples with {n_features} features.")
 
     return {
         "sparsity": sparsity,
@@ -556,7 +561,7 @@ def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
     
     num_datapoints = min(len(X_np), len(feature_weights))
     for i in range(num_datapoints):
-        num_reps = 1000
+        num_reps = 100
         x_orig = np.tile(X_np[i], [num_reps, 1])
         x = X_np[i]
         expl_copy = np.copy(feature_weights[i])
@@ -1059,7 +1064,7 @@ def compute_lime(model, X, mode='classification', num_samples=20, seed=42):
     importances = {f: 0.0 for f in feature_names}
 
     for i in range(num_samples):
-        exp = explainer.explain_instance(X.values[i], predict_fn_wrapper)
+        exp = explainer.explain_instance(X.values[i], predict_fn_wrapper, num_samples=1000)
         local_list = exp.local_exp[1] if mode=='classification' else exp.local_exp[0]
         for feat_idx, weight in local_list:
             importances[feature_names[feat_idx]] += abs(weight)
@@ -1067,22 +1072,27 @@ def compute_lime(model, X, mode='classification', num_samples=20, seed=42):
     importances = {k: v/num_samples for k, v in importances.items()}
     return importances
 
-def compute_shap_custom(model, X, mode='classification'):
-    feature_names = X.columns.tolist()
-    background = X.iloc[:20, :]
-    test_samples = X.iloc[:20, :]
+# def compute_shap_custom(model, X, mode='classification'):
+#     feature_names = X.columns.tolist()
+#     background = X.iloc[:20, :]
+#     test_samples = X.iloc[:20, :]
 
-    if hasattr(model, 'predict_proba') and mode == 'classification':
-        explainer = shap.KernelExplainer(model.predict_proba, background)
-        shap_values = explainer.shap_values(test_samples, silent=True)
-        vals = np.abs(shap_values[1]).mean(axis=0) if isinstance(shap_values, list) else np.abs(shap_values).mean(axis=0)
-    else:
-        explainer = shap.KernelExplainer(model.predict, background)
-        shap_values = explainer.shap_values(test_samples, silent=True)
-        vals = np.abs(shap_values).mean(axis=0)
+#     if hasattr(model, 'predict_proba') and mode == 'classification':
+#         explainer = shap.KernelExplainer(model.predict_proba, background)
+#         shap_values = explainer.shap_values(test_samples, silent=True, nsamples=100)
+#         vals = np.abs(shap_values[1]).mean(axis=0) if isinstance(shap_values, list) else np.abs(shap_values).mean(axis=0)
+#     else:
+#         explainer = shap.KernelExplainer(model.predict, background)
+#         shap_values = explainer.shap_values(test_samples, silent=True, nsamples=100)
+#         vals = np.abs(shap_values).mean(axis=0)
 
-    importances = dict(zip(feature_names, vals))
-    return importances
+#     importances = dict(zip(feature_names, vals))
+#     return importances
+
+def shap_importance_from_local(local_importances, feature_names):
+    abs_vals = np.abs(local_importances)
+    global_importance = abs_vals.mean(axis=0)
+    return dict(zip(feature_names, global_importance))
 
 def compute_pdp_importance(model, X):
     importances = {}
@@ -1143,7 +1153,7 @@ def get_aggregated_score(matrix):
     values = matrix.values[np.triu_indices(len(matrix), k=1)]
     return np.mean(values)
 
-def xai_consistency(model, X, y, k=5, mode='classification', seed=42) -> Dict[str, Any]:
+def xai_consistency(model, shap_values, X, y, k=5, mode='classification', seed=42) -> Dict[str, Any]:
     np.random.seed(seed)
     random.seed(seed)
     
@@ -1153,7 +1163,7 @@ def xai_consistency(model, X, y, k=5, mode='classification', seed=42) -> Dict[st
         
     rankings = {}
     rankings['LIME'] = compute_lime(model, X, mode=mode, num_samples=20, seed=seed)
-    rankings['SHAP'] = compute_shap_custom(model, X, mode=mode)
+    rankings['SHAP'] = shap_importance_from_local(shap_values, X.columns) #compute_shap_custom(model, X, mode=mode)
     rankings['PDP'] = compute_pdp_importance(model, X)
     # rankings['PFI'] = compute_pfi(model, X, y, seed=seed)
     # rankings['LOFO'] = compute_lofo(model, X, y)

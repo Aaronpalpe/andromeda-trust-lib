@@ -109,7 +109,7 @@
             "value": [1]
         }, 
         "favorable_outcomes": {
-            "description": "Valoresque identifican el éxito o resultado favorable", 
+            "description": "Valores que identifican el éxito o resultado favorable", 
             "value": [1]
         }
     },
@@ -130,6 +130,10 @@
     },
 
     "sustainability": {
+        "use_codecarbon": {
+            "description": "Use CodeCarbon for energy and emissions tracking",
+            "value": true
+        },
         "energy_consumed": {
             "description": "Consumo energético del modelo (kWh)",
             "value": 2.9963174823623247e-05
