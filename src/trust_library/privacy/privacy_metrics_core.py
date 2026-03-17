@@ -68,7 +68,8 @@ def epsilon_star(
     X_train_small = X_train.iloc[idx]
     y_train_small = y_train.iloc[idx] if hasattr(y_train, "iloc") else y_train[idx]
 
-    idx = np.random.choice(len(X_test), min(5000, len(X_test)), replace=False)
+    #idx = np.random.choice(len(X_test), min(5000, len(X_test)), replace=False)
+    idx = np.arange(min(5000, len(X_test)))
 
     X_test_small = X_test.iloc[idx]
     y_test_small = y_test.iloc[idx] if hasattr(y_test, "iloc") else y_test[idx]

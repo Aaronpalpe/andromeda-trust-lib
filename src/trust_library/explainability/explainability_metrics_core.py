@@ -103,7 +103,7 @@ def shap_based_metrics(
         X_eval = X_full.copy()
 
     predict_fn = _predict_fn_for_permutation(model)
-    explainer = shap.Explainer(predict_fn, X_eval, algorithm="permutation")
+    explainer = shap.Explainer(predict_fn, X_eval, algorithm="permutation", seed=seed)
 
     with suppress_shap_noise():
         shap_output = explainer(X_eval)

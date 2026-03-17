@@ -132,7 +132,7 @@
     "sustainability": {
         "use_codecarbon": {
             "description": "Use CodeCarbon for energy and emissions tracking",
-            "value": true
+            "value": false
         },
         "energy_consumed": {
             "description": "Consumo energético del modelo (kWh)",

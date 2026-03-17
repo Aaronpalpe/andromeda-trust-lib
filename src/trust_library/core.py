@@ -4,6 +4,10 @@ from __future__ import annotations
 import json
 from typing import List
 
+import os
+import random
+import numpy as np
+
 from trust_library import utils
 from trust_library.fairness import FairnessPillar
 from trust_library.accountability import AccountabilityPillar
@@ -48,6 +52,12 @@ class TrustEvaluator:
         self.config      = self._load_config(config_path)
         self.context     = self._build_context()
         self.result: dict | None = None
+        self.set_global_seed(42) # Config hay 2 NEW
+
+    def set_global_seed(self, seed: int):
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        random.seed(seed)
+        np.random.seed(seed)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Public API
