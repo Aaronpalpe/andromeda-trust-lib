@@ -70,28 +70,43 @@ def track_training_run(model, train_data, project_name="ML_Project") -> Dict[str
 # METRIC COMPUTATIONS (PURE FUNCTIONS)
 # ==========================================================
 
-def energy_consumption(energy_conumed: float, cpu_energy: float, gpu_energy: float, ram_energy: float) -> Dict[str, Any]:
+def energy_consumption(run_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
-        "value": energy_conumed,
-        "cpu_energy": cpu_energy,
-        "gpu_energy": gpu_energy,
-        "ram_energy": ram_energy,
+        "value": run_data["energy_consumed"],
+        "cpu_energy": run_data["cpu_energy"],
+        "gpu_energy": run_data["gpu_energy"],
+        "ram_energy": run_data["ram_energy"],
     }
 
 
-def emissions(emissions: float, duration: float, pue: float, wue: float) -> Dict[str, Any]:
+def emissions(run_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
-        "value": emissions,
-        "duration": duration,
-        "pue": pue,
-        "wue": wue,
+        "value": run_data["emissions"],
+        "duration": run_data["duration"],
+        "pue": run_data["pue"],
+        "wue": run_data["wue"],
     }
 
 
-def carbon_intensity(energy_consumed: float, emissions: float, country: str) -> Dict[str, Any]:
-    ci = emissions / energy_consumed if energy_consumed > 0 else 0.0
+def carbon_intensity(run_data: Dict[str, Any]) -> Dict[str, Any]:
+    energy = run_data["energy_consumed"]
+    emissions = run_data["emissions"]
+
+    ci = emissions / energy if energy > 0 else 0.0
 
     return {
         "value": float(ci),
-        "country": country,
+        "country": run_data["country"],
     }
+
+
+# def energy_efficiency(run_data: Dict[str, Any]) -> Dict[str, Any]:
+#     duration_hours = run_data["duration"] / 3600.0
+#     energy = run_data["energy_consumed"]
+
+#     efficiency = energy / duration_hours if duration_hours > 0 else np.inf
+
+#     return {
+#         "value": float(efficiency),
+#         "duration_hours": float(duration_hours),
+#     }

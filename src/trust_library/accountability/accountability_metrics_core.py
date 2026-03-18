@@ -185,6 +185,7 @@ def regularization_mapping(
 ) -> float:
     """
     Map regularization technique to accountability score.
+    Regularization is the technique used to prevent overfitting and improving model generalization.
 
     Returns
     -------

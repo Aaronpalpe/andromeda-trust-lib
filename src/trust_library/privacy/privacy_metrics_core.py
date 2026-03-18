@@ -6,18 +6,18 @@ import pandas as pd
 from sklearn.metrics import roc_curve
 
 from holisticai.security.metrics import (
-    k_anonymity,
-    l_diversity,
     attribute_attack_score,
     data_minimization_score,
     privacy_risk_score,
     shapr_score,
 )
+from holisticai.security.metrics import k_anonymity as hol_k_anonymity
+from holisticai.security.metrics import l_diversity as hol_l_diversity
 
 # =============================================================================
 # Epsilon DP Leakage
 # =============================================================================
-def compute_epsilon_dp(epsilon: float) -> Dict[str, float]:
+def epsilon_dp(epsilon: float) -> Dict[str, float]:
     """
     Compute a score for epsilon DP leakage based on predefined thresholds.
     """
@@ -54,19 +54,28 @@ def _calculate_losses(model, X, y) -> np.ndarray:
 # Epsilon Star
 # =============================================================================
 
-def compute_epsilon_star(
+def epsilon_star(
     model,
-    X_train,
-    y_train,
-    X_test,
-    y_test,
+    X_train : pd.DataFrame,
+    y_train : pd.Series,
+    X_test : pd.DataFrame,
+    y_test : pd.Series,
 ) -> Dict[str, float]:
     """
     Compute empirical epsilon* based on Loss Distribution as Definition 2 of the paper.
     """
+    idx = np.random.choice(len(X_train), min(5000, len(X_train)), replace=False) # Por eficiencia
+    X_train_small = X_train.iloc[idx]
+    y_train_small = y_train.iloc[idx] if hasattr(y_train, "iloc") else y_train[idx]
 
-    loss_train = _calculate_losses(model, X_train, y_train)
-    loss_test  = _calculate_losses(model, X_test, y_test)
+    #idx = np.random.choice(len(X_test), min(5000, len(X_test)), replace=False)
+    idx = np.arange(min(5000, len(X_test)))
+
+    X_test_small = X_test.iloc[idx]
+    y_test_small = y_test.iloc[idx] if hasattr(y_test, "iloc") else y_test[idx]
+
+    loss_train = _calculate_losses(model, X_train_small, y_train_small)
+    loss_test  = _calculate_losses(model, X_test_small, y_test_small)
 
     scores = np.concatenate([-loss_train, -loss_test])
     y_true = np.concatenate([np.ones(len(loss_train)), np.zeros(len(loss_test))])
@@ -98,7 +107,7 @@ def compute_epsilon_star(
 # SHAPr
 # =============================================================================
 
-def compute_shapr(
+def shapr(
     model,
     X_train,
     y_train,
@@ -132,6 +141,8 @@ def compute_shapr(
         y_test[idx_test],
         y_pred_train,
         y_pred_test,
+        batch_size=200, # Por eficiencia
+        train_size=0.1  # Por eficiencia
     )
 
     mean_phi = float(np.mean(phi))
@@ -146,7 +157,7 @@ def compute_shapr(
 # Attribute Inference
 # =============================================================================
 
-def compute_attribute_inference(
+def attribute_inference(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
     y_train: pd.Series,
@@ -203,7 +214,7 @@ def compute_attribute_inference(
 # Privacy Risk
 # =============================================================================
 
-def compute_privacy_risk(
+def privacy_risk(
     y_prob_train: np.ndarray,
     y_train: np.ndarray,
     y_prob_test: np.ndarray,
@@ -247,7 +258,7 @@ def compute_privacy_risk(
 # Accuracy Ratio (Data Minimization)
 # =============================================================================
 
-def compute_accuracy_ratio(
+def accuracy_ratio(
     y_test: np.ndarray,
     y_pred_test: np.ndarray,
     model,
@@ -287,14 +298,15 @@ def compute_accuracy_ratio(
 # k-Anonymity
 # =============================================================================
 
-def compute_k_anonymity(
+def k_anonymity(
     df: pd.DataFrame,
     quasi_identifiers: List[str],
 ) -> Dict[str, float]:
     """
     Compute k-anonymity for a dataset.
     """
-    counts = k_anonymity(df, quasi_identifiers)
+    counts = hol_k_anonymity(df, quasi_identifiers)
+    # counts = df[quasi_identifiers].value_counts() # How many times each combination of quasi-identifiers appears.
 
     if isinstance(counts, pd.Series):
         k_value = counts.min() if not counts.empty else 0
@@ -311,7 +323,7 @@ def compute_k_anonymity(
 # l-Diversity
 # =============================================================================
 
-def compute_l_diversity(
+def l_diversity(
     df: pd.DataFrame,
     quasi_identifiers: List[str],
     sensitive_attributes: List[str],
@@ -319,8 +331,13 @@ def compute_l_diversity(
     """
     Compute l-diversity for sensitive attributes in a dataset.
     """
-    result = l_diversity(df, quasi_identifiers, sensitive_attributes)
-
+    result = hol_l_diversity(df, quasi_identifiers, sensitive_attributes)
+    # df_grouped = df.groupby(quasi_identifiers, as_index=False)
+    # result = {
+    #         s: sorted([len(row["unique"]) for _, row in df_grouped[s].agg(["unique"]).dropna().iterrows()])
+    #         for s in sensitive_attributes
+    #     }
+    
     all_vals = []
 
     if isinstance(result, dict):
@@ -341,7 +358,7 @@ def compute_l_diversity(
 # t-Closeness
 # =============================================================================
 
-def compute_t_closeness(
+def t_closeness(
     df: pd.DataFrame,
     quasi_identifiers: List[str],
     sensitive_attributes: List[str],

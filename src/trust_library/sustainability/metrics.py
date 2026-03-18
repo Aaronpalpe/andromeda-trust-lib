@@ -16,12 +16,13 @@ class EnergyConsumptionMetric(BaseMetric):
         super().__init__("energy_consumed", "score_energy")
 
     def compute(self, ctx):
-        run_data = ctx.extras["run_data"]
-        return core.compute_energy_consumption(run_data)
+        # run_data = ctx.extras["run_data"]
+        energy_consumed = ctx.factsheet.get("sustainability", {}).get("energy_consumed", {}).get("value", 0.0)
+        cpu_energy = ctx.factsheet.get("sustainability", {}).get("cpu_energy", {}).get("value", 0.0)
+        gpu_energy = ctx.factsheet.get("sustainability", {}).get("gpu_energy", {}).get("value", 0.0)
+        ram_energy = ctx.factsheet.get("sustainability", {}).get("ram_energy", {}).get("value", 0.0)
 
-    def compute_score(self, raw, config):
-        thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])
-        return calculate_score(raw["value"], thresholds)
+        return core.energy_consumption(energy_consumed, cpu_energy, gpu_energy, ram_energy)
 
     def build_properties(self, raw):
         return {
@@ -43,12 +44,13 @@ class EmissionsMetric(BaseMetric):
         super().__init__("emissions", "score_emissions")
 
     def compute(self, ctx):
-        run_data = ctx.extras["run_data"]
-        return core.compute_emissions(run_data)
+        # run_data = ctx.extras["run_data"]
+        emissions = ctx.factsheet.get("sustainability", {}).get("emissions", {}).get("value", 0.0)
+        duration = ctx.factsheet.get("sustainability", {}).get("duration", {}).get("value", 0.0)
+        pue = ctx.factsheet.get("sustainability", {}).get("pue", {}).get("value", 0.0)
+        wue = ctx.factsheet.get("sustainability", {}).get("wue", {}).get("value", 0.0)
 
-    def compute_score(self, raw, config):
-        thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])
-        return calculate_score(raw["value"], thresholds)
+        return core.emissions(emissions, duration, pue, wue)
 
     def build_properties(self, raw):
         return {
@@ -70,12 +72,12 @@ class CarbonIntensityMetric(BaseMetric):
         super().__init__("carbon_intensity", "score_carbon_intensity")
 
     def compute(self, ctx):
-        run_data = ctx.extras["run_data"]
-        return core.compute_carbon_intensity(run_data)
+        # run_data = ctx.extras["run_data"]
+        energy_consumed = ctx.factsheet.get("sustainability", {}).get("energy_consumed", {}).get("value", 0.0)
+        emissions = ctx.factsheet.get("sustainability", {}).get("emissions", {}).get("value", 0.0)
+        country = ctx.factsheet.get("sustainability", {}).get("country", {}).get("value", "Unknown")
 
-    def compute_score(self, raw, config):
-        thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])
-        return calculate_score(raw["value"], thresholds)
+        return core.carbon_intensity(energy_consumed, emissions, country)
 
     def build_properties(self, raw):
         return {
@@ -83,28 +85,3 @@ class CarbonIntensityMetric(BaseMetric):
             "Carbon Intensity": f"{raw['value']:.6f}",
             "Country": raw["country"],
         }
-
-
-# ==========================================================
-# Optional Energy Efficiency
-# ==========================================================
-
-# class EnergyEfficiencyMetric(BaseMetric):
-
-#     def __init__(self):
-#         super().__init__("energy_efficiency", "score_energy_efficiency")
-
-#     def compute(self, ctx):
-#         run_data = ctx.extras["run_data"]
-#         return core.compute_energy_efficiency(run_data)
-
-#     def compute_score(self, raw, config):
-#         thresholds = config.get(self.score_config_key, {}).get("thresholds", {}).get("value", [])
-#         return calculate_score(raw["value"], thresholds)
-
-#     def build_properties(self, raw):
-#         return {
-#             "Metric Description": "Energy per training hour.",
-#             "Energy Efficiency (kWh/h)": f"{raw['value']:.6f}",
-#             "Training Time (h)": f"{raw['duration_hours']:.4f}",
-#         }

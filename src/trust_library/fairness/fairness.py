@@ -41,9 +41,12 @@ from .metrics import (
     ConsistencyMetric,
     ClassImbalanceMetric,
     KLDivergenceMetric,
+    ConditionalDemographicDisparityMetric,
     SmoothedEDFMetric,
     BiasAmplificationMetric,
+    BetweenGroupGeneralizedEntropyMetric,
     CohensDMetric,
+    ZTestDiffMetric,
 )
 
 
@@ -85,12 +88,12 @@ class FairnessPillar(Pillar):
             ConsistencyMetric(k=5),
             ClassImbalanceMetric(),
             KLDivergenceMetric(),
-            #ConditionalDPMetric(),
+            ConditionalDemographicDisparityMetric(),
             SmoothedEDFMetric(alpha=1.0),
             BiasAmplificationMetric(),
-            #BetweenGroupGEMetric(),
+            BetweenGroupGeneralizedEntropyMetric(),
             CohensDMetric(),
-            #TwoSDMetric(),
+            ZTestDiffMetric(),
         ]
 
         return metrics

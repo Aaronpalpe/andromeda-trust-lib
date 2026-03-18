@@ -16,6 +16,7 @@ from scipy.stats import entropy as scipy_entropy, chisquare
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import accuracy_score
 import pandas as pd
+from sklearn.neighbors import NearestNeighbors
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -404,25 +405,6 @@ def coefficient_of_variation(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     return {"value": val, "gei_alpha2": gei}
 
 
-def kl_divergence(
-    y_true: np.ndarray,
-    group_mask: np.ndarray,
-) -> dict:
-    """
-    KL Divergence between label distributions of protected vs unprotected group.
-
-    KL(P_privileged || P_protected)
-    Ideal value: 0  (identical distributions)
-    """
-
-    Pp = pd.Series(y_true[~group_mask]).value_counts(normalize=True).sort_index()
-    Pu = pd.Series(y_true[group_mask]).value_counts(normalize=True).sort_index()
-    Pp, Pu = Pp.align(Pu, fill_value=1e-9)
-
-    val = float(scipy_entropy(Pp.values, Pu.values))
-    return {"value": val}
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Individual Fairness
 # ─────────────────────────────────────────────────────────────────────────────
@@ -449,8 +431,6 @@ def kl_divergence(
 #     ]
 #     val = 1.0 - float(np.mean(diffs))
 #     return {"value": val, "k": k}
-
-from sklearn.neighbors import NearestNeighbors
 
 def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dict:
     """
@@ -524,6 +504,145 @@ def class_imbalance(group_mask: np.ndarray) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Bias Amplification & Effect Size
 # ─────────────────────────────────────────────────────────────────────────────
+
+def kl_divergence(
+    y_true: np.ndarray,
+    group_mask: np.ndarray,
+) -> dict:
+    """
+    KL Divergence between label distributions of protected vs unprotected group.
+
+    KL(P_privileged || P_protected)
+    Ideal value: 0  (identical distributions)
+    """
+
+    Pp = pd.Series(y_true[~group_mask]).value_counts(normalize=True).sort_index()
+    Pu = pd.Series(y_true[group_mask]).value_counts(normalize=True).sort_index()
+    Pp, Pu = Pp.align(Pu, fill_value=1e-9)
+
+    val = float(scipy_entropy(Pp.values, Pu.values))
+    return {"value": val}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Conditional Demographic Disparity (CDD)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def conditional_demographic_disparity(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    group_mask: np.ndarray,
+) -> dict:
+    """
+    Conditional Demographic Disparity (CDD) (Wachter et al., 2021).
+    
+    CDD = (1 / N_total) * sum(N_i * DD_i)
+    where DD_i = (N_{i,-} / N_{total,-}) - (N_{i,+} / N_{total,+})
+    
+    Ideal value: 0
+
+    :math:`N_{i, +}` signifies the number of samples belonging to group
+    :math:`i` that have favorable labels while :math:`N_{i, -}` signifies those
+    that have negative labels 
+
+    Args:
+        y_pred (array-like): Estimated targets as returned by a classifier.
+        y_true (array-like): True labels.
+        group_mask (array-like): Boolean mask indicating protected group membership (True for protected).
+
+    Returns:
+        float: Conditional demographic disparity.
+    """
+    n_prot = int(group_mask.sum())
+    n_unprot = int((~group_mask).sum())
+    n_total = n_prot + n_unprot
+    
+    total_pos = int((y_pred == 1).sum())
+    total_neg = int((y_pred == 0).sum())
+
+    def _calc_dd(mask):
+        if mask.sum() == 0: 
+            return 0.0
+        n_pos = int((y_pred[mask] == 1).sum())
+        n_neg = int((y_pred[mask] == 0).sum())
+        
+        term_neg = (n_neg / total_neg) if total_neg > 0 else 0.0
+        term_pos = (n_pos / total_pos) if total_pos > 0 else 0.0
+        return float(term_neg - term_pos)
+
+    dd_prot = _calc_dd(group_mask)
+    dd_unprot = _calc_dd(~group_mask)
+
+    if n_total == 0:
+        cdd = 0.0
+    else:
+        cdd = (n_prot * dd_prot + n_unprot * dd_unprot) / n_total
+
+    return {
+        "value": float(cdd),
+        "dd_protected": dd_prot,
+        "dd_unprotected": dd_unprot,
+        "n_protected": n_prot,
+        "n_unprotected": n_unprot
+    }
+
+# def smoothed_edf(
+#     y_prob: np.ndarray,
+#     group_values: np.ndarray,
+#     alpha: float = 1.0,
+# ) -> dict:
+#     """
+#     Smoothed Empirical Differential Fairness (EDF).
+
+#     Based on log-ratio of (mean_prob + alpha) across groups.
+#     Ideal value: 0
+#     """
+#     unique_groups = np.unique(group_values)
+#     group_means = {g: float(y_prob[group_values == g].mean()) + alpha for g in unique_groups}
+#     vals = list(group_means.values())
+#     ratio = max(vals) / min(vals)
+#     val = float(abs(np.log(ratio)))
+#     return {
+#         "value": val,
+#         "group_smoothed_means": {str(k): v for k, v in group_means.items()},
+#         "alpha": alpha,
+#     }
+
+def smoothed_edf(y_prob: np.ndarray, group_values: np.ndarray, alpha: float = 1.0) -> dict: # NO IGUAL QUE AIF---------------
+    """
+    Smoothed Empirical Differential Fairness (EDF) manual.
+    Replica matemáticamente la lógica de AIF360:
+    1. Binariza probabilidades.
+    2. Aplica Suavizado de Dirichlet a las tasas base.
+    3. Evalúa el peor escenario logarítmico entre clases positivas y negativas.
+    """
+    # 1. Binarizar predicciones (como requiere AIF360 internamente)
+    y_pred_bin = (np.array(y_prob) >= 0.5).astype(float)
+    
+    unique_groups = np.unique(group_values)
+    ssr = [] # smoothed_selection_rates
+    
+    for g in unique_groups:
+        mask_g = (group_values == g)
+        n_g = np.sum(mask_g)
+        p_g = np.sum(y_pred_bin[mask_g] == 1.0)
+        
+        # 2. Suavizado de Dirichlet: (conteo_positivos + alpha) / (conteo_total + 2*alpha)
+        rate = (p_g + alpha) / (n_g + 2.0 * alpha)
+        ssr.append(rate)
+    
+    # 3. Encontrar el log-ratio máximo (comparando tanto tasas positivas como negativas)
+    max_edf = 0.0
+    for i in range(len(ssr)):
+        for j in range(len(ssr)):
+            if i != j:
+                pos_ratio = abs(np.log(ssr[i]) - np.log(ssr[j]))
+                neg_ratio = abs(np.log(1.0 - ssr[i]) - np.log(1.0 - ssr[j]))
+                max_edf = max(max_edf, pos_ratio, neg_ratio)
+                
+    return {
+        "value": float(max_edf),
+        "alpha": alpha
+    }
 
 # def bias_amplification(
 #     y_true: np.ndarray,
@@ -609,6 +728,60 @@ def bias_amplification(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.nd
 #         "bias_in_predictions": edf_preds
 #     }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Between-Group Generalized Entropy Error
+# ─────────────────────────────────────────────────────────────────────────────
+
+def between_group_generalized_entropy_error(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    group_mask: np.ndarray,
+    alpha: float = 2
+) -> dict:
+    """
+    Between-Group Generalized Entropy Error (Speicher et al., 2018).
+    
+    Between-group generalized entropy index is proposed as a group
+    fairness measure and is one of two terms that the
+    generalized entropy index decomposes to.
+    Args:
+        y_true (array-like): Ground truth (correct) target values.
+        y_pred (array-like): Estimated targets as returned by a classifier.
+        group_mask (array-like): Boolean mask indicating protected group membership (True for protected).
+        alpha (scalar, optional): Parameter that regulates the weight given to
+            distances between values at different parts of the distribution. A
+            value of 0 is equivalent to the mean log deviation, 1 is the Theil
+            index, and 2 is half the squared coefficient of variation.
+    """
+    b = np.empty_like(y_true, dtype=float)
+    
+    # Beneficio = 1 + I(y_pred == 1) - I(y_true == 1)
+    # Asignamos la media del grupo a todos sus miembros
+    mask_u = ~group_mask
+    if mask_u.sum() > 0:
+        b[mask_u] = (1.0 + (y_pred[mask_u] == 1) - (y_true[mask_u] == 1)).mean()
+        
+    mask_p = group_mask
+    if mask_p.sum() > 0:
+        b[mask_p] = (1.0 + (y_pred[mask_p] == 1) - (y_true[mask_p] == 1)).mean()
+
+    mu = float(b.mean())
+    
+    if mu == 0:
+        val = 0.0
+    elif alpha == 1:
+        ratio = b / mu
+        val = float(np.mean(np.where(ratio > 0, ratio * np.log(ratio), 0)))
+    elif alpha == 2:
+        val = float(np.mean((b / mu - 1) ** 2) / 2)
+    else:
+        val = float(np.mean((b / mu) ** alpha - 1) / (alpha * (alpha - 1)))
+
+    return {
+        "value": val,
+        "alpha": alpha
+    }
+
 def cohens_d(
     y_pred: np.ndarray,
     group_mask: np.ndarray,
@@ -632,145 +805,62 @@ def cohens_d(
     }
 
 
-# def smoothed_edf(
-#     y_prob: np.ndarray,
-#     group_values: np.ndarray,
-#     alpha: float = 1.0,
-# ) -> dict:
-#     """
-#     Smoothed Empirical Differential Fairness (EDF).
+# ─────────────────────────────────────────────────────────────────────────────
+# Z-Test Difference (2-SD Rule)
+# ─────────────────────────────────────────────────────────────────────────────
 
-#     Based on log-ratio of (mean_prob + alpha) across groups.
-#     Ideal value: 0
-#     """
-#     unique_groups = np.unique(group_values)
-#     group_means = {g: float(y_prob[group_values == g].mean()) + alpha for g in unique_groups}
-#     vals = list(group_means.values())
-#     ratio = max(vals) / min(vals)
-#     val = float(abs(np.log(ratio)))
-#     return {
-#         "value": val,
-#         "group_smoothed_means": {str(k): v for k, v in group_means.items()},
-#         "alpha": alpha,
-#     }
+def z_test_diff(
+    y_pred: np.ndarray,
+    group_mask: np.ndarray,
+) -> dict:
+    """
+    Z Test (Difference) / 2-SD Statistic (Morris, 2001).
+    This function computes the Z-test statistic for the difference\
+    in success rates. Also known as 2-SD Statistic.
 
-def smoothed_edf(y_prob: np.ndarray, group_values: np.ndarray, alpha: float = 1.0) -> dict: # NO IGUAL QUE AIF---------------
+    Interpretation
+    --------------
+    A value of 0 is desired. This test considers the data unfair if\
+    the computed value is greater than 2 or smaller than -2, indicating\
+    a statistically significant difference in success rates.
+
+    Parameters
+    ----------
+    y_pred : array-like
+        Predictions vector (binary)
+    group_mask : array-like
+        Boolean mask indicating protected group membership (True for protected)
+
+    Returns
+    -------
+    float
+        Z test (difference version)
+
+    Z = (SR_prot - SR_unprot) / sqrt((SR_tot * (1 - SR_tot)) / (N_tot * P_prot * (1 - P_prot)))
     """
-    Smoothed Empirical Differential Fairness (EDF) manual.
-    Replica matemáticamente la lógica de AIF360:
-    1. Binariza probabilidades.
-    2. Aplica Suavizado de Dirichlet a las tasas base.
-    3. Evalúa el peor escenario logarítmico entre clases positivas y negativas.
-    """
-    # 1. Binarizar predicciones (como requiere AIF360 internamente)
-    y_pred_bin = (np.array(y_prob) >= 0.5).astype(float)
+    n_prot = int(group_mask.sum())
+    n_unprot = int((~group_mask).sum())
     
-    unique_groups = np.unique(group_values)
-    ssr = [] # smoothed_selection_rates
+    if n_prot == 0 or n_unprot == 0:
+        return {"value": 0.0, "sr_protected": 0.0, "sr_unprotected": 0.0}
+
+    sr_prot = float(y_pred[group_mask].mean())
+    sr_unprot = float(y_pred[~group_mask].mean())
+    sr_tot = float(y_pred.mean())
+
+    n_tot = n_prot + n_unprot
+    p_prot = n_prot / n_tot
+
+    denom = np.sqrt((sr_tot * (1 - sr_tot)) / (n_tot * p_prot * (1 - p_prot)))
     
-    for g in unique_groups:
-        mask_g = (group_values == g)
-        n_g = np.sum(mask_g)
-        p_g = np.sum(y_pred_bin[mask_g] == 1.0)
-        
-        # 2. Suavizado de Dirichlet: (conteo_positivos + alpha) / (conteo_total + 2*alpha)
-        rate = (p_g + alpha) / (n_g + 2.0 * alpha)
-        ssr.append(rate)
-    
-    # 3. Encontrar el log-ratio máximo (comparando tanto tasas positivas como negativas)
-    max_edf = 0.0
-    for i in range(len(ssr)):
-        for j in range(len(ssr)):
-            if i != j:
-                pos_ratio = abs(np.log(ssr[i]) - np.log(ssr[j]))
-                neg_ratio = abs(np.log(1.0 - ssr[i]) - np.log(1.0 - ssr[j]))
-                max_edf = max(max_edf, pos_ratio, neg_ratio)
-                
+    val = 0.0 if denom == 0 else (sr_prot - sr_unprot) / denom
+
     return {
-        "value": float(max_edf),
-        "alpha": alpha
+        "value": float(val),
+        "sr_protected": sr_prot,
+        "sr_unprotected": sr_unprot,
     }
 
 
-# def conditional_dp_score(dataset, factsheet, thresholds, conditioning_cols):
-#     try:
-#         m = get_aif360_metrics(None, dataset, factsheet)
-#         prot, vals, target, fav = load_fairness_config(factsheet)
-#         fav_label = fav[0] if fav else 1
-
-#         total = 0
-#         weighted = 0
-
-#         for _, g in dataset.groupby(conditioning_cols):
-#             Ni = len(g)
-#             if Ni == 0:
-#                 continue
-
-#             p_pos = (g[target] == fav_label).mean()
-#             p_neg = 1 - p_pos
-
-#             weighted += Ni * (p_neg - p_pos)
-#             total += Ni
-
-#         val = weighted / total
-#         score = calculate_score(val, thresholds)
-
-#         props = {
-#             "Metric Description": (
-#                 "Measures demographic parity conditioned on additional variables."
-#             ),
-#             "Depends on": "Dataset",
-#             "CDD": f"{val:.4f}",
-#             "CDD (AIF360)": f"{m.conditional_demographic_parity(conditioning_cols):.4f}"
-#         }
-
-#         return Result(score, props)
-
-#     except Exception as e:
-#         return Result(np.nan, {"Error": str(e)})
-
-
-# def between_group_ge_score(model, test_data, factsheet, thresholds, alpha=1):
-#     try:
-#         m = get_aif360_metrics(model, test_data, factsheet)
-#         val = m.between_group_generalized_entropy_index(alpha=alpha)
-#         score = calculate_score(val, thresholds)
-
-#         props = {
-#             "Metric Description": (
-#                 "Measures inequality strictly between protected groups."
-#             ),
-#             "Alpha": alpha,
-#             "Between-group GE (AIF360)": f"{val:.6f}"
-#         }
-
-#         return Result(score, props)
-
-#     except Exception as e:
-#         return Result(np.nan, {"Error": str(e)})
-
-# def two_sd_rule_score(context):
-#     try:
-#         prot, vals, target, _ = load_fairness_config(context.factsheet)
-#         y_hat = context.model.predict(context.test_data.drop(target, axis=1))
-
-#         g1 = y_hat[context.test_data[prot].isin(vals)]
-#         g2 = y_hat[~context.test_data[prot].isin(vals)]
-
-#         mu_diff = abs(g1.mean() - g2.mean())
-#         sigma = np.std(y_hat)
-
-#         violated = mu_diff > 2 * sigma
-#         score = 1 if violated else 5
-
-#         props = {
-#             "Metric Description": "Heuristic adverse impact detection rule.",
-#             "Mean Difference": f"{mu_diff:.4f}",
-#             "2sigma Threshold": f"{2*sigma:.4f}",
-#             "Violated": violated
-#         }
-
-#         return Result(score, props)
-
-#     except Exception as e:
-#         return Result(np.nan, {"Error": str(e)})
+# Para regresión: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_regression.py#L56
+# Para multiclase: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_multiclass.py

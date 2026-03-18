@@ -4,6 +4,10 @@
             "description": "Nombre del modelo",
             "value": null
         },
+        "model_type": {
+            "description": "Tipo de modelo (LogisticRegression, LinearRegression, DecisionTreeClassifier, RandomForestClassifier)",
+            "value": "DecisionTreeClassifier"
+        },
         "purpose_description": {
             "description": "Propósito previsto del sistema de IA",
             "value": null
@@ -31,27 +35,6 @@
         "contact_information": {
             "description": "Contacto para incidencias o auditorías",
             "value": null
-        }
-    },
-
-    "fairness": {
-        "protected_feature": {"description": "Nombre de la característica protegida", "value": "Group"},
-        "protected_values": {"description" : "Valores que identifican al grupo desprotegido","value": [1]}, 
-        "favorable_outcomes": {"description": "Valoresque identifican el éxito o resultado favorable", "value": [1]}
-    },
-
-    "privacy": {
-        "epsilon": {
-            "description": "Parámetro de privacidad diferencial epsilon",
-            "value": 1.0
-        },
-        "quasi_identifiers": {
-            "description": "Lista de identificadores que pueden reidentificar individuos",
-            "value": ["Own_Housing", "Own_Car"]
-        },
-        "sensitive_attribute": {
-            "description": "Atributo sensible que se protege",
-            "value": ["Group"]
         }
     },
 
@@ -114,5 +97,79 @@
             "description": "Consecuencias ante evaluaciones negativas",
             "value": null
         }
+    },
+
+    "fairness": {
+        "protected_feature": {
+            "description": "Nombre de la característica protegida", 
+            "value": "Group"
+        },
+        "protected_values": {
+            "description" : "Valores que identifican al grupo desprotegido",
+            "value": [1]
+        }, 
+        "favorable_outcomes": {
+            "description": "Valores que identifican el éxito o resultado favorable", 
+            "value": [1]
+        }
+    },
+
+    "privacy": {
+        "epsilon": {
+            "description": "Parámetro de privacidad diferencial epsilon",
+            "value": 1.0
+        },
+        "quasi_identifiers": {
+            "description": "Lista de identificadores que pueden reidentificar individuos",
+            "value": ["Own_Housing", "Own_Car"]
+        },
+        "sensitive_attribute": {
+            "description": "Atributo sensible que se protege",
+            "value": ["Group"]
+        }
+    },
+
+    "sustainability": {
+        "use_codecarbon": {
+            "description": "Use CodeCarbon for energy and emissions tracking",
+            "value": false
+        },
+        "energy_consumed": {
+            "description": "Consumo energético del modelo (kWh)",
+            "value": 2.9963174823623247e-05
+        },
+        "cpu_energy": {
+            "description": "Energía consumida por CPU (kWh)",
+            "value": 1.664975395833608e-05
+        },
+        "gpu_energy": {
+            "description": "Energía consumida por GPU (kWh)",
+            "value": 9.414451976219596e-06
+        },
+        "ram_energy": {
+            "description": "Energía consumida por RAM (kWh)",
+            "value": 3.898968889067571e-06
+        },
+        "emissions": {
+            "description": "Emisiones de CO2 asociadas (kgCO2e)",
+            "value": 5.215090578051626e-06
+        },
+        "duration": {
+            "description": "Duración del entrenamiento (seg)",
+            "value": 1.4115803001914171
+        },
+        "country": {
+            "description": "País donde se realizó el entrenamiento",
+            "value": "Spain"
+        },
+        "pue": {
+            "description": "Eficiencia energética del centro de datos (PUE)",
+            "value": 1.0
+        },
+        "wue": {
+            "description": "Eficiencia hídrica del centro de datos (WUE)",
+            "value": 0.0
+        }
     }
+    
 }

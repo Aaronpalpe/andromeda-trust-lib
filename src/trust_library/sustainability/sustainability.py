@@ -20,19 +20,27 @@ class SustainabilityPillar(Pillar):
         return "sustainability"
     
     def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:
+        sustainability = context.factsheet.get("sustainability", {})
+        use_codecarbon = sustainability.get("use_codecarbon", {}).get("value", False)
+
+        if not use_codecarbon:
+            return
+
         run_data = core.track_training_run(
             model=context.model,
             train_data=context.train_data,
-        )   
+        )
 
-        context.extras["run_data"] = run_data
+        for key, value in run_data.items():
+            if key in sustainability:
+                sustainability[key]["value"] = value
+
 
     def get_metrics(self) -> List[BaseMetric]:
         metrics: List[Any] = [
             EnergyConsumptionMetric(),
             EmissionsMetric(),
             CarbonIntensityMetric(),
-            # EnergyEfficiencyMetric(),
         ]
 
         return metrics
