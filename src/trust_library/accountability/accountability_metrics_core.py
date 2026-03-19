@@ -23,6 +23,8 @@ import pandas as pd
 import re
 from math import isclose
 
+from trust_library.factsheet import Factsheet
+
 
 # =============================================================================
 # Train / Test Split
@@ -208,7 +210,7 @@ def regularization_mapping(
 # =============================================================================
 
 def factsheet_completeness(
-    factsheet: Dict[str, Dict[str, Dict[str, Any]]],
+    factsheet: Factsheet,
 ) -> Dict[str, Any]:
     """
     Compute completeness ratio of a structured factsheet.
@@ -227,6 +229,9 @@ def factsheet_completeness(
         "missing": List[str]
     }
     """
+    # En TrustEvaluator.__init__ o donde lo uses:
+    if not isinstance(factsheet, dict):
+        factsheet = factsheet.to_dict()
 
     total: int = 0
     present: int = 0

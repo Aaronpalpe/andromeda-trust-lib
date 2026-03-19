@@ -376,9 +376,9 @@ class TrustEvaluator:
 
     def _load_config(self, config_path: str | None) -> dict:
         if config_path is None:
-            with resources.files("trust_library").joinpath("configs.json").open("r") as f:
+            with resources.files("trust_library").joinpath("configs.json").open("r", encoding="utf-8") as f:
                 return json.load(f)
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def _build_context(self) -> utils.EvaluationContext:
