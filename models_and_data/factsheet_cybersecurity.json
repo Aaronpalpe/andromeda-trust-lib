@@ -1,0 +1,179 @@
+{
+    "general": {
+        "model_name": {
+            "description": "Nombre del modelo",
+            "value": "CyberAttack-Classifier"
+        },
+        "model_type": {
+            "description": "Tipo de modelo (LogisticRegression, LinearRegression, DecisionTreeClassifier, RandomForestClassifier)",
+            "value": "RandomForestClassifier"
+        },
+        "purpose_description": {
+            "description": "Propósito previsto del sistema de IA",
+            "value": "Clasificación multiclase de tráfico de red para detectar 9 tipos de ataques y tráfico normal"
+        },
+        "domain_description": {
+            "description": "Dominio de aplicación",
+            "value": "Ciberseguridad / Detección de intrusiones (IDS)"
+        },
+        "training_data_description": {
+            "description": "Descripción de los datos de entrenamiento",
+            "value": "KDD Cup 1999: Dataset de tráfico de red con ataques DoS, Probe, R2L, U2R"
+        },
+        "model_information": {
+            "description": "Arquitectura, versión y parámetros del modelo",
+            "value": "RandomForest con 100 árboles, max_depth=20, 41 features"
+        },
+        "target_column": {
+            "description": "Nombre de la variable objetivo",
+            "value": "target"
+        },
+        "authors": {
+            "description": "Autores o responsables del modelo",
+            "value": [
+                "Security Team"
+            ]
+        },
+        "contact_information": {
+            "description": "Contacto para incidencias o auditorías",
+            "value": "security@example.com"
+        }
+    },
+    "governance": {
+        "roles_and_responsibilities": {
+            "description": "Roles y responsabilidades en el ciclo de vida",
+            "value": null
+        },
+        "risk_tolerance": {
+            "description": "Clasificación de riesgo organizacional y regulatorio",
+            "value": null
+        },
+        "ai_governance_committee": {
+            "description": "Existencia de comité de gobernanza de IA",
+            "value": null
+        },
+        "rai_competence": {
+            "description": "Nivel de competencia en IA responsable",
+            "value": null
+        }
+    },
+    "auditability": {
+        "data_provenance": {
+            "description": "Procedencia y ciclo de vida de los datos",
+            "value": null
+        },
+        "model_provenance": {
+            "description": "Procedencia, versiones y limitaciones del modelo",
+            "value": null
+        },
+        "logging": {
+            "description": "Sistema de logs y trazabilidad",
+            "value": null
+        },
+        "auditing": {
+            "description": "Auditorías internas o externas",
+            "value": null
+        },
+        "forum": {
+            "description": "Entidad que puede exigir explicaciones",
+            "value": null
+        }
+    },
+    "redressability": {
+        "incident_reporting": {
+            "description": "Canales y métricas de reporte de incidentes",
+            "value": null
+        },
+        "process": {
+            "description": "Proceso de rendición de cuentas",
+            "value": null
+        },
+        "built_in_redundancy": {
+            "description": "Redundancia y salvaguardas del sistema",
+            "value": null
+        },
+        "implications": {
+            "description": "Consecuencias ante evaluaciones negativas",
+            "value": null
+        }
+    },
+    "fairness": {
+        "protected_feature": {
+            "description": "Nombre de la característica protegida",
+            "value": "Group"
+        },
+        "protected_values": {
+            "description": "Valores que identifican al grupo desprotegido",
+            "value": [
+                1
+            ]
+        },
+        "favorable_outcomes": {
+            "description": "Valores que identifican el éxito o resultado favorable",
+            "value": [
+                0
+            ]
+        }
+    },
+    "privacy": {
+        "epsilon": {
+            "description": "Parámetro de privacidad diferencial epsilon",
+            "value": 1.0
+        },
+        "quasi_identifiers": {
+            "description": "Lista de identificadores que pueden reidentificar individuos",
+            "value": [
+                "QI_src_bytes",
+                "QI_dst_bytes"
+            ]
+        },
+        "sensitive_attribute": {
+            "description": "Atributo sensible que se protege",
+            "value": [
+                "Group"
+            ]
+        }
+    },
+    "sustainability": {
+        "use_codecarbon": {
+            "description": "Use CodeCarbon for energy and emissions tracking",
+            "value": false
+        },
+        "energy_consumed": {
+            "description": "Consumo energético del modelo (kWh)",
+            "value": 0.005
+        },
+        "cpu_energy": {
+            "description": "Energía consumida por CPU (kWh)",
+            "value": 0.004
+        },
+        "gpu_energy": {
+            "description": "Energía consumida por GPU (kWh)",
+            "value": 0.0
+        },
+        "ram_energy": {
+            "description": "Energía consumida por RAM (kWh)",
+            "value": 0.001
+        },
+        "emissions": {
+            "description": "Emisiones de CO2 asociadas (kgCO2e)",
+            "value": 0.002
+        },
+        "duration": {
+            "description": "Duración del entrenamiento (seg)",
+            "value": 30
+        },
+        "country": {
+            "description": "País donde se realizó el entrenamiento",
+            "value": "Spain"
+        },
+        "pue": {
+            "description": "Eficiencia energética del centro de datos (PUE)",
+            "value": 1.0
+        },
+        "wue": {
+            "description": "Eficiencia hídrica del centro de datos (WUE)",
+            "value": 0.0
+        }
+    }
+}

@@ -382,6 +382,9 @@ class TrustEvaluator:
             return json.load(f)
 
     def _build_context(self) -> utils.EvaluationContext:
+        # Imprimimos el tiempo que tarda en construir el contexto
+        print("Building evaluation context...")
+        
         target = self.factsheet["general"]["target_column"]["value"]
 
         if target not in self.train_data.columns or target not in self.test_data.columns:
