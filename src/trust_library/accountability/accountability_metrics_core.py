@@ -25,6 +25,22 @@ from math import isclose
 
 from trust_library.factsheet import Factsheet
 
+# # =============================================================================
+# # Helpers
+# # =============================================================================
+
+# def _validate_metric_value(value: float, metric_name: str) -> float:
+#     """Validate that metric value is not NaN or Inf."""
+#     if value is None:
+#         raise ValueError(f"Metric '{metric_name}' returned None value.")
+#     try:
+#         float_val = float(value)
+#         if np.isnan(float_val) or np.isinf(float_val):
+#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
+#     except (TypeError, ValueError) as e:
+#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
+#     return value
+
 
 # =============================================================================
 # Train / Test Split
@@ -85,7 +101,7 @@ def train_test_split_mapping(
             if low <= train_ratio < high:
                 return float(value)
 
-    return float("nan")
+    raise ValueError(f"No mapping found for train_ratio={train_ratio}. Check your configuration.")
 
 
 # =============================================================================

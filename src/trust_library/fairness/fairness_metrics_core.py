@@ -18,9 +18,22 @@ from sklearn.metrics import accuracy_score
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# # ─────────────────────────────────────────────────────────────────────────────
+# # Helpers
+# # ─────────────────────────────────────────────────────────────────────────────
+
+# def _validate_metric_value(value: float, metric_name: str) -> float:
+#     """Validate that metric value is not NaN or Inf."""
+#     if value is None:
+#         raise ValueError(f"Metric '{metric_name}' returned None value.")
+#     try:
+#         float_val = float(value)
+#         if np.isnan(float_val) or np.isinf(float_val):
+#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
+#     except (TypeError, ValueError) as e:
+#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
+#     return value
+
 
 def _safe_div(numerator: float, denominator: float, default: float = np.inf) -> float:
     """Division with a safe fallback when denominator is zero."""
@@ -272,6 +285,9 @@ def treatment_equality(
 
     fn_p, fp_p, ratio_p   = _fn_fp_ratio(group_mask)
     fn_u, fp_u, ratio_u   = _fn_fp_ratio(~group_mask)
+
+    if np.isnan(ratio_p) or np.isinf(ratio_p) or np.isnan(ratio_u) or np.isinf(ratio_u):
+        raise ValueError("Treatment Equality computation resulted in NaN or Inf. Check if your data has enough samples in each group and class.")
     return {
         "value": ratio_p - ratio_u,
         "fn_protected": fn_p,
@@ -316,6 +332,8 @@ def calibration_gap(
         .unstack(level=0)
     )
     gap = (cal.iloc[:, 0] - cal.iloc[:, 1]).abs().mean()
+    if np.isnan(gap):
+        raise ValueError("Calibration Gap is NaN. Check if your data has enough samples in each bin and group.")
     return {
         "value": float(gap),
         "n_bins": n_bins,
@@ -341,6 +359,8 @@ def well_calibration_error(
     err = df.groupby("bin").apply(
         lambda g: abs(g["y"].mean() - g["score"].mean())
     ).mean()
+    if np.isnan(err):
+        raise ValueError("Well-Calibration Error is NaN. Check if your data has enough samples in each bin.")
     return {
         "value": float(err),
         "n_bins": n_bins,
@@ -842,7 +862,8 @@ def z_test_diff(
     n_unprot = int((~group_mask).sum())
     
     if n_prot == 0 or n_unprot == 0:
-        return {"value": 0.0, "sr_protected": 0.0, "sr_unprotected": 0.0}
+        raise ValueError("Z-test computation resulted in NaN or Inf. Check if your data has enough samples in each group and that success rates are not 0 or 1 for either group.")
+        #return {"value": 0.0, "sr_protected": 0.0, "sr_unprotected": 0.0}
 
     sr_prot = float(y_pred[group_mask].mean())
     sr_unprot = float(y_pred[~group_mask].mean())
@@ -854,6 +875,10 @@ def z_test_diff(
     denom = np.sqrt((sr_tot * (1 - sr_tot)) / (n_tot * p_prot * (1 - p_prot)))
     
     val = 0.0 if denom == 0 else (sr_prot - sr_unprot) / denom
+
+    if np.isnan(val) or np.isinf(val):
+        raise ValueError("Z-test computation resulted in NaN or Inf. Check if your data has enough samples in each group and that success rates are not 0 or 1 for either group.")
+        #val = 0.0
 
     return {
         "value": float(val),

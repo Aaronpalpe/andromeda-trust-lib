@@ -8,6 +8,109 @@ import pandas as pd
 # Estructura de resultados
 Result = collections.namedtuple('result', 'score properties')
 
+
+# =============================================================================
+# HELPERS DE CONVERSIÓN DATAFRAME/NUMPY
+# =============================================================================
+
+def to_numpy(data: Any) -> np.ndarray:
+    """
+    Convierte cualquier tipo de dato a numpy array.
+    Soporta: pd.DataFrame, pd.Series, list, np.ndarray
+    """
+    if data is None:
+        return None
+    if isinstance(data, np.ndarray):
+        return data
+    if isinstance(data, (pd.DataFrame, pd.Series)):
+        return data.to_numpy()
+    if isinstance(data, (list, tuple)):
+        return np.array(data)
+    return np.asarray(data)
+
+
+def to_dataframe(data: Any, columns: list = None) -> pd.DataFrame:
+    """
+    Convierte cualquier tipo de dato a pandas DataFrame.
+    Soporta: np.ndarray, pd.DataFrame, list
+    """
+    if data is None:
+        return None
+    if isinstance(data, pd.DataFrame):
+        return data
+    if isinstance(data, np.ndarray):
+        if columns is None:
+            columns = [f"x{i}" for i in range(data.shape[1] if data.ndim > 1 else 1)]
+        return pd.DataFrame(data, columns=columns)
+    if isinstance(data, (list, tuple)):
+        return pd.DataFrame(data, columns=columns)
+    return pd.DataFrame(data)
+
+
+def to_series(data: Any, name: str = None) -> pd.Series:
+    """
+    Convierte cualquier tipo de dato a pandas Series.
+    """
+    if data is None:
+        return None
+    if isinstance(data, pd.Series):
+        return data
+    return pd.Series(data, name=name)
+
+
+def ensure_1d(data: Any) -> np.ndarray:
+    """
+    Asegura que los datos sean un array 1D (útil para y_train, y_test).
+    """
+    arr = to_numpy(data)
+    if arr is None:
+        return None
+    return arr.flatten() if arr.ndim > 1 else arr
+
+
+# =============================================================================
+# FORMATEO DE VALORES (MAX 2 DECIMALES)
+# =============================================================================
+
+def format_value(value: Any, decimals: int = 2) -> Any:
+    """
+    Formatea un valor numérico a máximo N decimales.
+    Retorna el valor original si no es numérico.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, (float, np.floating)):
+        if np.isnan(value) or np.isinf(value):
+            return None
+        return round(float(value), decimals)
+    return value
+
+
+def format_dict(d: dict, decimals: int = 2) -> dict:
+    """
+    Formatea recursivamente todos los valores numéricos en un dict a N decimales.
+    """
+    if not isinstance(d, dict):
+        return format_value(d, decimals)
+
+    result = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            result[k] = format_dict(v, decimals)
+        elif isinstance(v, list):
+            result[k] = [format_dict(item, decimals) if isinstance(item, dict)
+                         else format_value(item, decimals) for item in v]
+        else:
+            result[k] = format_value(v, decimals)
+    return result
+
+
+# =============================================================================
+# SCORING: THRESHOLDS Y NORMALIZACIÓN MIN-MAX
+# =============================================================================
+
 def calculate_weighted_score(scores: dict[str, float], weights: dict[str, float]) -> float:
     """Compute a weighted average of the scores"""
     weighted_scores = []
@@ -19,13 +122,14 @@ def calculate_weighted_score(scores: dict[str, float], weights: dict[str, float]
         if score is not None and not np.isnan(score):
             weighted_scores.append(score * weight)
             valid_weights.append(weight)
-    
+
     sum_weights = np.sum(valid_weights)
-    
+
     if sum_weights == 0:
         return 0
-    
-    return round(np.sum(weighted_scores) / sum_weights, 1)
+
+    return round(np.sum(weighted_scores) / sum_weights, 2)
+
 
 def to_json_safe(obj: Any) -> Any:
     """Convert object to a JSON-serializable format, handling common non-serializable types."""
@@ -44,7 +148,12 @@ def to_json_safe(obj: Any) -> Any:
     if isinstance(obj, np.floating):
         if np.isnan(obj):
             return None
-        return float(obj)
+        return float(obj) #round(float(obj), 2)  # Max 2 decimales
+
+    if isinstance(obj, float):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return float(obj) # round(obj, 2)  # Max 2 decimales
 
     return obj
 
@@ -52,21 +161,75 @@ def to_json_safe(obj: Any) -> Any:
 def calculate_score(value: float, thresholds: list[float]) -> int:
     """
     Compute a score from 1 to 5 based on the given value and thresholds.
-    Detects whether the thresholds are for ascending (accuracy) or descending 
+    Detects whether the thresholds are for ascending (accuracy) or descending
     (error) metrics and calculates the score accordingly.
     """
     if not thresholds or len(thresholds) == 0:
         raise ValueError("Thresholds must be a non empty list.")
-        
+
     value = abs(value) # Trabajamos siempre con valor absoluto
-    
+
     # Caso: Error (Menor es mejor). Ej: [0.075, 0.05, 0.01, 0]
     # Caso: Accuracy (Mayor es mejor). Ej: [0.8, 0.9, 0.95,0.99]
     idx = np.digitize(value, thresholds, right=False)
     score = idx + 1
-        
+
     # Asegurar que el score nunca exceda 5 ni baje de 1
     return int(np.clip(score, 1, 5))
+
+
+def calculate_score_normalized(
+    value: float,
+    min_val: float,
+    max_val: float,
+    higher_is_better: bool = True,
+    min_score: float = 1.0,
+    max_score: float = 5.0
+) -> float:
+    """
+    Calcula un score usando normalización min-max en lugar de thresholds.
+
+    Args:
+        value: El valor de la métrica a convertir en score
+        min_val: Valor mínimo esperado de la métrica
+        max_val: Valor máximo esperado de la métrica
+        higher_is_better: Si True, valores altos = score alto. Si False, valores bajos = score alto.
+        min_score: Score mínimo (default 1.0)
+        max_score: Score máximo (default 5.0)
+
+    Returns:
+        Score normalizado entre min_score y max_score
+
+    Example:
+        # Accuracy: min=60% (score 1), max=100% (score 5)
+        >>> calculate_score_normalized(0.79, 0.60, 1.00, higher_is_better=True)
+        2.9
+
+        # Error rate: min=0% (score 5), max=40% (score 1)
+        >>> calculate_score_normalized(0.10, 0.00, 0.40, higher_is_better=False)
+        4.0
+    """
+    if value is None or np.isnan(value):
+        return np.nan
+
+    # Evitar división por cero
+    if max_val == min_val:
+        return (min_score + max_score) / 2
+
+    # Normalizar al rango [0, 1]
+    normalized = (value - min_val) / (max_val - min_val)
+
+    # Clip al rango [0, 1]
+    normalized = np.clip(normalized, 0, 1)
+
+    # Si menor es mejor, invertir
+    if not higher_is_better:
+        normalized = 1 - normalized
+
+    # Escalar al rango de scores
+    score = min_score + normalized * (max_score - min_score)
+
+    return round(float(score), 2)
 
 
 def load_fairness_config(factsheet: dict) -> tuple:

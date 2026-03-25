@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import numpy as np
-from trust_library.utils import Result, calculate_score
+from trust_library.utils import Result, calculate_score, calculate_score_normalized
 import warnings
 
 #_DEFAULT_THRESHOLDS = [0.1, 0.2, 0.3, 0.4]
@@ -13,7 +13,7 @@ class BaseMetric(ABC):
 
     Encapsulates:
         - raw computation
-        - threshold-based scoring
+        - threshold-based scoring OR min-max normalization
         - optional custom scoring
         - safe evaluation
         - Result construction
@@ -65,18 +65,41 @@ class BaseMetric(ABC):
     # Scoring logic
     # ─────────────────────────────────────────────────────────────
 
-    def compute_score(self, raw: dict, config: dict | None) -> int:
+    def compute_score(self, raw: dict, config: dict | None) -> float:
         """
-        Default scoring using thresholds.
+        Default scoring using thresholds or min-max normalization.
         Override if necessary.
+
+        Config structure for thresholds:
+            score_config_key:
+                thresholds:
+                    value: [0.8, 0.85, 0.9, 0.95]
+
+        Config structure for normalized scoring:
+            score_config_key:
+                normalized:
+                    min_val: 0.0
+                    max_val: 1.0
+                    higher_is_better: true
         """
 
         if self.score_config_key is None:
             return self.custom_score(raw)
 
+        # Try normalized scoring first
+        norm_config = self._get_normalized_config(config)
+        if norm_config is not None:
+            return calculate_score_normalized(
+                value=raw.get("value"),
+                min_val=norm_config.get("min_val", 0.0),
+                max_val=norm_config.get("max_val", 1.0),
+                higher_is_better=norm_config.get("higher_is_better", True),
+            )
+
+        # Fall back to threshold scoring
         thresholds = self._get_thresholds(config)
         if thresholds is None:
-            raise ValueError(f"No thresholds available for '{self.score_config_key}'.")
+            raise ValueError(f"No thresholds or normalized config available for '{self.score_config_key}'.")
         return calculate_score(raw.get("value"), thresholds)
 
     def custom_score(self, raw: dict):
@@ -91,7 +114,6 @@ class BaseMetric(ABC):
     def _get_thresholds(self, config: dict | None):
         if config is None:
             warnings.warn("Config is None. Using default thresholds.", RuntimeWarning, stacklevel=2,)
-            #return _DEFAULT_THRESHOLDS
             return None
 
         thresholds = (
@@ -101,7 +123,29 @@ class BaseMetric(ABC):
         )
 
         if thresholds is None:
-            warnings.warn(f"No thresholds configured for '{self.score_config_key}'. Using default thresholds.", RuntimeWarning, stacklevel=2,)
-            #return _DEFAULT_THRESHOLDS
+            # Don't warn if normalized config exists
+            if self._get_normalized_config(config) is None:
+                warnings.warn(f"No thresholds configured for '{self.score_config_key}'.", RuntimeWarning, stacklevel=2,)
             return None
         return thresholds
+
+    def _get_normalized_config(self, config: dict | None) -> dict | None:
+        """
+        Get normalized scoring config if available.
+
+        Example config:
+            score_accuracy:
+                normalized:
+                    min_val: 0.6    # 60% accuracy = score 1
+                    max_val: 1.0    # 100% accuracy = score 5
+                    higher_is_better: true
+        """
+        if config is None:
+            return None
+
+        norm_config = (
+            config.get(self.score_config_key, {})
+            .get("normalized")
+        )
+
+        return norm_config

@@ -14,6 +14,22 @@ from holisticai.security.metrics import (
 from holisticai.security.metrics import k_anonymity as hol_k_anonymity
 from holisticai.security.metrics import l_diversity as hol_l_diversity
 
+# # =============================================================================
+# # Helpers
+# # =============================================================================
+
+# def _validate_metric_value(value: float, metric_name: str) -> float:
+#     """Validate that metric value is not NaN or Inf."""
+#     if value is None:
+#         raise ValueError(f"Metric '{metric_name}' returned None value.")
+#     try:
+#         float_val = float(value)
+#         if np.isnan(float_val) or np.isinf(float_val):
+#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
+#     except (TypeError, ValueError) as e:
+#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
+#     return value
+
 # =============================================================================
 # Epsilon DP Leakage
 # =============================================================================
@@ -22,7 +38,7 @@ def epsilon_dp(epsilon: float) -> Dict[str, float]:
     Compute a score for epsilon DP leakage based on predefined thresholds.
     """
     if epsilon is None:
-        return {"value": np.nan, "epsilon": None}
+        raise ValueError("Epsilon value is required for epsilon_dp metric. Please provide it in the factsheet.")
     
     return {
         "value": epsilon,
@@ -97,6 +113,9 @@ def epsilon_star(
         np.nanmax(np.maximum.reduce([m1, m2, m3, m4, np.ones_like(m1)]))
     )
 
+    if np.isnan(epsilon_star_val) or np.isinf(epsilon_star_val):
+        raise ValueError("Epsilon* calculation resulted in NaN or Inf. Check if your model and data are suitable for this metric.")
+
     return {
         "value": float(epsilon_star_val),
         "delta": float(delta),
@@ -147,6 +166,8 @@ def shapr(
 
     mean_phi = float(np.mean(phi))
 
+    if np.isnan(mean_phi) or np.isinf(mean_phi):
+        raise ValueError("SHAPr calculation resulted in NaN or Inf. Check if your model and data are suitable for this metric.")
     return {
         "value": mean_phi,
         "sample_size": sample_size,
@@ -169,7 +190,7 @@ def attribute_inference(
     The function evaluates how well an attacker can predict the sensitive attribute
     '''
     if sensitive_attribute not in X_train.columns:
-        return {"value": np.nan, "sensitive": sensitive_attribute}
+        raise ValueError(f"Sensitive attribute '{sensitive_attribute}' not found in training data columns.")
     
     # The library function 'to_numerical_or_categorical' requires pandas objects to use .astype("category")
     if not isinstance(y_train, pd.Series):
@@ -203,6 +224,9 @@ def attribute_inference(
     # If attribute is continous we invert the MSE score to have a consistent interpretation where higher values indicate higher risk
     if is_continuous:
         res = 1 / (1 + res)
+    
+    if np.isnan(res) or np.isinf(res):
+        raise ValueError("Attribute inference calculation resulted in NaN or Inf. Check if your model and data are suitable for this metric.")
 
     return {
         "value": float(res),
@@ -252,6 +276,8 @@ def privacy_risk(
 
     mean_score = float(np.mean(scores))
 
+    if np.isnan(mean_score) or np.isinf(mean_score):
+        raise ValueError("Privacy risk calculation resulted in NaN or Inf. Check if your model and data are suitable for this metric.")
     return {"value": mean_score}
 
 # =============================================================================

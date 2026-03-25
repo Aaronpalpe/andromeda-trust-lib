@@ -18,7 +18,7 @@ class SustainabilityPillar(Pillar):
     @property
     def pillar_key(self) -> str:
         return "sustainability"
-    
+
     def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:
         sustainability = context.factsheet.get("sustainability", {})
         use_codecarbon = sustainability.get("use_codecarbon", {}).get("value", False)
@@ -26,14 +26,30 @@ class SustainabilityPillar(Pillar):
         if not use_codecarbon:
             return
 
-        run_data = core.track_training_run(
-            model=context.model,
-            train_data=context.train_data,
-        )
+        print("CodeCarbon enabled - tracking training run...")
 
-        for key, value in run_data.items():
-            if key in sustainability:
-                sustainability[key]["value"] = value
+        try:
+            run_data = core.track_training_run(
+                model=context.model,
+                train_data=context.train_data,
+            )
+
+            # Actualizar la factsheet en memoria con los valores calculados
+            for key, value in run_data.items():
+                if key in sustainability:
+                    sustainability[key]["value"] = value
+                    formatted_value = f"{value:.6f}" if isinstance(value, (int, float)) else str(value)
+                    print(f"   Updated factsheet: {key} = {formatted_value}")
+
+            # Guardar indicador de que CodeCarbon se ejecutó
+            context.extras["codecarbon_executed"] = True
+            context.extras["codecarbon_data"] = run_data
+
+            print("CodeCarbon tracking completed successfully.")
+
+        except Exception as e:
+            print(f"Warning: CodeCarbon tracking failed: {e}")
+            context.extras["codecarbon_error"] = str(e)
 
 
     def get_metrics(self) -> List[BaseMetric]:

@@ -24,7 +24,7 @@ classDiagram
     -_compute_trust_score(pillar_scores: dict) float
     -_build_score_explanation(pillar_results: dict, show_nan: bool) dict
     -_save_result() None
-    -_validate_pillars(pillars: list[str]) None
+    <!-- -_validate_pillars(pillars: list[str]) None -->
     -_is_nan(value)
   }
 

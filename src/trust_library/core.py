@@ -319,6 +319,72 @@ class TrustEvaluator:
 
         fig_radar.show()
 
+    def print_results_summary(self, decimals: int = 3) -> None:
+        """
+        Pretty print of evaluation results in console.
+
+        Parameters
+        ----------
+        decimals : int
+            Number of decimals for metric values.
+        """
+        if self.result is None:
+            raise RuntimeError("No results available. Run evaluate() first.")
+
+        result = self.result
+
+        print("\n" + "=" * 70)
+        print("RESULTADOS DE EVALUACIÓN DE TRUST")
+        print("=" * 70)
+
+        # ─────────────────────────────────────
+        # Trust score
+        # ─────────────────────────────────────
+        trust_score = result.get("trust_score")
+        if isinstance(trust_score, (int, float)):
+            print(f"\n TRUST SCORE GLOBAL: {trust_score:.2f}/5.0")
+        else:
+            print(f"\n TRUST SCORE GLOBAL: {trust_score}")
+
+        # ─────────────────────────────────────
+        # Pillars
+        # ─────────────────────────────────────
+        print("\n SCORES POR PILAR:")
+        for pillar, score in result.get("pillar_score", {}).items():
+            if isinstance(score, (int, float)):
+                print(f"   - {pillar.capitalize():15s}: {score:.2f}/5.0")
+            else:
+                print(f"   - {pillar.capitalize():15s}: {score}")
+
+        # ─────────────────────────────────────
+        # Metrics
+        # ─────────────────────────────────────
+        print("\n MÉTRICAS DETALLADAS:")
+        for pillar, metrics in result.get("details", {}).items():
+            print(f"\n   [{pillar.upper()}]")
+            for metric, value in metrics.items():
+                if value is None:
+                    continue
+
+                # Evita errores tipo 'Unknown format code f'
+                if isinstance(value, (int, float)):
+                    print(f"      - {metric}: {value:.{decimals}f}")
+                else:
+                    print(f"      - {metric}: {value}")
+        # # ─────────────────────────────────────
+        # # Properties
+        # # ─────────────────────────────────────
+        # print("\n PROPIEDADES DE LAS MÉTRICAS:")
+        # for pillar, properties in result.get("properties", {}).items():
+        #     print(f"\n   [{pillar.upper()}]")
+        #     for metric, prop in properties.items():
+        #         print(f"      - {metric}: {prop}")
+
+        # ─────────────────────────────────────
+        # Output path
+        # ─────────────────────────────────────
+        print(f"\n Resultados guardados en: {self.output_path}")
+
     @staticmethod
     def compare_radar(results: dict[str, dict]) -> None:
         """
@@ -479,8 +545,33 @@ class TrustEvaluator:
         return explanation
 
     def _save_result(self) -> None:
+        # Formatear todos los valores numéricos a máximo 2 decimales
+        #  formatted_result = utils.format_dict(self.result, decimals=2)
+
         with open(self.output_path, "w", encoding="utf-8") as f:
+            # json.dump(utils.to_json_safe(formatted_result), f, indent=4, ensure_ascii=False)
             json.dump(utils.to_json_safe(self.result), f, indent=4, ensure_ascii=False)
+
+        # Si CodeCarbon fue ejecutado, guardar la factsheet actualizada
+        if self.context.extras.get("codecarbon_executed"):
+            self._save_updated_factsheet()
+
+    def _save_updated_factsheet(self) -> None:
+        """Guarda la factsheet actualizada con los valores de CodeCarbon."""
+        # Determinar el path de la factsheet
+        if hasattr(self.factsheet, 'save'):
+            # Es un objeto Factsheet
+            factsheet_path = self.output_path.replace("trust_evaluation", "factsheet_updated")
+            factsheet_path = factsheet_path.replace(".json", "_codecarbon.json")
+            self.factsheet.save(factsheet_path)
+            print(f"Updated factsheet saved to: {factsheet_path}")
+        else:
+            # Es un dict
+            factsheet_path = self.output_path.replace("trust_evaluation", "factsheet_updated")
+            factsheet_path = factsheet_path.replace(".json", "_codecarbon.json")
+            with open(factsheet_path, "w", encoding="utf-8") as f:
+                json.dump(utils.to_json_safe(self.factsheet), f, indent=4, ensure_ascii=False)
+            print(f"Updated factsheet saved to: {factsheet_path}")
 
     def _validate_pillars(self, pillars: list[str]) -> None:
         unknown = [p for p in pillars if p not in _PILLARS]

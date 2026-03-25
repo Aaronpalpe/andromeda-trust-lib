@@ -35,6 +35,25 @@ from holisticai.utils import BinaryClassificationProxy
 from scipy.spatial.distance import jensenshannon
 from scipy.stats import entropy
 
+from sklearn.utils.validation import check_is_fitted
+from sklearn.base import is_classifier, is_regressor
+
+# # ============================================================
+# # Helpers
+# # ============================================================
+
+# def _validate_metric_value(value: float, metric_name: str) -> float:
+#     """Validate that metric value is not NaN or Inf."""
+#     if value is None:
+#         raise ValueError(f"Metric '{metric_name}' returned None value.")
+#     try:
+#         float_val = float(value)
+#         if np.isnan(float_val) or np.isinf(float_val):
+#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
+#     except (TypeError, ValueError) as e:
+#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
+#     return value
+
 # ============================================================
 # Silence SHAP
 # ============================================================
@@ -368,6 +387,11 @@ def feature_relevance(
 #     }
 
 def number_of_rules(tree_model) -> dict:
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [number_of_rules(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals)), "n_rules": float(np.mean(vals))}
+        
     if hasattr(tree_model, "get_n_leaves"):
         n_rules = tree_model.get_n_leaves()
         return {"value": float(n_rules), "n_rules": float(n_rules)}
@@ -376,6 +400,11 @@ def number_of_rules(tree_model) -> dict:
 
 
 def average_rule_length(tree_model) -> dict:
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [average_rule_length(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals)), "avg_rule_length": float(np.mean(vals))}
+        
     if not hasattr(tree_model, "tree_"):
         raise ValueError("Model does not provide tree structure.")
         
@@ -398,6 +427,20 @@ def average_rule_length(tree_model) -> dict:
     return {"value": float(avg_depth), "avg_rule_length": float(avg_depth)}
 
 def rule_stats(rule_model) -> dict:
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(rule_model, "estimators_"):
+        vals = []
+        for est in rule_model.estimators_:
+            try:
+                res = rule_stats(est)
+                if not np.isnan(res.get("value", np.nan)):
+                    vals.append(res["value"])
+            except ValueError:
+                continue
+        if not vals:
+            raise ValueError("Model does not provide rule information.")
+        return {"value": float(np.mean(vals)), "avg_rule_length": float(np.mean(vals))}
+        
     if not hasattr(rule_model, "rules_"):
         raise ValueError("Model does not provide rule information.")
 
@@ -412,6 +455,11 @@ def rule_stats(rule_model) -> dict:
     }
 
 def tree_depth(tree_model) -> dict:
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [tree_depth(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals)), "max_depth": float(np.mean(vals))}
+        
     if hasattr(tree_model, "get_depth"):
         depth = tree_model.get_depth()
         return {"value": float(depth), "max_depth": float(depth)}
@@ -485,6 +533,9 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
         corr = 0.0  # Si no hay variación, no hay correlación
     else:
         corr = -np.corrcoef(coefs, pred_probs)[0, 1]
+
+    if np.isnan(corr):
+        raise ValueError("Correlation is NaN. Check if coefs and pred_probs have sufficient variation.")
 
     return {
         "value": float(corr),
@@ -586,8 +637,11 @@ def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
         
         infid = np.mean(ks * np.square(pdt_diff - exp_sum)) / np.mean(ks)
         infids.append(infid)
-        
-    return {"value": float(np.mean(infids))}
+
+    mean_infid = float(np.mean(infids))
+    if np.isnan(mean_infid):
+        raise ValueError("Infidelity is NaN. Check if model predictions and feature weights are valid.")
+    return {"value": mean_infid}
 
 ##########
 ## HOLISTICAI
@@ -859,14 +913,14 @@ def get_depths_counts(node_index: int, tree, depths: list, counts: list, h: int 
 # Tree / Structural Surrogate Metrics
 # =============================================================================
 
-def weighted_average_depth(tree) -> Dict[str, float]:
+def weighted_average_depth(tree_model) -> Dict[str, float]:
     """
     Weighted Average Depth calculates the average depth of a tree considering the number
     of samples that pass through each cut.
 
     Parameters
     ----------
-    tree: Tree
+    tree_model: Tree
         The tree to calculate the weighted average depth of.
 
     Returns
@@ -880,20 +934,28 @@ def weighted_average_depth(tree) -> Dict[str, float]:
         Shallow decision trees for explainable k-means clustering.
         Pattern Recognition, 137, 109239.
     """
-    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
-    depths, counts = get_depths_counts(0, tree, [], [])
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [weighted_average_depth(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals))}
+
+    tree_obj = getattr(tree_model, "tree_", tree_model)
+    if tree_obj is None or not hasattr(tree_obj, 'children_left'): 
+        raise ValueError("Model must have attribute 'tree_'.")
+        
+    depths, counts = get_depths_counts(0, tree_obj, [], [])
     n_samples = sum(counts)
     if n_samples == 0: return {"value": 0.0}
     return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum())}
 
-def weighted_average_explainability_score(tree) -> Dict[str, float]:
+def weighted_average_explainability_score(tree_model) -> Dict[str, float]:
     """
     Weighted Average Explainability Score calculates the average depth of a tree considering the number
     of samples that pass through each cut.
 
     Parameters
     ----------
-    tree: Tree
+    tree_model: Tree
         The tree to calculate the weighted average depth of.
 
     Returns
@@ -907,20 +969,28 @@ def weighted_average_explainability_score(tree) -> Dict[str, float]:
         Shallow decision trees for explainable k-means clustering.
         Pattern Recognition, 137, 109239.
     """
-    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
-    depths, counts = get_cuts_counts(0, tree, [], [], set())
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [weighted_average_explainability_score(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals))}
+
+    tree_obj = getattr(tree_model, "tree_", tree_model)
+    if tree_obj is None or not hasattr(tree_obj, 'children_left'): 
+        raise ValueError("Model must have attribute 'tree_'.")
+        
+    depths, counts = get_cuts_counts(0, tree_obj, [], [], set())
     n_samples = sum(counts)
     if n_samples == 0: raise ValueError("No samples to calculate weighted average explainability score.")
     return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum())}
 
-def weighted_tree_gini(tree) -> Dict[str, float]: # ALGO DIFERENTE
+def weighted_tree_gini(tree_model) -> Dict[str, float]: # ALGO DIFERENTE
     """
     Compute the weighted Gini index for the tree (WGNI).
     Reference value: 0.0
 
     Parameters
     ----------
-    tree : Tree
+    tree_model : Tree
         The tree to compute the weighted Gini index of.
 
     Returns
@@ -928,38 +998,45 @@ def weighted_tree_gini(tree) -> Dict[str, float]: # ALGO DIFERENTE
     dict
         A dictionary containing the weighted Gini index of the tree.
     """ 
-    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
-    
-    is_classification = tree.n_classes[0] > 1
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [weighted_tree_gini(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals))}
+
+    tree_obj = getattr(tree_model, "tree_", tree_model)
+    if tree_obj is None or not hasattr(tree_obj, 'children_left'): 
+        raise ValueError("Model must have attribute 'tree_'.")
+        
+    is_classification = tree_obj.n_classes[0] > 1
     weighted_impurity = 0.0
-    total_samples = tree.n_node_samples[0]
+    total_samples = tree_obj.n_node_samples[0]
 
     def accumulate_impurity(node_index):
         nonlocal weighted_impurity
-        if is_leaf(node_index, tree):
-            node_samples = tree.n_node_samples[node_index]
+        if is_leaf(node_index, tree_obj):
+            node_samples = tree_obj.n_node_samples[node_index]
             if node_samples > 0:
-                node_value = tree.value[node_index, 0, :]
+                node_value = tree_obj.value[node_index, 0, :]
                 if is_classification:
                     impurity = 1.0 - np.sum((node_value / node_samples)**2)
                 else:
                     impurity = np.sum((node_value - np.mean(node_value)) ** 2) / node_samples
                 weighted_impurity += (node_samples / total_samples) * impurity
         else:
-            accumulate_impurity(tree.children_left[node_index])
-            accumulate_impurity(tree.children_right[node_index])
+            accumulate_impurity(tree_obj.children_left[node_index])
+            accumulate_impurity(tree_obj.children_right[node_index])
 
     accumulate_impurity(0)
     return {"value": float(weighted_impurity)}
 
-def tree_depth_variance(tree) -> Dict[str, float]:
+def tree_depth_variance(tree_model) -> Dict[str, float]:
     """
     Compute the variance of the depths of the leaves in the tree (TDV).
     Reference value: 0.0
 
     Parameters
     ----------
-    tree : Tree
+    tree_model : Tree
         The tree to compute the depth variance of.
 
     Returns
@@ -968,10 +1045,19 @@ def tree_depth_variance(tree) -> Dict[str, float]:
         A dictionary containing the variance of the leaf depths.
 
     """
-    if tree is None: raise ValueError("Model must have attribute 'tree_'.")
-    depths, _ = get_depths_counts(0, tree, [], [])
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [tree_depth_variance(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals))}
+
+    tree_obj = getattr(tree_model, "tree_", tree_model)
+    if tree_obj is None or not hasattr(tree_obj, 'children_left'): 
+        raise ValueError("Model must have attribute 'tree_'.")
+        
+    depths, _ = get_depths_counts(0, tree_obj, [], [])
     if not depths: raise ValueError("No leaf nodes to calculate depth variance.")
-    return {"value": float(np.mean((depths - np.mean(depths)) ** 2))}
+    depths_arr = np.array(depths)
+    return {"value": float(np.mean((depths_arr - np.mean(depths_arr)) ** 2))}
 
 def tree_number_of_rules(surrogate) -> Dict[str, float]:
     """
@@ -985,6 +1071,11 @@ def tree_number_of_rules(surrogate) -> Dict[str, float]:
     -------
         int: The number of rules present in the surrogate model.
     """
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(surrogate, "estimators_"):
+        vals = [tree_number_of_rules(est)["value"] for est in surrogate.estimators_]
+        return {"value": float(np.mean(vals))}
+        
     if surrogate is None: raise ValueError("Surrogate cannot be None.")
     return {"value": float(get_number_of_rules(surrogate.tree_))}
 
@@ -1000,6 +1091,11 @@ def tree_number_of_features(surrogate) -> Dict[str, float]:
     -------
         int: The number of features used in the surrogate model.
     """
+# If it's a Random Forest, calculate the mean across all trees
+    if hasattr(surrogate, "estimators_"):
+        vals = [tree_number_of_features(est)["value"] for est in surrogate.estimators_]
+        return {"value": float(np.mean(vals))}
+        
     if surrogate is None: raise ValueError("Surrogate cannot be None.")
     features = get_features(surrogate.tree_)
     return {"value": float(len(np.unique(features[features >= 0])))}
@@ -1095,11 +1191,22 @@ def shap_importance_from_local(local_importances, feature_names):
     return dict(zip(feature_names, global_importance))
 
 def compute_pdp_importance(model, X):
+    # Verificar que el modelo es un estimador válido
+    if not (is_classifier(model) or is_regressor(model)):
+        if not (hasattr(model, 'predict') and hasattr(model, 'fit')):
+            raise ValueError("Model must be a fitted sklearn-compatible estimator for PDP computation.")
+
+    # Convertir a float para evitar errores de dtype
+    X_float = X.astype(float)
+
     importances = {}
-    for col in X.columns:
-        pdp_result = partial_dependence(model, X, [col], kind='average', grid_resolution=20)
-        val = np.std(pdp_result['average'])
-        importances[col] = val
+    for col in X_float.columns:
+        try:
+            pdp_result = partial_dependence(model, X_float, [col], kind='average', grid_resolution=20)
+            val = np.std(pdp_result['average'])
+            importances[col] = val
+        except Exception as e:
+            raise ValueError(f"Failed to compute PDP for feature '{col}': {e}")
     return importances
 
 # def compute_pfi(model, X, y, seed=42):
@@ -1156,35 +1263,57 @@ def get_aggregated_score(matrix):
 def xai_consistency(model, shap_values, X, y, k=5, mode='classification', seed=42) -> Dict[str, Any]:
     np.random.seed(seed)
     random.seed(seed)
-    
+
+    # Validaciones iniciales
+    if shap_values is None:
+        raise ValueError("SHAP values are required for XAI consistency computation.")
+
+    if X is None or (hasattr(X, 'shape') and X.shape[0] == 0):
+        raise ValueError("X data is required and cannot be empty.")
+
     # Aseguramos que X es un DataFrame para que tengan nombres de columnas
     if not isinstance(X, pd.DataFrame):
         X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
-        
+
+    # Convertir a float para evitar errores de dtype con int64
+    X = X.astype(float)
+
     rankings = {}
-    rankings['LIME'] = compute_lime(model, X, mode=mode, num_samples=20, seed=seed)
-    rankings['SHAP'] = shap_importance_from_local(shap_values, X.columns) #compute_shap_custom(model, X, mode=mode)
-    rankings['PDP'] = compute_pdp_importance(model, X)
-    # rankings['PFI'] = compute_pfi(model, X, y, seed=seed)
-    # rankings['LOFO'] = compute_lofo(model, X, y)
-    # rankings['Surrogate'] = compute_surrogate(model, X, mode=mode)
+
+    # LIME
+    try:
+        rankings['LIME'] = compute_lime(model, X, mode=mode, num_samples=20, seed=seed)
+    except Exception as e:
+        raise ValueError(f"Failed to compute LIME importances: {e}")
+
+    # SHAP
+    try:
+        rankings['SHAP'] = shap_importance_from_local(shap_values, X.columns)
+    except Exception as e:
+        raise ValueError(f"Failed to compute SHAP importances: {e}")
+
+    # PDP
+    try:
+        rankings['PDP'] = compute_pdp_importance(model, X)
+    except Exception as e:
+        raise ValueError(f"Failed to compute PDP importances: {e}")
 
     matrix = calculate_consistency_matrix(rankings, k=k)
     score = get_aggregated_score(matrix)
-    
+
     top_k_info = []
     for method, importances in rankings.items():
         # Extraemos las top K con sus valores
         top_k_list = get_top_k(importances, k, return_values=True)
         features_str = ", ".join([feat for feat, val in top_k_list])
         vals_str = ", ".join([f"{val:.3f}" for feat, val in top_k_list])
-        
+
         info_string = f"Top-{k} features {method}: {features_str}, con importancias: {vals_str}"
         top_k_info.append(info_string)
-    
+
     return {
         "value": float(score),
         "consistency_matrix": matrix.to_dict(),
-        "top_k_details": "\n".join(top_k_info), # Aquí pasamos el texto formateado
+        "top_k_details": "\n".join(top_k_info),
         "rankings": rankings
     }

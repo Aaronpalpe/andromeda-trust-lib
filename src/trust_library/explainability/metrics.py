@@ -128,7 +128,10 @@ class AlgorithmClassMetric(BaseMetric):
         super().__init__("algorithm_class", "score_algorithm_class") #AÑADIR
 
     def compute(self, ctx: EvaluationContext) -> dict:
-        model_type = ctx.factsheet.get("general", {}).get("model_type", {}).get("value", None)
+        model_type = ctx.factsheet.get("general", {}).get("model_type", {}).get("value")
+        # Si es None o null 
+        if model_type is None:
+            raise ValueError("Model type not found in factsheet under general.model_type.value.")
         return core.algorithm_class(ctx.model, model_type=model_type)
 
     # def custom_score(self, raw: dict):
@@ -141,8 +144,11 @@ class AlgorithmClassMetric(BaseMetric):
             .get("value", {})
         )
 
-        return mappings.get(raw["model_type"])
-    
+        value = mappings.get(raw["model_type"])
+        if value is None:
+            raise ValueError(f"No score mapping found for model type '{raw['model_type']}' in config under '{self.score_config_key}.mappings.value'.")
+        return value
+
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Score assigned based on model class type.",
@@ -191,12 +197,33 @@ class FeatureRelevanceMetric(BaseMetric):
         super().__init__("feature_relevance", "score_feature_relevance")
 
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.feature_relevance(
-            model=ctx.model,
-            X_train=ctx.X_train,
-            y_train=ctx.y_train,
-            threshold_outlier= ctx.extras.get("threshold_outlier")
-        )
+        params = ctx.extras.get("explainability_params", {})
+        threshold = params.get("threshold_outlier", 0.03)
+        if threshold is None:
+            threshold = 0.03
+
+        # Try model's native feature importances first
+        if hasattr(ctx.model, "feature_importances_") or hasattr(ctx.model, "coef_"):
+            return core.feature_relevance(
+                model=ctx.model,
+                X_train=ctx.X_train,
+                y_train=ctx.y_train,
+                threshold_outlier=threshold
+            )
+
+        # Fallback to SHAP importances if available
+        global_importances = ctx.extras.get("global_importances")
+        if global_importances:
+            importance = np.array(list(global_importances.values()))
+            irrelevant_features = np.sum(importance <= threshold)
+            pct_irrelevant = irrelevant_features / len(importance)
+            return {
+                "value": float(pct_irrelevant),
+                "n_outliers": int(irrelevant_features),
+                "importances": importance.tolist(),
+            }
+
+        raise ValueError("Model does not provide feature importances and SHAP importances are not available.")
 
     def build_properties(self, raw: dict) -> dict:
         return {
@@ -358,17 +385,41 @@ def _get_or_compute_global_xai(ctx: EvaluationContext) -> dict:
         global_vals = list(global_imps.values())
         global_ranked = sorted(global_imps.keys(), key=lambda k: global_imps[k], reverse=True)
         cond_ranked = {
-            g: sorted(imps.keys(), key=lambda k: imps[k], reverse=True) 
+            g: sorted(imps.keys(), key=lambda k: imps[k], reverse=True)
             for g, imps in cond_imps.items()
         }
 
         metrics = {}
-        metrics["alpha_score"] = core.alpha_score(global_vals) if global_vals else np.nan
-        metrics["spread_ratio"] = core.spread_ratio(global_vals) if global_vals else np.nan
-        metrics["spread_divergence"] = core.spread_divergence(global_vals) if global_vals else np.nan
-        metrics["position_parity"] = core.position_parity(cond_ranked, global_ranked) if cond_ranked else np.nan
-        metrics["rank_alignment"] = core.rank_alignment(cond_imps, global_imps) if cond_imps else np.nan
-        metrics["xai_ease_score"] = core.xai_ease_score(pdp_avgs, global_ranked) if pdp_avgs else np.nan
+
+        # alpha_score
+        if not global_vals:
+            raise ValueError("Cannot compute alpha_score: no global importances available.")
+        metrics["alpha_score"] = core.alpha_score(global_vals)
+
+        # spread_ratio
+        if not global_vals:
+            raise ValueError("Cannot compute spread_ratio: no global importances available.")
+        metrics["spread_ratio"] = core.spread_ratio(global_vals)
+
+        # spread_divergence
+        if not global_vals:
+            raise ValueError("Cannot compute spread_divergence: no global importances available.")
+        metrics["spread_divergence"] = core.spread_divergence(global_vals)
+
+        # position_parity
+        if not cond_ranked:
+            raise ValueError("Cannot compute position_parity: no conditional rankings available.")
+        metrics["position_parity"] = core.position_parity(cond_ranked, global_ranked)
+
+        # rank_alignment
+        if not cond_imps:
+            raise ValueError("Cannot compute rank_alignment: no conditional importances available.")
+        metrics["rank_alignment"] = core.rank_alignment(cond_imps, global_imps)
+
+        # xai_ease_score
+        if not pdp_avgs:
+            raise ValueError("Cannot compute xai_ease_score: no PDP averages available.")
+        metrics["xai_ease_score"] = core.xai_ease_score(pdp_avgs, global_ranked)
 
     except Exception as exc:
         ctx.extras[_GLOBAL_ERROR_KEY] = str(exc)
@@ -474,28 +525,28 @@ class XAIEaseScoreMetric(BaseMetric):
 class WeightedAverageDepthMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_average_depth", "score_weighted_average_depth")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.weighted_average_depth(getattr(ctx.model, "tree_", None))
+        return core.weighted_average_depth(ctx.model)
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Average depth of a tree weighted by samples.", "Value": f"{raw['value']:.6f}"}
 
 class WeightedAverageExplainabilityScoreMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_average_explainability_score", "score_weighted_average_explainability")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.weighted_average_explainability_score(getattr(ctx.model, "tree_", None))
+        return core.weighted_average_explainability_score(ctx.model)
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Average explainability score of a tree.", "Value": f"{raw['value']:.6f}"}
 
 class WeightedTreeGiniMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_tree_gini", "score_weighted_tree_gini")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.weighted_tree_gini(getattr(ctx.model, "tree_", None))
+        return core.weighted_tree_gini(ctx.model)
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Weighted Gini index for the tree (WGNI).", "Value": f"{raw['value']:.6f}"}
 
 class TreeDepthVarianceMetric(BaseMetric):
     def __init__(self): super().__init__("tree_depth_variance", "score_tree_depth_variance")
     def compute(self, ctx: EvaluationContext) -> dict:
-        return core.tree_depth_variance(getattr(ctx.model, "tree_", None))
+        return core.tree_depth_variance(ctx.model)
     def build_properties(self, raw: dict) -> dict:
         return {"Metric Description": "Variance of the depths of the leaves.", "Value": f"{raw['value']:.6f}"}
 

@@ -115,7 +115,8 @@ class ExplainabilityPillar(Pillar):
             # ====================================================================
             global_imps_array = np.abs(local_imps).mean(axis=0)
             global_importances = {feat: float(imp) for feat, imp in zip(feature_names, global_imps_array)}
-            
+            context.extras["global_importances"] = global_importances
+
             # ====================================================================
             # 3. Conditional Importances (Agrupado por la clase predicha)
             # ====================================================================
@@ -134,6 +135,7 @@ class ExplainabilityPillar(Pillar):
                     conditional_importances[str(cls)] = {
                         feat: float(imp) for feat, imp in zip(feature_names, cls_imps_array)
                     }
+            context.extras["conditional_importances"] = conditional_importances
 
             # ====================================================================
             # 4. Partial Dependencies Plots (PDP)
@@ -143,20 +145,23 @@ class ExplainabilityPillar(Pillar):
             # Calculamos PDP solo para el Top K de features para ahorrar cómputo
             top_features = sorted(global_importances.keys(), key=lambda k: global_importances[k], reverse=True)[:top_k]
 
-            for feat in top_features:
-                feat_idx = feature_names.index(feat)
-                # kind="both" extrae tanto la media global (average) como las curvas individuales (ICE)
-                pdp_res = partial_dependence(context.model, X_df, features=[feat_idx], kind="both")
-                
-                # Dependiendo de si es multiclase, scikit-learn puede devolver un array extra. 
-                # Tomamos el índice [0] que suele corresponder a la clase positiva / principal.
-                pdp_averages[feat] = pdp_res["average"][0].tolist()
-
+            try:
+                # Convertir a float para evitar errores con columnas int64
+                X_df_float = X_df.astype(float)
+                for feat in top_features:
+                    feat_idx = feature_names.index(feat)
+                    # kind="both" extrae tanto la media global (average) como las curvas individuales (ICE)
+                    pdp_res = partial_dependence(context.model, X_df_float, features=[feat_idx], kind="both")
+                    
+                    # Dependiendo de si es multiclase, scikit-learn puede devolver un array extra. 
+                    # Tomamos el índice [0] que suele corresponder a la clase positiva / principal.
+                    pdp_averages[feat] = pdp_res["average"][0].tolist()
+            except Exception as pdp_exc:
+                print(f"Error calculando PDP: {pdp_exc}")
             # ====================================================================
             # 5. Inyectar en context.extras
             # ====================================================================
-            context.extras["global_importances"] = global_importances
-            context.extras["conditional_importances"] = conditional_importances
+            
             context.extras["pdp_averages"] = pdp_averages
 
         except Exception as exc:

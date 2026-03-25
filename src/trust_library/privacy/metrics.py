@@ -111,7 +111,7 @@ class AttributeInferenceMetric(BaseMetric):
         )
 
         if not sensitive:
-            return {"value": float("nan"), "sensitive": None}
+            raise ValueError("Sensitive attribute is required for attribute_inference metric. Please provide it in the factsheet under privacy.sensitive_attribute.")
 
         sensitive_attr = sensitive[0]
 

@@ -1,27 +1,27 @@
 {
-    "trust_score": 3.0,
+    "trust_score": 3.2,
     "pillar_score": {
-        "fairness": 2.4,
-        "accountability": 2.8,
-        "privacy": 2.1,
-        "sustainability": 4.8,
-        "explainability": 4.1,
+        "fairness": 2.53,
+        "accountability": 2.85,
+        "privacy": 2.08,
+        "sustainability": 4.75,
+        "explainability": 5.0,
         "robustness": 2.2
     },
     "details": {
         "fairness": {
-            "underfitting": NaN,
-            "overfitting": NaN,
+            "underfitting": null,
+            "overfitting": null,
             "class_balance": 1,
             "statistical_parity_difference": 1,
             "disparate_impact": 1,
             "equal_opportunity_difference": 5,
             "average_odds_difference": 5,
-            "accuracy_parity": NaN,
+            "accuracy_parity": null,
             "predictive_parity": 5,
-            "treatment_equality": 1,
-            "calibration_gap": NaN,
-            "well_calibration_error": NaN,
+            "treatment_equality": null,
+            "calibration_gap": null,
+            "well_calibration_error": null,
             "generalized_entropy_index": 2,
             "theil_index": 2,
             "coefficient_of_variation": 1,
@@ -29,11 +29,11 @@
             "class_imbalance": 5,
             "kl_divergence": 1,
             "conditional_demographic_disparity": 5,
-            "smoothed_edf": NaN,
+            "smoothed_edf": null,
             "bias_amplification": 1,
             "between_group_generalized_entropy_error": 5,
             "cohens_d": 1,
-            "z_test_diff": 1
+            "z_test_diff": null
         },
         "accountability": {
             "train_test_split": 5.0,
@@ -44,11 +44,11 @@
         },
         "privacy": {
             "epsilon_dp": 2,
-            "epsilon_star": NaN,
-            "shapr": NaN,
+            "epsilon_star": null,
+            "shapr": null,
             "attribute_inference": 1,
             "accuracy_ratio": 5,
-            "privacy_risk": NaN,
+            "privacy_risk": null,
             "k_anonymity": 1,
             "l_diversity": 2,
             "t_closeness": 2
@@ -59,34 +59,34 @@
             "carbon_intensity": 4
         },
         "explainability": {
-            "sparsity": NaN,
-            "feature_entropy": NaN,
-            "topk_concentration": NaN,
+            "sparsity": null,
+            "feature_entropy": null,
+            "topk_concentration": null,
             "algorithm_class": null,
             "correlated_features": 5,
             "model_size": 5,
-            "feature_relevance": NaN,
-            "number_of_rules": NaN,
-            "average_rule_length": NaN,
-            "rule_stats": NaN,
-            "tree_depth": NaN,
-            "interaction_strength": NaN,
-            "faithfulness": NaN,
-            "monotonicity": NaN,
-            "infidelity": NaN,
-            "alpha_score": 1,
-            "xai_ease_score": 5,
-            "position_parity": 5,
-            "rank_alignment": 5,
-            "spread_ratio": 5,
-            "spread_divergence": 1,
-            "weighted_average_depth": NaN,
-            "weighted_average_explainability_score": NaN,
-            "weighted_tree_gini": NaN,
-            "tree_depth_variance": NaN,
-            "tree_number_of_rules": NaN,
-            "tree_number_of_features": NaN,
-            "xai_consistency_score": NaN
+            "feature_relevance": null,
+            "number_of_rules": null,
+            "average_rule_length": null,
+            "rule_stats": null,
+            "tree_depth": null,
+            "interaction_strength": null,
+            "faithfulness": null,
+            "monotonicity": null,
+            "infidelity": null,
+            "alpha_score": null,
+            "xai_ease_score": null,
+            "position_parity": null,
+            "rank_alignment": null,
+            "spread_ratio": null,
+            "spread_divergence": null,
+            "weighted_average_depth": null,
+            "weighted_average_explainability_score": null,
+            "weighted_tree_gini": null,
+            "tree_depth_variance": null,
+            "tree_number_of_rules": null,
+            "tree_number_of_features": null,
+            "xai_consistency_score": null
         },
         "robustness": {
             "er_hopskipjump_attack": 5,
@@ -94,15 +94,15 @@
             "adversarial_accuracy": 1,
             "empirical_robustness_l2": 1,
             "empirical_robustness_linf": 1,
-            "clique_method": NaN,
-            "clever_score": NaN,
-            "er_fast_gradient_attack": NaN,
-            "er_carlini_wagner_attack": NaN,
-            "er_deepfool_attack": NaN,
-            "loss_sensitivity": NaN,
-            "confidence_score": NaN,
+            "clique_method": null,
+            "clever_score": null,
+            "er_fast_gradient_attack": null,
+            "er_carlini_wagner_attack": null,
+            "er_deepfool_attack": null,
+            "loss_sensitivity": null,
+            "confidence_score": null,
             "robustness_ratio_hsj": 1,
-            "expected_calibration_error": NaN
+            "expected_calibration_error": null
         }
     },
     "properties": {
@@ -3851,16 +3851,7 @@
                 "Predictive Parity Difference": "0.00%"
             },
             "treatment_equality": {
-                "Metric Description": "Measures equality of the false negative / false positive ratio across groups.",
-                "Depends on": "Model, Test Data, Factsheet",
-                "FN Unprotected": 0,
-                "FP Unprotected": 0,
-                "FN Protected": 0,
-                "FP Protected": 0,
-                "FN/FP Unprotected": "inf",
-                "FN/FP Protected": "inf",
-                "Formula": "(FN/FP)_Protected - (FN/FP)_Unprotected",
-                "Treatment Equality Difference": "nan"
+                "Error": "Treatment Equality computation resulted in NaN or Inf. Check if your data has enough samples in each group and class."
             },
             "calibration_gap": {
                 "Error": "predict_proba is required for this metric."
@@ -3945,12 +3936,7 @@
                 "Formula": "(mu1 - mu2) / sigma_pooled"
             },
             "z_test_diff": {
-                "Metric Description": "Estadístico Z para la diferencia en tasas de éxito (Regla de las 2 Desviaciones Estándar).",
-                "Depends on": "Model, Test Data, Factsheet",
-                "Success Rate Protected": "147.92%",
-                "Success Rate Unprotected": "266.79%",
-                "Z-Test Score": "nan",
-                "Interpretation": "Equitativo si el valor está entre -2 y 2."
+                "Error": "Z-test computation resulted in NaN or Inf. Check if your data has enough samples in each group and that success rates are not 0 or 1 for either group."
             }
         },
         "accountability": {
@@ -4006,7 +3992,7 @@
                 "Error": "'NoneType' object is not subscriptable"
             },
             "shapr": {
-                "Error": "jax or jax.nn is not installed. Please install it with `pip install jax jaxlib`."
+                "Error": "eq got incompatible shapes for broadcasting: (200, 412, 2170), (200, 412, 6)."
             },
             "attribute_inference": {
                 "Metric Description": "Attribute inference risk.",
@@ -4084,9 +4070,7 @@
                 "Error": "len() of unsized object"
             },
             "algorithm_class": {
-                "Metric Description": "Score assigned based on model class type.",
-                "Depends on": "Model",
-                "Model Type": "GradientBoostingRegressor"
+                "Error": "No score mapping found for model type 'GradientBoostingRegressor' in config under 'score_algorithm_class.mappings.value'."
             },
             "correlated_features": {
                 "Metric Description": "Penalty based on percentage of highly correlated features.",
@@ -4099,7 +4083,7 @@
                 "Number of Features": "11.000000"
             },
             "feature_relevance": {
-                "Error": "Model does not provide feature importances."
+                "Error": "Model does not provide feature importances and SHAP importances are not available."
             },
             "number_of_rules": {
                 "Error": "Model does not provide number of rules."
@@ -4126,28 +4110,22 @@
                 "Error": "Missing 'feature_weights' in ctx.extras for InfidelityMetric."
             },
             "alpha_score": {
-                "Metric Description": "Smallest proportion of features that account for alpha (0.8) of the overall feature importance.",
-                "Value": "nan"
+                "Error": "Cannot compute alpha_score: no global importances available."
             },
             "xai_ease_score": {
-                "Metric Description": "Measures ease of explaining predictions using partial dependence plot similarity.",
-                "Value": "nan"
+                "Error": "Cannot compute alpha_score: no global importances available."
             },
             "position_parity": {
-                "Metric Description": "Measures how well top feature importances maintain ranking considering conditional classes/regions.",
-                "Value": "nan"
+                "Error": "Cannot compute alpha_score: no global importances available."
             },
             "rank_alignment": {
-                "Metric Description": "Jaccard similarity of top alpha features between global and conditional importances.",
-                "Value": "nan"
+                "Error": "Cannot compute alpha_score: no global importances available."
             },
             "spread_ratio": {
-                "Metric Description": "Degree of evenness in the distribution of feature importance values (0 to 1).",
-                "Value": "nan"
+                "Error": "Cannot compute alpha_score: no global importances available."
             },
             "spread_divergence": {
-                "Metric Description": "Inverse of Jensen-Shannon distance for feature importances. Lower concentrates interpretability.",
-                "Value": "nan"
+                "Error": "Cannot compute alpha_score: no global importances available."
             },
             "weighted_average_depth": {
                 "Error": "Model must have attribute 'tree_'."
@@ -4168,7 +4146,7 @@
                 "Error": "'ScaledRegressorWrapper' object has no attribute 'tree_'"
             },
             "xai_consistency_score": {
-                "Error": "'NoneType' object has no attribute 'shape'"
+                "Error": "SHAP values are required for XAI consistency computation."
             }
         },
         "robustness": {
@@ -4309,13 +4287,13 @@
                 "Error": "CLEVER requires an ART classifier with class_gradient and loss_gradient (e.g., PyTorchClassifier / TensorFlowV2Classifier)."
             },
             "er_fast_gradient_attack": {
-                "Error": "FastGradientMethod requires an estimator derived from <class 'art.estimators.estimator.BaseEstimator'> and <class 'art.estimators.estimator.LossGradientsMixin'>, the provided classifier is an instance of <class 'art.estimators.classification.scikitlearn.ScikitlearnClassifier'> and is derived from (<class 'art.estimators.classification.classifier.ClassifierMixin'>, <class 'art.estimators.scikitlearn.ScikitlearnEstimator'>)."
+                "Error": "FastGradientMethod requires an estimator derived from BaseEstimator and LossGradientsMixin.\nsklearn models do NOT support gradient-based attacks.\nOptions:\n  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
             },
             "er_carlini_wagner_attack": {
-                "Error": "CarliniL2Method requires an estimator derived from <class 'art.estimators.estimator.BaseEstimator'> and <class 'art.estimators.classification.classifier.ClassGradientsMixin'>, the provided classifier is an instance of <class 'art.estimators.classification.scikitlearn.ScikitlearnClassifier'> and is derived from (<class 'art.estimators.classification.classifier.ClassifierMixin'>, <class 'art.estimators.scikitlearn.ScikitlearnEstimator'>)."
+                "Error": "CarliniL2Method requires an estimator derived from BaseEstimator and ClassGradientsMixin.\nsklearn models do NOT support gradient-based attacks.\nOptions:\n  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
             },
             "er_deepfool_attack": {
-                "Error": "DeepFool requires an estimator derived from <class 'art.estimators.estimator.BaseEstimator'> and <class 'art.estimators.classification.classifier.ClassGradientsMixin'>, the provided classifier is an instance of <class 'art.estimators.classification.scikitlearn.ScikitlearnClassifier'> and is derived from (<class 'art.estimators.classification.classifier.ClassifierMixin'>, <class 'art.estimators.scikitlearn.ScikitlearnEstimator'>)."
+                "Error": "DeepFool requires an estimator derived from BaseEstimator and ClassGradientsMixin.\nsklearn models do NOT support gradient-based attacks.\nOptions:\n  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
             },
             "loss_sensitivity": {
                 "Error": "Loss Sensitivity metric requires an ART classifier with predict method (e.g., PyTorchClassifier / TensorFlowV2Classifier). Error: 'ScaledRegressorWrapper' object has no attribute 'loss_gradient'"
@@ -4336,32 +4314,32 @@
     },
     "explanation": {
         "fairness": {
-            "formula": "0.1*underfitting(nan) + 0.1*overfitting(nan) + 0.03*class_balance(1) + 0.15*statistical_parity_difference(1) + 0.15*disparate_impact(1) + 0.1*equal_opportunity_difference(5) + 0.05*average_odds_difference(5) + 0.05*accuracy_parity(nan) + 0.05*predictive_parity(5) + 0.05*treatment_equality(1) + 0.02*calibration_gap(nan) + 0.02*well_calibration_error(nan) + 0.01*generalized_entropy_index(2) + 0.01*theil_index(2) + 0.01*coefficient_of_variation(1) + 0.01*individual_consistency(1) + 0.02*class_imbalance(5) + 0.01*kl_divergence(1) + 0.01*conditional_demographic_disparity(5) + 0.01*smoothed_edf(nan) + 0.01*bias_amplification(1) + 0.01*between_group_generalized_entropy_error(5) + 0.01*cohens_d(1) + 0.01*z_test_diff(1)",
-            "score": 2.4
+            "formula": "0.1*underfitting(nan) + 0.1*overfitting(nan) + 0.03*class_balance(1) + 0.15*statistical_parity_difference(1) + 0.15*disparate_impact(1) + 0.1*equal_opportunity_difference(5) + 0.05*average_odds_difference(5) + 0.05*accuracy_parity(nan) + 0.05*predictive_parity(5) + 0.05*treatment_equality(nan) + 0.02*calibration_gap(nan) + 0.02*well_calibration_error(nan) + 0.01*generalized_entropy_index(2) + 0.01*theil_index(2) + 0.01*coefficient_of_variation(1) + 0.01*individual_consistency(1) + 0.02*class_imbalance(5) + 0.01*kl_divergence(1) + 0.01*conditional_demographic_disparity(5) + 0.01*smoothed_edf(nan) + 0.01*bias_amplification(1) + 0.01*between_group_generalized_entropy_error(5) + 0.01*cohens_d(1) + 0.01*z_test_diff(nan)",
+            "score": 2.53
         },
         "accountability": {
             "formula": "0.15*train_test_split(5.0) + 0.15*missing_data(5) + 0.15*normalization(1) + 0.15*regularization(0.0) + 0.4*factsheet_completeness(3)",
-            "score": 2.8
+            "score": 2.85
         },
         "privacy": {
             "formula": "0.1*epsilon_dp(2) + 0.1*epsilon_star(nan) + 0.1*shapr(nan) + 0.15*attribute_inference(1) + 0.1*accuracy_ratio(5) + 0.15*privacy_risk(nan) + 0.1*k_anonymity(1) + 0.1*l_diversity(2) + 0.1*t_closeness(2)",
-            "score": 2.1
+            "score": 2.08
         },
         "sustainability": {
             "formula": "0.25*energy_consumed(5) + 0.5*emissions(5) + 0.25*carbon_intensity(4)",
-            "score": 4.8
+            "score": 4.75
         },
         "explainability": {
-            "formula": "0.04*sparsity(nan) + 0.04*feature_entropy(nan) + 0.04*topk_concentration(nan) + 0.1*algorithm_class(None) + 0.04*correlated_features(5) + 0.06*model_size(5) + 0.04*feature_relevance(nan) + 0.02*number_of_rules(nan) + 0.02*average_rule_length(nan) + 0.02*rule_stats(nan) + 0.02*tree_depth(nan) + 0.02*interaction_strength(nan) + 0.06*faithfulness(nan) + 0.06*monotonicity(nan) + 0.02*infidelity(nan) + 0.04*alpha_score(1) + 0.04*xai_ease_score(5) + 0.04*position_parity(5) + 0.04*rank_alignment(5) + 0.04*spread_ratio(5) + 0.04*spread_divergence(1) + 0.02*weighted_average_depth(nan) + 0.02*weighted_average_explainability_score(nan) + 0.02*weighted_tree_gini(nan) + 0.02*tree_depth_variance(nan) + 0.02*tree_number_of_rules(nan) + 0.02*tree_number_of_features(nan) + 0.04*xai_consistency_score(nan)",
-            "score": 4.1
+            "formula": "0.04*sparsity(nan) + 0.04*feature_entropy(nan) + 0.04*topk_concentration(nan) + 0.1*algorithm_class(nan) + 0.04*correlated_features(5) + 0.06*model_size(5) + 0.04*feature_relevance(nan) + 0.02*number_of_rules(nan) + 0.02*average_rule_length(nan) + 0.02*rule_stats(nan) + 0.02*tree_depth(nan) + 0.02*interaction_strength(nan) + 0.06*faithfulness(nan) + 0.06*monotonicity(nan) + 0.02*infidelity(nan) + 0.04*alpha_score(nan) + 0.04*xai_ease_score(nan) + 0.04*position_parity(nan) + 0.04*rank_alignment(nan) + 0.04*spread_ratio(nan) + 0.04*spread_divergence(nan) + 0.02*weighted_average_depth(nan) + 0.02*weighted_average_explainability_score(nan) + 0.02*weighted_tree_gini(nan) + 0.02*tree_depth_variance(nan) + 0.02*tree_number_of_rules(nan) + 0.02*tree_number_of_features(nan) + 0.04*xai_consistency_score(nan)",
+            "score": 5.0
         },
         "robustness": {
             "formula": "0.04*er_hopskipjump_attack(5) + 0.08*attack_success_rate(5) + 0.08*adversarial_accuracy(1) + 0.08*empirical_robustness_l2(1) + 0.08*empirical_robustness_linf(1) + 0.08*clique_method(nan) + 0.08*clever_score(nan) + 0.08*er_fast_gradient_attack(nan) + 0.08*er_carlini_wagner_attack(nan) + 0.08*er_deepfool_attack(nan) + 0.08*loss_sensitivity(nan) + 0.08*confidence_score(nan) + 0.04*robustness_ratio_hsj(1) + 0.04*expected_calibration_error(nan)",
             "score": 2.2
         },
         "trust_score": {
-            "formula": "0.17*Fairness(2.4) + 0.17*Accountability(2.8) + 0.17*Privacy(2.1) + 0.15*Sustainability(4.8) + 0.17*Explainability(4.1) + 0.17*Robustness(2.2)",
-            "final_score": 3.032
+            "formula": "0.17*Fairness(2.53) + 0.17*Accountability(2.85) + 0.17*Privacy(2.08) + 0.15*Sustainability(4.75) + 0.17*Explainability(5.0) + 0.17*Robustness(2.2)",
+            "final_score": 3.2047000000000003
         }
     }
 }
