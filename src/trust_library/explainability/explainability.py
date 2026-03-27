@@ -84,6 +84,7 @@ class ExplainabilityPillar(Pillar):
         }
 
         # Best-effort eager compute (but never let it crash the whole evaluation)
+        local_imps = None
         try:
             metrics = core.shap_based_metrics(
                 model=context.model,
@@ -94,15 +95,14 @@ class ExplainabilityPillar(Pillar):
                 seed=seed,
             )
             context.extras["explainability_shap_metrics"] = metrics
-
-            # Guardamos local_importances y base_values para Faithfulness / Monotonicity
             local_imps = np.asarray(metrics["local_importances"])
             context.extras["feature_weights"] = local_imps
             context.extras["base_values"] = metrics["base_values"]
+        except Exception as shap_exc:
+            context.extras["explainability_error"] = str(shap_exc)
 
-            # ====================================================================
-            # 1. Preparar Feature Names
-            # ====================================================================
+        # Continue even if SHAP failed
+        try:
             if hasattr(context.X_test, "columns"):
                 feature_names = context.X_test.columns.tolist()
                 X_df = context.X_test
@@ -110,63 +110,59 @@ class ExplainabilityPillar(Pillar):
                 feature_names = [f"x{i}" for i in range(context.X_test.shape[1])]
                 X_df = pd.DataFrame(context.X_test, columns=feature_names)
 
-            # ====================================================================
-            # 2. Global Importances (Media absoluta de los SHAP values)
-            # ====================================================================
-            global_imps_array = np.abs(local_imps).mean(axis=0)
-            global_importances = {feat: float(imp) for feat, imp in zip(feature_names, global_imps_array)}
-            context.extras["global_importances"] = global_importances
+            # Global Importances
+            if local_imps is not None:
+                global_imps_array = np.abs(local_imps).mean(axis=0)
+                global_importances = {feat: float(imp) for feat, imp in zip(feature_names, global_imps_array)}
+                context.extras["global_importances"] = global_importances
+            else:
+                global_importances = {}
 
-            # ====================================================================
-            # 3. Conditional Importances (Agrupado por la clase predicha)
-            # ====================================================================
-            y_pred = context.model.predict(context.X_test)
-            # Si se usó submuestreo en shap_based_metrics, alineamos y_pred
-            if len(y_pred) > len(local_imps):
-                # Opcional: si tu shap_based_metrics hace subsampling, asegúrate 
-                # de predecir solo sobre la muestra o tomar los primeros n_samples.
-                y_pred = y_pred[:len(local_imps)]
+            # Conditional Importances
+            if local_imps is not None:
+                y_pred = context.model.predict(context.X_test)
+                if len(y_pred) > len(local_imps):
+                    y_pred = y_pred[:len(local_imps)]
+                conditional_importances = {}
+                for cls in np.unique(y_pred):
+                    idx = np.where(y_pred == cls)[0]
+                    if len(idx) > 0:
+                        cls_imps_array = np.abs(local_imps[idx]).mean(axis=0)
+                        conditional_importances[str(cls)] = {
+                            feat: float(imp) for feat, imp in zip(feature_names, cls_imps_array)
+                        }
+                context.extras["conditional_importances"] = conditional_importances
+            else:
+                context.extras["conditional_importances"] = {}
 
-            conditional_importances = {}
-            for cls in np.unique(y_pred):
-                idx = np.where(y_pred == cls)[0]
-                if len(idx) > 0:
-                    cls_imps_array = np.abs(local_imps[idx]).mean(axis=0)
-                    conditional_importances[str(cls)] = {
-                        feat: float(imp) for feat, imp in zip(feature_names, cls_imps_array)
-                    }
-            context.extras["conditional_importances"] = conditional_importances
-
-            # ====================================================================
-            # 4. Partial Dependencies Plots (PDP)
-            # ====================================================================
+            # Partial Dependencies
             pdp_averages = {}
-
-            # Calculamos PDP solo para el Top K de features para ahorrar cómputo
-            top_features = sorted(global_importances.keys(), key=lambda k: global_importances[k], reverse=True)[:top_k]
+            if global_importances:
+                top_features = sorted(global_importances.keys(), key=lambda k: global_importances[k], reverse=True)[:top_k]
+            else:
+                top_features = feature_names[:top_k]
 
             try:
-                # Convertir a float para evitar errores con columnas int64
                 X_df_float = X_df.astype(float)
+                X_df_float = X_df_float.sample(n=100, random_state=seed) if len(X_df_float) > 100 else X_df_float
                 for feat in top_features:
-                    feat_idx = feature_names.index(feat)
-                    # kind="both" extrae tanto la media global (average) como las curvas individuales (ICE)
-                    pdp_res = partial_dependence(context.model, X_df_float, features=[feat_idx], kind="both")
-                    
-                    # Dependiendo de si es multiclase, scikit-learn puede devolver un array extra. 
-                    # Tomamos el índice [0] que suele corresponder a la clase positiva / principal.
-                    pdp_averages[feat] = pdp_res["average"][0].tolist()
-            except Exception as pdp_exc:
-                print(f"Error calculando PDP: {pdp_exc}")
-            # ====================================================================
-            # 5. Inyectar en context.extras
-            # ====================================================================
-            
+                    try:
+                        feat_idx = feature_names.index(feat)
+                        # Try with kind="average" first (more reliable than "both")
+                        try:
+                            pdp_res = partial_dependence(context.model, X_df_float, features=[feat_idx], kind="average", grid_resolution=10)
+                            pdp_averages[feat] = pdp_res["average"][0].tolist()
+                        except:
+                            raise ValueError(f"partial_dependence with kind='average' failed for feature '{feat}'")      
+                    except:
+                        pass
+            except:
+                pass
+
             context.extras["pdp_averages"] = pdp_averages
 
         except Exception as exc:
             context.extras["explainability_error"] = str(exc)
-            # Leave computation to metric wrappers (they will surface the error safely)
 
     def get_metrics(self) -> List[Any]:
         return [

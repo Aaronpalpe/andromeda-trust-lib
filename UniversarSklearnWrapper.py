@@ -14,16 +14,18 @@ class UniversalSklearnWrapper(BaseEstimator, ClassifierMixin):
         self.num_classes = num_classes
         self.device_name = device
         self.framework = self._detect_framework(model)
-        
+
         # Configuración específica si es PyTorch
         if self.framework == 'pytorch':
             import torch
             self.device = torch.device(self.device_name)
             self.model.to(self.device)
-            
+
         # Atributos requeridos por scikit-learn para considerar el modelo como entrenado
-        self.is_fitted_ = True 
+        self.is_fitted_ = True
         self.classes_ = np.arange(self.num_classes)
+        self.n_features_in_ = None  # Set dynamically on first predict call
+        self._estimator_type = "classifier"  # Required for sklearn's partial_dependence
 
     def _detect_framework(self, model):
         """
@@ -75,13 +77,17 @@ class UniversalSklearnWrapper(BaseEstimator, ClassifierMixin):
     def fit(self, X, y=None, **kwargs):
         """
         Método dummy para cumplir con el contrato de BaseEstimator de scikit-learn.
-        Como el modelo ya está preentrenado, simplemente validamos entradas básicas 
+        Como el modelo ya está preentrenado, simplemente validamos entradas básicas
         y retornamos self.
         """
         # Opcional: Validar que los datos de entrada tienen sentido
+        X = check_array(X)
+        if self.n_features_in_ is None:
+            self.n_features_in_ = X.shape[1]
+
         if y is not None:
             self.classes_ = np.unique(y)
-            
+
         self.is_fitted_ = True
         return self
 
@@ -91,35 +97,39 @@ class UniversalSklearnWrapper(BaseEstimator, ClassifierMixin):
         """
         check_is_fitted(self, 'is_fitted_')
         X = check_array(X)
-        
+
+        # Set n_features_in_ on first call for sklearn compatibility
+        if self.n_features_in_ is None:
+            self.n_features_in_ = X.shape[1]
+
         if self.framework in ['sklearn', 'generic_predict']:
             if hasattr(self.model, 'predict_proba'):
                 return self.model.predict_proba(X)
             else:
                 raise AttributeError(f"El modelo de {self.framework} no implementa 'predict_proba'.")
-                
+
         elif self.framework == 'tensorflow':
             # En TF/Keras predict() para clasificación ya suele devolver probabilidades
             probas = self.model.predict(X, verbose=0)
-            # Si es clasificación binaria y devuelve un array de shape (N, 1), 
+            # Si es clasificación binaria y devuelve un array de shape (N, 1),
             # lo convertimos al estándar de sklearn (N, 2)
             if probas.shape[1] == 1 and self.num_classes == 2:
                 probas = np.hstack([1 - probas, probas])
             return probas
-            
+
         elif self.framework == 'pytorch':
             import torch
             self.model.eval()
-            
+
             X_tensor = torch.tensor(X, dtype=torch.float32).to(self.device)
-            
+
             with torch.no_grad():
                 outputs = self.model(X_tensor)
                 # Usamos Softmax para multiclase/binaria (asumiendo que el modelo devuelve logits)
-                probabilities = torch.softmax(outputs, dim=1) 
-                
+                probabilities = torch.softmax(outputs, dim=1)
+
             return probabilities.cpu().numpy()
-            
+
         elif self.framework == 'cntk':
             input_var = self.model.arguments[0]
             outputs = self.model.eval({input_var: X})
@@ -133,17 +143,22 @@ class UniversalSklearnWrapper(BaseEstimator, ClassifierMixin):
         para ML tradicional usa el predict nativo.
         """
         check_is_fitted(self, 'is_fitted_')
-        
+        X = check_array(X)
+
+        # Set n_features_in_ on first call for sklearn compatibility
+        if self.n_features_in_ is None:
+            self.n_features_in_ = X.shape[1]
+
         # Para sklearn y modelos genéricos (XGBoost, etc.), usamos su predict nativo
         if self.framework in ['sklearn', 'generic_predict']:
             return self.model.predict(X)
-            
+
         # Para Deep Learning (PyTorch, TF, CNTK), derivamos la clase de las probabilidades
         probas = self.predict_proba(X)
         predictions = np.argmax(probas, axis=1)
-        
+
         # Mapeamos al nombre original de las clases
         if hasattr(self, 'classes_'):
             return self.classes_[predictions]
-            
+
         return predictions

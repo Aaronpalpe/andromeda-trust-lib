@@ -91,7 +91,7 @@ def shap_based_metrics(
     *,
     model,
     X,
-    n_samples: int = 50,
+    n_samples: int = 25, # Antes 50
     shap_threshold: float = 1e-3,
     top_k: int = 5,
     seed: int = 42,
@@ -125,7 +125,9 @@ def shap_based_metrics(
     explainer = shap.Explainer(predict_fn, X_eval, algorithm="permutation", seed=seed)
 
     with suppress_shap_noise():
-        shap_output = explainer(X_eval)
+        #shap_output = explainer(X_eval)
+        safe_max_evals = X_eval.shape[1] * 2 + 1000 
+        shap_output = explainer(X_eval, max_evals=safe_max_evals)
 
     shap_values = np.asarray(shap_output.values)
 
@@ -626,7 +628,7 @@ def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
         exp_sum = np.sum(rand * np.apply_along_axis(get_exp, 1, ind, expl_copy), axis=1)
         ks = np.ones(num_reps)
         
-        pdt = model.predict([x])[0]
+        pdt = model.predict(np.array([x]))[0]
         pdt_ptb = model.predict(x_ptb)
         pdt_diff = pdt - pdt_ptb
 
@@ -1190,7 +1192,7 @@ def shap_importance_from_local(local_importances, feature_names):
     global_importance = abs_vals.mean(axis=0)
     return dict(zip(feature_names, global_importance))
 
-def compute_pdp_importance(model, X):
+def compute_pdp_importance(model, X, random_state=42):
     # Verificar que el modelo es un estimador válido
     if not (is_classifier(model) or is_regressor(model)):
         if not (hasattr(model, 'predict') and hasattr(model, 'fit')):
@@ -1198,6 +1200,7 @@ def compute_pdp_importance(model, X):
 
     # Convertir a float para evitar errores de dtype
     X_float = X.astype(float)
+    X_float = X_float.sample(n=100, random_state=random_state) if len(X_float) > 100 else X_float
 
     importances = {}
     for col in X_float.columns:
