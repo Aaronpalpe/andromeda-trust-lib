@@ -1,11 +1,11 @@
 {
-    "trust_score": 3.2,
+    "trust_score": 3.16,
     "pillar_score": {
         "fairness": 2.53,
-        "accountability": 2.85,
+        "accountability": 3.55,
         "privacy": 2.08,
         "sustainability": 4.75,
-        "explainability": 5.0,
+        "explainability": 4.06,
         "robustness": 2.2
     },
     "details": {
@@ -39,8 +39,8 @@
             "train_test_split": 5.0,
             "missing_data": 5,
             "normalization": 1,
-            "regularization": 0.0,
-            "factsheet_completeness": 3
+            "regularization": 4,
+            "factsheet_completeness": 3.24
         },
         "privacy": {
             "epsilon_dp": 2,
@@ -54,9 +54,9 @@
             "t_closeness": 2
         },
         "sustainability": {
-            "energy_consumed": 5,
-            "emissions": 5,
-            "carbon_intensity": 4
+            "energy_consumed": 5.0,
+            "emissions": 5.0,
+            "carbon_intensity": 4.01
         },
         "explainability": {
             "sparsity": null,
@@ -74,12 +74,12 @@
             "faithfulness": null,
             "monotonicity": null,
             "infidelity": null,
-            "alpha_score": null,
-            "xai_ease_score": null,
-            "position_parity": null,
-            "rank_alignment": null,
-            "spread_ratio": null,
-            "spread_divergence": null,
+            "alpha_score": 1,
+            "xai_ease_score": 5,
+            "position_parity": 5,
+            "rank_alignment": 5,
+            "spread_ratio": 5,
+            "spread_divergence": 1,
             "weighted_average_depth": null,
             "weighted_average_explainability_score": null,
             "weighted_tree_gini": null,
@@ -3946,6 +3946,8 @@
             },
             "missing_data": {
                 "Depends on": "Training and Test Data",
+                "Train missing values": 0,
+                "Test missing values": 0,
                 "Null values count": 0
             },
             "normalization": {
@@ -3958,12 +3960,12 @@
             },
             "regularization": {
                 "Depends on": "Factsheet",
-                "Regularization technique": "Not specified"
+                "Regularization technique": "ridge_regression"
             },
             "factsheet_completeness": {
                 "Depends on": "Factsheet",
-                "Fields present": "25/38",
-                "Completeness": "65.79%",
+                "Fields present": "24/37",
+                "Completeness": "64.86%",
                 "Missing fields": [
                     "governance.roles_and_responsibilities",
                     "governance.risk_tolerance",
@@ -4048,6 +4050,8 @@
             },
             "emissions": {
                 "Metric Description": "Total CO2 emissions during training  (Energy consumed * Carbon Intensity).",
+                "Energy Consumed (kWh)": "0.003000",
+                "Carbon Intensity (kgCO2/kWh)": "0.333333",
                 "Emissions (kgCO2)": "0.001000",
                 "Training Duration (s)": "20.00",
                 "PUE": 1.0,
@@ -4055,8 +4059,8 @@
             },
             "carbon_intensity": {
                 "Metric Description": "Carbon intensity (kgCO2 per kWh). Based on the type of energy used and location.",
-                "Carbon Intensity": "0.333333",
-                "Country": "Spain"
+                "Country": "Spain",
+                "Carbon Intensity": "0.333333"
             }
         },
         "explainability": {
@@ -4110,22 +4114,28 @@
                 "Error": "Missing 'feature_weights' in ctx.extras for InfidelityMetric."
             },
             "alpha_score": {
-                "Error": "Cannot compute alpha_score: no global importances available."
+                "Metric Description": "Smallest proportion of features that account for alpha (0.8) of the overall feature importance.",
+                "Value": "2.5000"
             },
             "xai_ease_score": {
-                "Error": "Cannot compute alpha_score: no global importances available."
+                "Metric Description": "Measures ease of explaining predictions using partial dependence plot similarity.",
+                "Value": "2.5000"
             },
             "position_parity": {
-                "Error": "Cannot compute alpha_score: no global importances available."
+                "Metric Description": "Measures how well top feature importances maintain ranking considering conditional classes/regions.",
+                "Value": "2.5000"
             },
             "rank_alignment": {
-                "Error": "Cannot compute alpha_score: no global importances available."
+                "Metric Description": "Jaccard similarity of top alpha features between global and conditional importances.",
+                "Value": "2.5000"
             },
             "spread_ratio": {
-                "Error": "Cannot compute alpha_score: no global importances available."
+                "Metric Description": "Degree of evenness in the distribution of feature importance values (0 to 1).",
+                "Value": "2.5000"
             },
             "spread_divergence": {
-                "Error": "Cannot compute alpha_score: no global importances available."
+                "Metric Description": "Inverse of Jensen-Shannon distance for feature importances. Lower concentrates interpretability.",
+                "Value": "2.5000"
             },
             "weighted_average_depth": {
                 "Error": "Model must have attribute 'tree_'."
@@ -4318,28 +4328,28 @@
             "score": 2.53
         },
         "accountability": {
-            "formula": "0.15*train_test_split(5.0) + 0.15*missing_data(5) + 0.15*normalization(1) + 0.15*regularization(0.0) + 0.4*factsheet_completeness(3)",
-            "score": 2.85
+            "formula": "0.15*train_test_split(5.0) + 0.15*missing_data(5) + 0.15*normalization(1) + 0.15*regularization(4) + 0.4*factsheet_completeness(3.24)",
+            "score": 3.55
         },
         "privacy": {
             "formula": "0.1*epsilon_dp(2) + 0.1*epsilon_star(nan) + 0.1*shapr(nan) + 0.15*attribute_inference(1) + 0.1*accuracy_ratio(5) + 0.15*privacy_risk(nan) + 0.1*k_anonymity(1) + 0.1*l_diversity(2) + 0.1*t_closeness(2)",
             "score": 2.08
         },
         "sustainability": {
-            "formula": "0.25*energy_consumed(5) + 0.5*emissions(5) + 0.25*carbon_intensity(4)",
+            "formula": "0.25*energy_consumed(5.0) + 0.5*emissions(5.0) + 0.25*carbon_intensity(4.01)",
             "score": 4.75
         },
         "explainability": {
-            "formula": "0.04*sparsity(nan) + 0.04*feature_entropy(nan) + 0.04*topk_concentration(nan) + 0.1*algorithm_class(nan) + 0.04*correlated_features(5) + 0.06*model_size(5) + 0.04*feature_relevance(nan) + 0.02*number_of_rules(nan) + 0.02*average_rule_length(nan) + 0.02*rule_stats(nan) + 0.02*tree_depth(nan) + 0.02*interaction_strength(nan) + 0.06*faithfulness(nan) + 0.06*monotonicity(nan) + 0.02*infidelity(nan) + 0.04*alpha_score(nan) + 0.04*xai_ease_score(nan) + 0.04*position_parity(nan) + 0.04*rank_alignment(nan) + 0.04*spread_ratio(nan) + 0.04*spread_divergence(nan) + 0.02*weighted_average_depth(nan) + 0.02*weighted_average_explainability_score(nan) + 0.02*weighted_tree_gini(nan) + 0.02*tree_depth_variance(nan) + 0.02*tree_number_of_rules(nan) + 0.02*tree_number_of_features(nan) + 0.04*xai_consistency_score(nan)",
-            "score": 5.0
+            "formula": "0.04*sparsity(nan) + 0.04*feature_entropy(nan) + 0.04*topk_concentration(nan) + 0.1*algorithm_class(nan) + 0.04*correlated_features(5) + 0.06*model_size(5) + 0.04*feature_relevance(nan) + 0.02*number_of_rules(nan) + 0.02*average_rule_length(nan) + 0.02*rule_stats(nan) + 0.02*tree_depth(nan) + 0.02*interaction_strength(nan) + 0.06*faithfulness(nan) + 0.06*monotonicity(nan) + 0.02*infidelity(nan) + 0.04*alpha_score(1) + 0.04*xai_ease_score(5) + 0.04*position_parity(5) + 0.04*rank_alignment(5) + 0.04*spread_ratio(5) + 0.04*spread_divergence(1) + 0.02*weighted_average_depth(nan) + 0.02*weighted_average_explainability_score(nan) + 0.02*weighted_tree_gini(nan) + 0.02*tree_depth_variance(nan) + 0.02*tree_number_of_rules(nan) + 0.02*tree_number_of_features(nan) + 0.04*xai_consistency_score(nan)",
+            "score": 4.06
         },
         "robustness": {
             "formula": "0.04*er_hopskipjump_attack(5) + 0.08*attack_success_rate(5) + 0.08*adversarial_accuracy(1) + 0.08*empirical_robustness_l2(1) + 0.08*empirical_robustness_linf(1) + 0.08*clique_method(nan) + 0.08*clever_score(nan) + 0.08*er_fast_gradient_attack(nan) + 0.08*er_carlini_wagner_attack(nan) + 0.08*er_deepfool_attack(nan) + 0.08*loss_sensitivity(nan) + 0.08*confidence_score(nan) + 0.04*robustness_ratio_hsj(1) + 0.04*expected_calibration_error(nan)",
             "score": 2.2
         },
         "trust_score": {
-            "formula": "0.17*Fairness(2.53) + 0.17*Accountability(2.85) + 0.17*Privacy(2.08) + 0.15*Sustainability(4.75) + 0.17*Explainability(5.0) + 0.17*Robustness(2.2)",
-            "final_score": 3.2047000000000003
+            "formula": "0.17*Fairness(2.53) + 0.17*Accountability(3.55) + 0.17*Privacy(2.08) + 0.15*Sustainability(4.75) + 0.17*Explainability(4.06) + 0.17*Robustness(2.2)",
+            "final_score": 3.1639
         }
     }
 }

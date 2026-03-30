@@ -182,7 +182,7 @@ def hopskipjump_metrics(
         Returns:
             Dictionary with HSJ attack metrics
     '''
-    # Medimos tiempo de ejecución de esta función para evaluar su eficiencia
+    # Measure the execution time of this function to evaluate its efficiency
     t0 = time.time()
     HopSkipJump, BlackBoxClassifier = _safe_import_art_blackbox()
 

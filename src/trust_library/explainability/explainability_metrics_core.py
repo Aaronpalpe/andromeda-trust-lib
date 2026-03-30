@@ -91,7 +91,7 @@ def shap_based_metrics(
     *,
     model,
     X,
-    n_samples: int = 25, # Antes 50
+    n_samples: int = 50,
     shap_threshold: float = 1e-3,
     top_k: int = 5,
     seed: int = 42,
@@ -108,7 +108,7 @@ def shap_based_metrics(
       - explainer
       - sample_size
     """
-    # Medimos el tiempo de ejecución de esta función para evaluar su eficiencia
+    # Measure the execution time of this function to evaluate its efficiency
     t0 = time.time()
     shap = _safe_import_shap()
     X_full = _ensure_dataframe(X)
@@ -126,7 +126,7 @@ def shap_based_metrics(
 
     with suppress_shap_noise():
         #shap_output = explainer(X_eval)
-        safe_max_evals = X_eval.shape[1] * 2 + 1000 
+        safe_max_evals = min(100, X_eval.shape[1] * 10)
         shap_output = explainer(X_eval, max_evals=safe_max_evals)
 
     shap_values = np.asarray(shap_output.values)
@@ -162,20 +162,20 @@ def shap_based_metrics(
     sorted_imp = np.sort(global_importance)[::-1]
     topk_concentration = 0.0 if total == 0.0 else float(sorted_imp[:k].sum() / total)
 
-    # --- Cálculo de fuerza de interacción ---
+    # --- Interaction strength calculation ---
     interaction_strength_value = np.nan
     try:
-        # Convertir a tensor 3D si no lo es (PermutationExplainer devuelve 2D)
-        # Creamos un tensor diagonalizado para simular interacciones
-        # Esto es aproximado; SHAP real de interacción requiere TreeExplainer
+        # Convert to 3D tensor if not (PermutationExplainer returns 2D)
+        # Create a diagonalized tensor to simulate interactions
+        # This is approximate; real SHAP interaction requires TreeExplainer
         if shap_values.ndim == 2:
-            # Creamos un tensor (n_samples, n_features, n_features) con diagonal = main effect
+            # Create a tensor (n_samples, n_features, n_features) with diagonal = main effect
             n_samples, n_features = shap_values.shape
             shap_int = np.zeros((n_samples, n_features, n_features))
             for i in range(n_features):
                 shap_int[:, i, i] = shap_values[:, i]
         else:
-            shap_int = shap_values  # si ya es 3D
+            shap_int = shap_values  # if already 3D
 
         total = np.abs(shap_int).sum()
         main_effect = np.sum(np.abs(np.diagonal(shap_int, axis1=1, axis2=2)))
@@ -183,7 +183,7 @@ def shap_based_metrics(
     except Exception:
         raise ValueError("Error computing interaction strength. Ensure SHAP values are in expected format.")
 
-    # --- Devuelve también base y valores locales ---
+    # --- Also returns base and local values ---
     base_values = np.mean(X_eval.values, axis=0)
     local_importances = shap_values
 
@@ -231,15 +231,15 @@ def holistic_dependecies(model, y_pred, X):
     # Global permutation importances
     importances = compute_permutation_importance(X=X_df, y=y_pred, proxy=proxy)
 
-    # Conditional importances (por clase)
+    # Conditional importances (per class)
     conditional_importances = compute_conditional_permutation_importance(X=X_df, y=y_pred, proxy=proxy)
 
-    # Partial dependence para las top N features (tomando top 3 por defecto)
+    # Partial dependence for the top N features (taking top 3 by default)
     top_n = 3
     try:
         top_feature_names = importances.top_n(top_n).feature_names
     except Exception:
-        # fallback si no hay top_n definido
+        # fallback if no top_n defined
         top_feature_names = X_df.columns[:top_n]
 
     partial_dependencies = compute_partial_dependence(X_df, features=top_feature_names, proxy=proxy)
@@ -252,7 +252,7 @@ def holistic_dependecies(model, y_pred, X):
 def algorithm_class(model, model_type=None) -> dict:
     model_name = model_type if model_type is not None else type(model).__name__
 
-    # Ejemplo simple (puedes externalizarlo a config)
+    # Simple example (you can externalize it to config)
     # mapping = {
     #     "LogisticRegression": 5,
     #     "LinearRegression": 5,
@@ -267,7 +267,7 @@ def algorithm_class(model, model_type=None) -> dict:
 
 
 def correlated_features(X_train, X_test, high_cor=0.95):
-    print("Calculating correlated features with threshold:", high_cor)
+    print("Computing correlated features with threshold:", high_cor)
     X_comb = pd.concat([X_train, X_test])
     corr_matrix = X_comb.corr().abs()
 
@@ -358,11 +358,11 @@ def feature_relevance(
         importance = np.abs(model.coef_).flatten()
     else:
         raise ValueError("Model does not provide feature importances.")
-    
-    # Identificar características irrelevantes según el umbral
+
+    # Identify irrelevant features according to threshold
     irrelevant_features = np.sum(importance <= threshold_outlier)
-    
-    # Porcentaje de características irrelevantes
+
+    # Percentage of irrelevant features
     pct_irrelevant = irrelevant_features / len(importance)
 
     return {
@@ -515,7 +515,7 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
     Returns:
         float: correlation between attribute importance weights and corresponding effect on classifier.
     """
-    # Asegúrate de que todos tengan la misma longitud
+    # Ensure that all have the same length
     assert len(x) == len(coefs) == len(base)
 
     #find predicted class
@@ -532,7 +532,7 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
 
     # corr = -np.corrcoef(coefs, pred_probs)[0, 1]
     if np.std(coefs) == 0 or np.std(pred_probs) == 0:
-        corr = 0.0  # Si no hay variación, no hay correlación
+        corr = 0.0  # If there is no variation, there is no correlation
     else:
         corr = -np.corrcoef(coefs, pred_probs)[0, 1]
 
@@ -1109,13 +1109,13 @@ def tree_number_of_features(surrogate) -> Dict[str, float]:
 
 
 # ----------------------------
-# Funciones auxiliares
+# Auxiliary functions
 # ----------------------------
 
 def to_scalar(val):
     """
-    Convierte arrays de numpy o listas de 1 elemento a float.
-    Si tiene varios elementos, devuelve la media.
+    Converts numpy arrays or lists with 1 element to float.
+    If it has multiple elements, returns the mean.
     """
     if isinstance(val, (np.ndarray, list)):
         val = np.array(val).flatten()
@@ -1126,9 +1126,9 @@ def to_scalar(val):
 
 def get_top_k(importance_dict, k, return_values=False):
     """
-    Devuelve las k características más importantes según la magnitud de su valor.
-    Si return_values=True, devuelve una lista de tuplas (feature, importance).
-    Si return_values=False, devuelve un set con los nombres (para Jaccard).
+    Returns the k most important features according to the magnitude of their value.
+    If return_values=True, returns a list of tuples (feature, importance).
+    If return_values=False, returns a set with names (for Jaccard).
     """
     cleaned_dict = {feat: to_scalar(val) for feat, val in importance_dict.items()}
     sorted_feats = sorted(cleaned_dict.items(), key=lambda item: abs(item[1]), reverse=True)
@@ -1193,7 +1193,7 @@ def shap_importance_from_local(local_importances, feature_names):
     return dict(zip(feature_names, global_importance))
 
 def compute_pdp_importance(model, X, random_state=42):
-    # Verificar que el modelo es un estimador válido
+    # Check that the model is a valid estimator
     if not (is_classifier(model) or is_regressor(model)):
         if not (hasattr(model, 'predict') and hasattr(model, 'fit')):
             raise ValueError("Model must be a fitted sklearn-compatible estimator for PDP computation.")
@@ -1212,8 +1212,8 @@ def compute_pdp_importance(model, X, random_state=42):
             raise ValueError(f"Failed to compute PDP for feature '{col}': {e}")
     return importances
 
-# def compute_pfi(model, X, y, seed=42):
-#     r = permutation_importance(model, X, y, n_repeats=5, random_state=seed)
+# def compute_pfi(model, X, y, random_state=42):
+#     r = permutation_importance(model, X, y, n_repeats=5, random_state=random_state)
 #     importances = dict(zip(X.columns, r.importances_mean))
 #     return importances
 
@@ -1238,7 +1238,7 @@ def compute_pdp_importance(model, X, random_state=42):
 #     return importances
 
 # ----------------------------
-# Métrica de consistencia XAI
+# XAI Consistency metric
 # ----------------------------
 
 def calculate_consistency_matrix(rankings, k=5):
@@ -1248,7 +1248,7 @@ def calculate_consistency_matrix(rankings, k=5):
 
     for i in range(n):
         for j in range(n):
-            # Aquí llamamos con return_values=False para calcular Jaccard
+            # Here we call with return_values=False to calculate Jaccard
             set1 = get_top_k(rankings[methods[i]], k, return_values=False)
             set2 = get_top_k(rankings[methods[j]], k, return_values=False)
             intersection = len(set1.intersection(set2))
@@ -1263,29 +1263,29 @@ def get_aggregated_score(matrix):
     values = matrix.values[np.triu_indices(len(matrix), k=1)]
     return np.mean(values)
 
-def xai_consistency(model, shap_values, X, y, k=5, mode='classification', seed=42) -> Dict[str, Any]:
-    np.random.seed(seed)
-    random.seed(seed)
+def xai_consistency(model, shap_values, X, y, k=5, mode='classification', random_state=42) -> Dict[str, Any]:
+    np.random.seed(random_state)
+    random.seed(random_state)
 
-    # Validaciones iniciales
+    # Initial validations
     if shap_values is None:
         raise ValueError("SHAP values are required for XAI consistency computation.")
 
     if X is None or (hasattr(X, 'shape') and X.shape[0] == 0):
         raise ValueError("X data is required and cannot be empty.")
 
-    # Aseguramos que X es un DataFrame para que tengan nombres de columnas
+    # Ensure X is a DataFrame so they have column names
     if not isinstance(X, pd.DataFrame):
         X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
 
-    # Convertir a float para evitar errores de dtype con int64
+    # Convert to float to avoid dtype errors with int64
     X = X.astype(float)
 
     rankings = {}
 
     # LIME
     try:
-        rankings['LIME'] = compute_lime(model, X, mode=mode, num_samples=20, seed=seed)
+        rankings['LIME'] = compute_lime(model, X, mode=mode, num_samples=20, seed=random_state)
     except Exception as e:
         raise ValueError(f"Failed to compute LIME importances: {e}")
 
@@ -1297,7 +1297,7 @@ def xai_consistency(model, shap_values, X, y, k=5, mode='classification', seed=4
 
     # PDP
     try:
-        rankings['PDP'] = compute_pdp_importance(model, X)
+        rankings['PDP'] = compute_pdp_importance(model, X, random_state=random_state)
     except Exception as e:
         raise ValueError(f"Failed to compute PDP importances: {e}")
 
@@ -1306,12 +1306,12 @@ def xai_consistency(model, shap_values, X, y, k=5, mode='classification', seed=4
 
     top_k_info = []
     for method, importances in rankings.items():
-        # Extraemos las top K con sus valores
+        # Extract the top K with their values
         top_k_list = get_top_k(importances, k, return_values=True)
         features_str = ", ".join([feat for feat, val in top_k_list])
         vals_str = ", ".join([f"{val:.3f}" for feat, val in top_k_list])
 
-        info_string = f"Top-{k} features {method}: {features_str}, con importancias: {vals_str}"
+        info_string = f"Top-{k} features {method}: {features_str}, with importances: {vals_str}"
         top_k_info.append(info_string)
 
     return {

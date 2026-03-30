@@ -25,23 +25,6 @@ from math import isclose
 
 from trust_library.factsheet import Factsheet
 
-# # =============================================================================
-# # Helpers
-# # =============================================================================
-
-# def _validate_metric_value(value: float, metric_name: str) -> float:
-#     """Validate that metric value is not NaN or Inf."""
-#     if value is None:
-#         raise ValueError(f"Metric '{metric_name}' returned None value.")
-#     try:
-#         float_val = float(value)
-#         if np.isnan(float_val) or np.isinf(float_val):
-#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
-#     except (TypeError, ValueError) as e:
-#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
-#     return value
-
-
 # =============================================================================
 # Train / Test Split
 # =============================================================================
@@ -52,6 +35,11 @@ def train_test_split_ratio(
 ) -> Dict[str, int]:
     """
     Compute percentage ratio of training vs test data.
+
+    Parameters
+    ----------
+    train_data : dataset used for training (pd.DataFrame)
+    test_data  : dataset used for testing (pd.DataFrame)
 
     Returns
     -------
@@ -82,12 +70,12 @@ def train_test_split_mapping(
     mappings: Dict[str, float],
 ) -> float:
     """
-    Map train ratio to a configured score interval.
+    Map train ratio to a configured score interval. If train_ratio falls within a defined interval, return the corresponding score.
 
     Parameters
     ----------
-    train_ratio : int
-    mappings    : dict of "lower-upper" -> score
+    train_ratio : int percentage of training data (0-100)
+    mappings    : dict of "lower-upper : score"
 
     Returns
     -------
@@ -114,12 +102,31 @@ def count_missing_values(
 ) -> int:
     """
     Count total missing values across train and test datasets.
+
+    Parameters
+    ----------
+    train_data: pd.DataFrame
+        dataset used for training
+    test_data  : pd.DataFrame
+        dataset used for testing
+
+    Returns
+    -------
+    {
+        "missing_train": int,
+        "missing_test": int,
+        "value": int,  # total missing
+    }
     """
 
-    return int(
-        train_data.isna().sum().sum() +
-        test_data.isna().sum().sum()
-    )
+    missing_train = train_data.isna().sum().sum()
+    missing_test = test_data.isna().sum().sum()
+
+    return {
+        "missing_train": int(missing_train),
+        "missing_test": int(missing_test),
+        "value": int(missing_train + missing_test),
+    }
 
 
 # =============================================================================
@@ -132,6 +139,22 @@ def normalization_statistics(
 ) -> Dict[str, float]:
     """
     Compute mean and standard deviation statistics.
+
+    Parameters
+    ----------
+    X_train: pd.DataFrame
+        training features
+    X_test  : pd.DataFrame
+        testing features
+
+    Returns
+    -------
+    {
+        "train_mean": float,
+        "train_std": float,
+        "test_mean": float,
+        "test_std": float,
+    }
     """
 
     return {
@@ -150,7 +173,17 @@ def detect_normalization_type(
     """
     Detect normalization strategy.
 
-    Returns one of:
+    Parameters
+    ----------
+    stats:  Dict[str, float]
+        output of normalization_statistics function
+    X_train: pd.DataFrame
+        training features 
+    X_test: pd.DataFrame
+        testing features (pd.DataFrame)
+
+    Returns one of
+    -------
         - "training_and_test_standardize"
         - "training_standardized"
         - "training_and_test_normal"
@@ -200,25 +233,25 @@ def detect_normalization_type(
 
 def regularization_mapping(
     regularization_name: str | None,
+    mappings: Dict[str | None, float],
 ) -> float:
     """
     Map regularization technique to accountability score.
     Regularization is the technique used to prevent overfitting and improving model generalization.
 
+    Parameters
+    ----------
+    regularization_name: str | None
+        name of the regularization technique used (e.g., "elasticnet_regression", "lasso_regression", "ridge_regression", "other", None)
+    mappings: Dict[str | None, float]
+        dict of "regularization_name : score"
+    
     Returns
     -------
-    score in [0,5]
+    int: score between 1 and 5, where higher values indicate stronger regularization techniques that contribute to better accountability. If the regularization technique is not recognized, a default score of 1.0 is returned.
     """
 
-    mapping: Dict[str | None, float] = {
-        "elasticnet_regression": 5.0,
-        "lasso_regression": 4.0,
-        "ridge_regression": 4.0,
-        "other": 3.0,
-        None: 0.0,
-    }
-
-    return mapping.get(regularization_name, 1.0)
+    return mappings.get(regularization_name, 1.0)
 
 
 # =============================================================================
@@ -236,16 +269,20 @@ def factsheet_completeness(
         - strings/lists/dicts are non-empty
         - numeric/boolean values exist
 
+    Parameters
+    ----------
+    factsheet: Factsheet or dict
+        structured factsheet class or dict
+
     Returns
     -------
     {
-        "ratio": float,
-        "present": int,
-        "total": int,
-        "missing": List[str]
+        "ratio": float, # completeness ratio (0-1)
+        "present": int, # number of present fields
+        "total": int, # total number of fields
+        "missing": List[str] # list of missing field paths (e.g., "training_data.size")
     }
     """
-    # En TrustEvaluator.__init__ o donde lo uses:
     if not isinstance(factsheet, dict):
         factsheet = factsheet.to_dict()
 

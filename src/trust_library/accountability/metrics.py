@@ -54,7 +54,7 @@ class MissingDataMetric(BaseMetric):
             "value": core.count_missing_values(
                 ctx.train_data,
                 ctx.test_data,
-            )
+            ).get("value", 0)
         }
 
     def compute_score(self, raw: Dict[str, Any], config: Dict[str, Any]) -> float:
@@ -70,6 +70,8 @@ class MissingDataMetric(BaseMetric):
     def build_properties(self, raw: Dict[str, int]) -> Dict[str, Any]:
         return {
             "Depends on": "Training and Test Data",
+            "Train missing values": raw.get("missing_train", 0),
+            "Test missing values": raw.get("missing_test", 0),
             "Null values count": raw["value"],
         }
 
@@ -128,19 +130,26 @@ class NormalizationMetric(BaseMetric):
 class RegularizationMetric(BaseMetric):
 
     def __init__(self) -> None:
-        super().__init__("regularization", None)
+        super().__init__("regularization", "score_regularization")
 
     def compute(self, ctx) -> Dict[str, Any]:
 
         reg = ctx.factsheet.get(
-            "methodology", {}
-        ).get("regularization", None)
+            "general", {}
+        ).get("regularization", {}).get("value", None)
 
         return {"regularization": reg}
+    
+    def compute_score(self, raw: Dict[str, int], config: Dict[str, Any]) -> float:
+        mappings = (
+            config.get(self.score_config_key, {})
+            .get("mappings", {})
+            .get("value", {})
+        )
 
-    def custom_score(self, raw: Dict[str, Any]) -> float:
         return core.regularization_mapping(
-            raw["regularization"]
+            raw["regularization"],
+            mappings,
         )
 
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
@@ -167,7 +176,7 @@ class FactsheetCompletenessMetric(BaseMetric):
         return core.factsheet_completeness(ctx.factsheet)
 
     def custom_score(self, raw: Dict[str, Any]) -> float:
-        return round(raw["ratio"] * 5)
+        return round(raw["ratio"] * 5, 2)
 
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {

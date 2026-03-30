@@ -5,18 +5,18 @@ import numpy as np
 from dataclasses import dataclass, field
 import pandas as pd
 
-# Estructura de resultados
+# Result structure
 Result = collections.namedtuple('result', 'score properties')
 
 
 # =============================================================================
-# HELPERS DE CONVERSIÓN DATAFRAME/NUMPY
+# CONVERSION HELPERS FOR DATAFRAME/NUMPY
 # =============================================================================
 
 def to_numpy(data: Any) -> np.ndarray:
     """
-    Convierte cualquier tipo de dato a numpy array.
-    Soporta: pd.DataFrame, pd.Series, list, np.ndarray
+    Converts any data type to numpy array.
+    Supports: pd.DataFrame, pd.Series, list, np.ndarray
     """
     if data is None:
         return None
@@ -31,8 +31,8 @@ def to_numpy(data: Any) -> np.ndarray:
 
 def to_dataframe(data: Any, columns: list = None) -> pd.DataFrame:
     """
-    Convierte cualquier tipo de dato a pandas DataFrame.
-    Soporta: np.ndarray, pd.DataFrame, list
+    Converts any data type to pandas DataFrame.
+    Supports: np.ndarray, pd.DataFrame, list
     """
     if data is None:
         return None
@@ -49,7 +49,7 @@ def to_dataframe(data: Any, columns: list = None) -> pd.DataFrame:
 
 def to_series(data: Any, name: str = None) -> pd.Series:
     """
-    Convierte cualquier tipo de dato a pandas Series.
+    Converts any data type to pandas Series.
     """
     if data is None:
         return None
@@ -60,7 +60,7 @@ def to_series(data: Any, name: str = None) -> pd.Series:
 
 def ensure_1d(data: Any) -> np.ndarray:
     """
-    Asegura que los datos sean un array 1D (útil para y_train, y_test).
+    Ensures data is a 1D array (useful for y_train, y_test).
     """
     arr = to_numpy(data)
     if arr is None:
@@ -69,13 +69,13 @@ def ensure_1d(data: Any) -> np.ndarray:
 
 
 # =============================================================================
-# FORMATEO DE VALORES (MAX 2 DECIMALES)
+# VALUE FORMATTING (MAX 2 DECIMALS)
 # =============================================================================
 
 def format_value(value: Any, decimals: int = 2) -> Any:
     """
-    Formatea un valor numérico a máximo N decimales.
-    Retorna el valor original si no es numérico.
+    Formats a numeric value to a maximum of N decimals.
+    Returns the original value if not numeric.
     """
     if value is None:
         return None
@@ -90,7 +90,7 @@ def format_value(value: Any, decimals: int = 2) -> Any:
 
 def format_dict(d: dict, decimals: int = 2) -> dict:
     """
-    Formatea recursivamente todos los valores numéricos en un dict a N decimales.
+    Recursively formats all numeric values in a dict to N decimals.
     """
     if not isinstance(d, dict):
         return format_value(d, decimals)
@@ -118,7 +118,7 @@ def calculate_weighted_score(scores: dict[str, float], weights: dict[str, float]
 
     for metric, score in scores.items():
         weight = weights.get(metric, 0)
-        # Solo sumamos si el score es un número válido
+        # Only sum if score is a valid number
         if score is not None and not np.isnan(score):
             weighted_scores.append(score * weight)
             valid_weights.append(weight)
@@ -148,12 +148,12 @@ def to_json_safe(obj: Any) -> Any:
     if isinstance(obj, np.floating):
         if np.isnan(obj):
             return None
-        return float(obj) #round(float(obj), 2)  # Max 2 decimales
+        return float(obj) #round(float(obj), 2)
 
     if isinstance(obj, float):
         if np.isnan(obj) or np.isinf(obj):
             return None
-        return float(obj) # round(obj, 2)  # Max 2 decimales
+        return float(obj) # round(obj, 2)
 
     return obj
 
@@ -167,14 +167,14 @@ def calculate_score(value: float, thresholds: list[float]) -> int:
     if not thresholds or len(thresholds) == 0:
         raise ValueError("Thresholds must be a non empty list.")
 
-    value = abs(value) # Trabajamos siempre con valor absoluto
+    value = abs(value) # Always work with absolute value
 
-    # Caso: Error (Menor es mejor). Ej: [0.075, 0.05, 0.01, 0]
-    # Caso: Accuracy (Mayor es mejor). Ej: [0.8, 0.9, 0.95,0.99]
+    # Case: Error (Lower is better). Ex: [0.075, 0.05, 0.01, 0]
+    # Case: Accuracy (Higher is better). Ex: [0.8, 0.9, 0.95,0.99]
     idx = np.digitize(value, thresholds, right=False)
     score = idx + 1
 
-    # Asegurar que el score nunca exceda 5 ni baje de 1
+    # Ensure that the score never exceeds 5 and is not less than 1
     return int(np.clip(score, 1, 5))
 
 
@@ -187,18 +187,18 @@ def calculate_score_normalized(
     max_score: float = 5.0
 ) -> float:
     """
-    Calcula un score usando normalización min-max en lugar de thresholds.
+    Calculates a score using min-max normalization instead of thresholds.
 
     Args:
-        value: El valor de la métrica a convertir en score
-        min_val: Valor mínimo esperado de la métrica
-        max_val: Valor máximo esperado de la métrica
-        higher_is_better: Si True, valores altos = score alto. Si False, valores bajos = score alto.
-        min_score: Score mínimo (default 1.0)
-        max_score: Score máximo (default 5.0)
+        value: The metric value to convert to score
+        min_val: Expected minimum value of the metric
+        max_val: Expected maximum value of the metric
+        higher_is_better: If True, high values = high score. If False, low values = high score.
+        min_score: Minimum score (default 1.0)
+        max_score: Maximum score (default 5.0)
 
     Returns:
-        Score normalizado entre min_score y max_score
+        Normalized score between min_score and max_score
 
     Example:
         # Accuracy: min=60% (score 1), max=100% (score 5)
@@ -212,21 +212,21 @@ def calculate_score_normalized(
     if value is None or np.isnan(value):
         return np.nan
 
-    # Evitar división por cero
+    # Avoid division by zero
     if max_val == min_val:
         return (min_score + max_score) / 2
 
-    # Normalizar al rango [0, 1]
+    # Normalize to range [0, 1]
     normalized = (value - min_val) / (max_val - min_val)
 
-    # Clip al rango [0, 1]
+    # Clip to range [0, 1]
     normalized = np.clip(normalized, 0, 1)
 
-    # Si menor es mejor, invertir
+    # If lower is better, invert
     if not higher_is_better:
         normalized = 1 - normalized
 
-    # Escalar al rango de scores
+    # Scale to score range
     score = min_score + normalized * (max_score - min_score)
 
     return round(float(score), 2)
@@ -258,7 +258,7 @@ def load_fairness_config(factsheet: dict) -> tuple:
 
     if not protected_feature or not target_column:
         raise ValueError(
-            f"Configuración incompleta: falta 'protected_feature' o 'target_column'.\n"
+            f"Incomplete configuration: missing 'protected_feature' or 'target_column'.\n"
             f"  protected_feature = '{protected_feature}'\n"
             f"  target_column     = '{target_column}'"
         )

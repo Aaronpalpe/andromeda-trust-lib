@@ -1,113 +1,109 @@
 {
     "general": {
         "model_name": {
-            "description": "Nombre del modelo",
+            "description": "Model name",
             "value": null
         },
         "model_type": {
-            "description": "Tipo de modelo (LogisticRegression, LinearRegression, DecisionTreeClassifier, RandomForestClassifier)",
+            "description": "Model type (LogisticRegression, LinearRegression, DecisionTreeClassifier, RandomForestClassifier... see algorithm_class in configs.json)",
             "value": "DecisionTreeClassifier"
         },
         "purpose_description": {
-            "description": "Propósito previsto del sistema de IA",
+            "description": "Intended purpose of the AI system",
             "value": null
         },
         "domain_description": {
-            "description": "Dominio de aplicación",
-            "value": null
-        },
-        "training_data_description": {
-            "description": "Descripción de los datos de entrenamiento",
-            "value": null
-        },
-        "model_information": {
-            "description": "Arquitectura, versión y parámetros del modelo",
+            "description": "Application domain",
             "value": null
         },
         "target_column": {
-            "description": "Nombre de la variable objetivo",
+            "description": "Name of the target variable",
             "value": "Target"
         },
         "authors": {
-            "description": "Autores o responsables del modelo",
+            "description": "Model authors or responsible parties",
             "value": null
         },
         "contact_information": {
-            "description": "Contacto para incidencias o auditorías",
+            "description": "Contact information for incidents or audits",
             "value": null
+        },
+        "regularization": {
+            "description": "Regularization techniques used (ridge_regression, lasso_regression, elasticnet_regression, other)",
+            "value": "ridge_regression"
         }
     },
     "governance": {
         "roles_and_responsibilities": {
-            "description": "Roles y responsabilidades en el ciclo de vida",
+            "description": "Roles and responsibilities throughout the lifecycle",
             "value": null
         },
         "risk_tolerance": {
-            "description": "Clasificación de riesgo organizacional y regulatorio",
+            "description": "Organizational and regulatory risk classification",
             "value": null
         },
         "ai_governance_committee": {
-            "description": "Existencia de comité de gobernanza de IA",
+            "description": "Existence of an AI governance committee",
             "value": null
         },
         "rai_competence": {
-            "description": "Nivel de competencia en IA responsable",
+            "description": "Level of competence in responsible AI (certifications, training, experience...)",
             "value": null
         }
     },
     "auditability": {
         "data_provenance": {
-            "description": "Procedencia y ciclo de vida de los datos",
+            "description": "Data provenance, description,  transformations and lifecycle",
             "value": null
         },
         "model_provenance": {
-            "description": "Procedencia, versiones y limitaciones del modelo",
+            "description": "Model provenance, architecture, versions, parameters, and limitations",
             "value": null
         },
         "logging": {
-            "description": "Sistema de logs y trazabilidad",
+            "description": "Logging system and traceability",
             "value": null
         },
         "auditing": {
-            "description": "Auditorías internas o externas",
+            "description": "Internal or external audits (frequency, scope, results...)",
             "value": null
         },
         "forum": {
-            "description": "Entidad que puede exigir explicaciones",
+            "description": "Entity that can request explanations (users, auditors, regulators...)",
             "value": null
         }
     },
     "redressability": {
         "incident_reporting": {
-            "description": "Canales y métricas de reporte de incidentes",
+            "description": "Incident reporting channels (buttons, forms...) and metrics (number of incidents, resolution time, outcomes...)",
             "value": null
         },
         "process": {
-            "description": "Proceso de rendición de cuentas",
+            "description": "Accountability process (steps, responsible parties, timelines)",
             "value": null
         },
         "built_in_redundancy": {
-            "description": "Redundancia y salvaguardas del sistema",
+            "description": "Redundancy and safeguards of the system (human-in-the-loop, fallback mechanisms...)",
             "value": null
         },
         "implications": {
-            "description": "Consecuencias ante evaluaciones negativas",
+            "description": "Consequences of negative evaluations (legal, financial, reputational... and corrective actions taken)",
             "value": null
         }
     },
     "fairness": {
         "protected_feature": {
-            "description": "Nombre de la característica protegida",
+            "description": "Name of the protected feature",
             "value": "Group"
         },
         "protected_values": {
-            "description": "Valores que identifican al grupo desprotegido",
+            "description": "Values identifying the unprivileged group",
             "value": [
                 1
             ]
         },
         "favorable_outcomes": {
-            "description": "Valores que identifican el éxito o resultado favorable",
+            "description": "Values identifying favorable outcomes",
             "value": [
                 1
             ]
@@ -115,18 +111,18 @@
     },
     "privacy": {
         "epsilon": {
-            "description": "Parámetro de privacidad diferencial epsilon",
+            "description": "Differential privacy parameter epsilon",
             "value": 1.0
         },
         "quasi_identifiers": {
-            "description": "Lista de identificadores que pueden reidentificar individuos",
+            "description": "List of quasi-identifiers that may re-identify individuals",
             "value": [
                 "Own_Housing",
                 "Own_Car"
             ]
         },
         "sensitive_attribute": {
-            "description": "Atributo sensible que se protege",
+            "description": "Sensitive attribute being protected",
             "value": [
                 "Group"
             ]
@@ -138,39 +134,39 @@
             "value": false
         },
         "energy_consumed": {
-            "description": "Consumo energético del modelo (kWh)",
+            "description": "Model energy consumption (kWh)",
             "value": 2.9963174823623247e-05
         },
         "cpu_energy": {
-            "description": "Energía consumida por CPU (kWh)",
+            "description": "CPU energy consumption (kWh)",
             "value": 1.664975395833608e-05
         },
         "gpu_energy": {
-            "description": "Energía consumida por GPU (kWh)",
+            "description": "GPU energy consumption (kWh)",
             "value": 9.414451976219596e-06
         },
         "ram_energy": {
-            "description": "Energía consumida por RAM (kWh)",
+            "description": "RAM energy consumption (kWh)",
             "value": 3.898968889067571e-06
         },
         "emissions": {
-            "description": "Emisiones de CO2 asociadas (kgCO2e)",
+            "description": "Associated CO2 emissions (kgCO2e)",
             "value": 5.215090578051626e-06
         },
         "duration": {
-            "description": "Duración del entrenamiento (seg)",
+            "description": "Training duration (seconds)",
             "value": 1.4115803001914171
         },
         "country": {
-            "description": "País donde se realizó el entrenamiento",
+            "description": "Country where training was performed",
             "value": "Spain"
         },
         "pue": {
-            "description": "Eficiencia energética del centro de datos (PUE)",
+            "description": "Data center energy efficiency (PUE)",
             "value": 1.0
         },
         "wue": {
-            "description": "Eficiencia hídrica del centro de datos (WUE)",
+            "description": "Data center water efficiency (WUE)",
             "value": 0.0
         }
     }

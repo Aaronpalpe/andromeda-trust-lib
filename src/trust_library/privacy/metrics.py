@@ -31,10 +31,9 @@ class EpsilonMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Theoretical epsilon from DP analysis, given in factsheet.",
+            "Metric Description": "Theoretical epsilon from DP analysis, given in factsheet. Lower epsilon implies stronger privacy guarantees (less theoretical leakage).",
             "Depends on": "Training Mechanism",
             "Epsilon": f"{raw['value']:.6f}",
-            "Interpretation": "Lower epsilon implies stronger privacy guarantees (less theoretical leakage).",
         }
 
 # =============================================================================
@@ -58,10 +57,9 @@ class EpsilonStarMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Empirical epsilon* from loss distribution.",
+            "Metric Description": "Empirical epsilon* from loss distribution. Lower is better (less membership leakage).",
             "Delta Used": f"{raw['delta']:.2e}",
             "Epsilon*": f"{raw['value']:.6f}",
-            "Interpretation": "Lower is better (less membership leakage).",
         }
 
 
@@ -89,6 +87,7 @@ class SHAPRMetric(BaseMetric):
             "Metric Description": "Approximate SHAPr membership risk.",
             "Average Marginal Contribution": f"{raw['value']:.6f}",
             "Sample Size": raw["sample_size"],
+            "k Neighbors": raw["k_neighbors"],
         }
 
 
@@ -127,34 +126,9 @@ class AttributeInferenceMetric(BaseMetric):
         return {
             "Metric Description": "Attribute inference risk.",
             "Sensitive Attribute": raw["sensitive"],
-            "Risk Score (accuracy)": (
+            "Risk Score": (
                 f"{raw['value']:.6f}" if raw["value"] is not None else "N/A"
             ),
-        }
-
-# =============================================================================
-# Accuracy Ratio (Data Minimization)
-# =============================================================================
-
-class AccuracyRatioMetric(BaseMetric):
-
-    def __init__(self) -> None:
-        super().__init__("accuracy_ratio", "score_accuracy_ratio")
-
-    def compute(self, ctx) -> Dict[str, float]:
-
-        return core.accuracy_ratio(
-            model=ctx.model,
-            X_test=ctx.X_test,
-            y_test=ctx.y_test,
-            y_pred_test=ctx.y_pred_test,
-        )
-
-    def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
-        return {
-            "Metric Description": "Accuracy ratio for data minimization.",
-            "Accuracy Ratio": f"{raw['value']:.6f}",
-            "Interpretation": "Values close to 1 indicate minimal performance loss.",
         }
 
 # =============================================================================
@@ -179,6 +153,34 @@ class PrivacyRiskMetric(BaseMetric):
         return {
             "Metric Description": "Membership inference privacy risk.",
             "Mean Privacy Risk": f"{raw['value']:.6f}",
+        }
+
+
+# =============================================================================
+# Accuracy Ratio (Data Minimization)
+# =============================================================================
+
+class AccuracyRatioMetric(BaseMetric):
+
+    def __init__(self) -> None:
+        super().__init__("accuracy_ratio", "score_accuracy_ratio")
+
+    def compute(self, ctx) -> Dict[str, float]:
+
+        return core.accuracy_ratio(
+            model=ctx.model,
+            X_test=ctx.X_test,
+            y_test=ctx.y_test,
+            y_pred_test=ctx.y_pred_test,
+        )
+
+    def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
+        return {
+            "Metric Description": "Accuracy ratio for data minimization (original/noisy). Values close to 1 indicate minimal performance loss. Higher values indicate more loss in accuracy",
+            "selector_type": f"{raw['args']['selector_type']}",
+            "modifier_type": f"{raw['args']['modifier_type']}",
+            "n_features" : raw["args"]["n_feats"],
+            "Accuracy Ratio": f"{raw['value']:.6f}",
         }
 
 

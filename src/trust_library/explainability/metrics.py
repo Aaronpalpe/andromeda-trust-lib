@@ -17,7 +17,7 @@ def _get_or_compute(ctx: EvaluationContext) -> dict:
     if isinstance(cached, dict):
         return cached
 
-    # Si ya falló antes, no reintentar
+    # If it already failed, don't retry
     if _EXPL_ERROR_KEY in ctx.extras:
         raise RuntimeError(str(ctx.extras[_EXPL_ERROR_KEY]))
 
@@ -25,7 +25,7 @@ def _get_or_compute(ctx: EvaluationContext) -> dict:
     if not isinstance(params, dict):
         params = {}
 
-    # (Opcional) validación rápida sklearn
+    # (Optional) quick sklearn validation
     if not hasattr(ctx.model, "predict"):
         ctx.extras[_EXPL_ERROR_KEY] = "Model must implement predict() to compute explainability."
         raise RuntimeError(ctx.extras[_EXPL_ERROR_KEY])

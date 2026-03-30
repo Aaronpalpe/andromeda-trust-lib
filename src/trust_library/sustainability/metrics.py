@@ -46,15 +46,18 @@ class EmissionsMetric(BaseMetric):
     def compute(self, ctx):
         # run_data = ctx.extras["run_data"]
         emissions = ctx.factsheet.get("sustainability", {}).get("emissions", {}).get("value", 0.0)
+        energy_consumed = ctx.factsheet.get("sustainability", {}).get("energy_consumed", {}).get("value", 0.0)
         duration = ctx.factsheet.get("sustainability", {}).get("duration", {}).get("value", 0.0)
         pue = ctx.factsheet.get("sustainability", {}).get("pue", {}).get("value", 0.0)
         wue = ctx.factsheet.get("sustainability", {}).get("wue", {}).get("value", 0.0)
 
-        return core.emissions(emissions, duration, pue, wue)
+        return core.emissions(emissions, energy_consumed, duration, pue, wue)
 
     def build_properties(self, raw):
         return {
             "Metric Description": "Total CO2 emissions during training  (Energy consumed * Carbon Intensity).",
+            "Energy Consumed (kWh)": f"{raw['energy_consumed']:.6f}",
+            "Carbon Intensity (kgCO2/kWh)": f"{raw['value'] / raw['energy_consumed']:.6f}" if raw['energy_consumed'] > 0 else "N/A",
             "Emissions (kgCO2)": f"{raw['value']:.6f}",
             "Training Duration (s)": f"{raw['duration']:.2f}",
             "PUE": raw["pue"],
@@ -82,6 +85,6 @@ class CarbonIntensityMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Carbon intensity (kgCO2 per kWh). Based on the type of energy used and location.",
-            "Carbon Intensity": f"{raw['value']:.6f}",
             "Country": raw["country"],
+            "Carbon Intensity": f"{raw['value']:.6f}",
         }

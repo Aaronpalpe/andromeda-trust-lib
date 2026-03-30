@@ -34,14 +34,14 @@ class SustainabilityPillar(Pillar):
                 train_data=context.train_data,
             )
 
-            # Actualizar la factsheet en memoria con los valores calculados
+            # Update the in-memory factsheet with the calculated values
             for key, value in run_data.items():
                 if key in sustainability:
                     sustainability[key]["value"] = value
                     formatted_value = f"{value:.6f}" if isinstance(value, (int, float)) else str(value)
                     print(f"   Updated factsheet: {key} = {formatted_value}")
 
-            # Guardar indicador de que CodeCarbon se ejecutó
+            # Save indicator that CodeCarbon was executed
             context.extras["codecarbon_executed"] = True
             context.extras["codecarbon_data"] = run_data
 

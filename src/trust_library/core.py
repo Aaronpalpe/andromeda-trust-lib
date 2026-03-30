@@ -52,7 +52,7 @@ class TrustEvaluator:
         self.config      = self._load_config(config_path)
         self.context     = self._build_context()
         self.result: dict | None = None
-        self.set_global_seed(42) # Config hay 2 NEW
+        self.set_global_seed(42) # Config version 2 NEW
 
     def set_global_seed(self, seed: int):
         os.environ["PYTHONHASHSEED"] = str(seed)
@@ -64,15 +64,29 @@ class TrustEvaluator:
     # ─────────────────────────────────────────────────────────────────────────
 
     def evaluate(self, pillars: list[str]= None, show_nan: bool = False) -> dict:
-        """Full evaluation: all pillars + trust score + explanation."""
+        """
+        Full evaluation: all pillars + trust score + explanation.
+        
+        Parameters
+        ----------
+        pillars : list[str], optional
+            List of pillars to evaluate. If None, evaluates all pillars.
+        show_nan : bool
+            Whether to include metrics with NaN values in the results and explanation.
+
+        Returns
+        -------
+        dict
+            Dictionary containing trust score, pillar scores, metric details, properties, and explanation.
+        """
         if pillars is None:
             pillars = list(_PILLARS.keys())
         self._validate_pillars(pillars)
-        pillar_results = self._compute_pillar_scores(pillars) # Diccionario compuesto por cada pilar, con su score agregado, sus métricas:score y metricas:propiedades.
+        pillar_results = self._compute_pillar_scores(pillars) # Dictionary composed of each pillar, with its aggregated score, its metrics:score and metrics:properties.
 
         pillar_scores = {name: data["score"] for name, data in pillar_results.items()} # Pillar:score
-        trust_score   = self._compute_trust_score(pillar_scores) # Trust global
-        explanation   = self._build_score_explanation(pillar_results, show_nan=show_nan) # Fórmula
+        trust_score   = self._compute_trust_score(pillar_scores) # Global Trust
+        explanation   = self._build_score_explanation(pillar_results, show_nan=show_nan) # Formula
 
         clean_metrics = {}
         clean_properties = {}
@@ -107,7 +121,7 @@ class TrustEvaluator:
     #     self._validate_pillars(pillars)
     #     return self._compute_pillar_scores(pillars)
 
-    # def run_analysis(self) -> dict: #¿Se puede quitar? Creo que ya está representado ocn los 2 de arriba
+    # def run_analysis(self) -> dict: # Can this be removed? I think it's already represented with the 2 above
     #     """Runs analyse() on every pillar and returns raw pillar results."""
     #     return {
     #         name: pillar.analyse(
@@ -118,14 +132,18 @@ class TrustEvaluator:
     #     }
     
     def plot_results(self) -> None:
-        """Display pillar scores and metric-level charts using Plotly."""
+        """
+        Display pillar scores and metric-level charts using Plotly.
+        This method generates a bar chart for the overall pillar scores and separate bar charts for the metrics within each pillar.
+        Each pillar is assigned a distinct color for visual clarity. The metric charts are sorted by score to highlight the best and worst performing metrics within each pillar.
+        """
         if self.result is None:
             raise RuntimeError("No results available. Run evaluate() first.")
 
         pillar_scores = self.result["pillar_score"]
         details = self.result["details"]
 
-        # Colores fijos por pilar
+        # Fixed colors per pillar
         pillar_colors = {
             "fairness": "#1f77b4",
             "accountability": "#b92323",
@@ -150,7 +168,7 @@ class TrustEvaluator:
             x="Pillar",
             y="Score",
             text="Score",
-            range_y=[0, 5],
+            #range_y=[0, 5],
             title="Trust Pillar Scores",
         )
 
@@ -184,9 +202,12 @@ class TrustEvaluator:
                 title=f"{pillar.capitalize()} Metrics"
             )
 
+            # Text size should be smaller than bar heigh
+            fig.update_layout(height=600)
+
             fig.update_traces(
                 texttemplate="%{text:.2f}",
-                textposition="outside"
+                textposition="outside",
             )
 
             fig.show()
@@ -196,6 +217,17 @@ class TrustEvaluator:
         """
         Compare trust score, pillars, and metrics of multiple models
         using separate bar charts.
+
+        Parameters
+        ----------
+        results : dict
+            Dictionary mapping model names to evaluation results.
+
+            Example:
+            {
+                "RandomForest": result1,
+                "XGBoost": result2
+            }
         """
 
         # ────────────────
@@ -241,7 +273,7 @@ class TrustEvaluator:
             color="Model",
             barmode="group",
             text="Score",
-            range_y=[0, 5],
+            #range_y=[0, 5],
             title="Pillar Score Comparison"
         )
         fig_pillars.update_traces(texttemplate="%{text:.2f}", textposition="outside")
@@ -277,14 +309,16 @@ class TrustEvaluator:
                 color="Model",
                 barmode="group",
                 text="Score",
-                range_y=[0, 5],
+                #range_y=[0, 5],
                 title=f"{pillar.capitalize()} Metrics Comparison"
             )
             fig_metrics.update_traces(texttemplate="%{text:.2f}", textposition="outside")
             fig_metrics.show()
 
     def plot_radar(self) -> None:
-        """Display radar chart for pillar scores."""
+        """
+        Display radar chart for pillar scores.
+        """
         if self.result is None:
             raise RuntimeError("No results available. Run evaluate() first.")
 
@@ -293,7 +327,7 @@ class TrustEvaluator:
         categories = list(pillar_scores.keys())
         values = list(pillar_scores.values())
 
-        # cerrar el polígono
+        # Close the polygon
         categories += [categories[0]]
         values += [values[0]]
 
@@ -334,7 +368,7 @@ class TrustEvaluator:
         result = self.result
 
         print("\n" + "=" * 70)
-        print("RESULTADOS DE EVALUACIÓN DE TRUST")
+        print("TRUST EVALUATION RESULTS")
         print("=" * 70)
 
         # ─────────────────────────────────────
@@ -342,14 +376,14 @@ class TrustEvaluator:
         # ─────────────────────────────────────
         trust_score = result.get("trust_score")
         if isinstance(trust_score, (int, float)):
-            print(f"\n TRUST SCORE GLOBAL: {trust_score:.2f}/5.0")
+            print(f"\n GLOBAL TRUST SCORE: {trust_score:.2f}/5.0")
         else:
-            print(f"\n TRUST SCORE GLOBAL: {trust_score}")
+            print(f"\n GLOBAL TRUST SCORE: {trust_score}")
 
         # ─────────────────────────────────────
         # Pillars
         # ─────────────────────────────────────
-        print("\n SCORES POR PILAR:")
+        print("\n SCORES PER PILLAR:")
         for pillar, score in result.get("pillar_score", {}).items():
             if isinstance(score, (int, float)):
                 print(f"   - {pillar.capitalize():15s}: {score:.2f}/5.0")
@@ -359,14 +393,14 @@ class TrustEvaluator:
         # ─────────────────────────────────────
         # Metrics
         # ─────────────────────────────────────
-        print("\n MÉTRICAS DETALLADAS:")
+        print("\n DETAILED METRICS:")
         for pillar, metrics in result.get("details", {}).items():
             print(f"\n   [{pillar.upper()}]")
             for metric, value in metrics.items():
                 if value is None:
                     continue
 
-                # Evita errores tipo 'Unknown format code f'
+                # Avoid errors like 'Unknown format code f'
                 if isinstance(value, (int, float)):
                     print(f"      - {metric}: {value:.{decimals}f}")
                 else:
@@ -374,7 +408,7 @@ class TrustEvaluator:
         # # ─────────────────────────────────────
         # # Properties
         # # ─────────────────────────────────────
-        # print("\n PROPIEDADES DE LAS MÉTRICAS:")
+        # print("\n METRIC PROPERTIES:")
         # for pillar, properties in result.get("properties", {}).items():
         #     print(f"\n   [{pillar.upper()}]")
         #     for metric, prop in properties.items():
@@ -383,7 +417,7 @@ class TrustEvaluator:
         # ─────────────────────────────────────
         # Output path
         # ─────────────────────────────────────
-        print(f"\n Resultados guardados en: {self.output_path}")
+        print(f"\n Results saved to: {self.output_path}")
 
     @staticmethod
     def compare_radar(results: dict[str, dict]) -> None:
@@ -448,7 +482,7 @@ class TrustEvaluator:
             return json.load(f)
 
     def _build_context(self) -> utils.EvaluationContext:
-        # Imprimimos el tiempo que tarda en construir el contexto
+        # Print the time it takes to build the context
         print("Building evaluation context...")
         
         target = self.factsheet["general"]["target_column"]["value"]
@@ -545,28 +579,28 @@ class TrustEvaluator:
         return explanation
 
     def _save_result(self) -> None:
-        # Formatear todos los valores numéricos a máximo 2 decimales
+        # Format all numeric values to maximum 2 decimals
         #  formatted_result = utils.format_dict(self.result, decimals=2)
 
         with open(self.output_path, "w", encoding="utf-8") as f:
             # json.dump(utils.to_json_safe(formatted_result), f, indent=4, ensure_ascii=False)
             json.dump(utils.to_json_safe(self.result), f, indent=4, ensure_ascii=False)
 
-        # Si CodeCarbon fue ejecutado, guardar la factsheet actualizada
+        # If CodeCarbon was executed, save the updated factsheet
         if self.context.extras.get("codecarbon_executed"):
             self._save_updated_factsheet()
 
     def _save_updated_factsheet(self) -> None:
-        """Guarda la factsheet actualizada con los valores de CodeCarbon."""
-        # Determinar el path de la factsheet
+        """Saves the factsheet updated with CodeCarbon values."""
+        # Determine the path of the factsheet
         if hasattr(self.factsheet, 'save'):
-            # Es un objeto Factsheet
+            # It's a Factsheet object
             factsheet_path = self.output_path.replace("trust_evaluation", "factsheet_updated")
             factsheet_path = factsheet_path.replace(".json", "_codecarbon.json")
             self.factsheet.save(factsheet_path)
             print(f"Updated factsheet saved to: {factsheet_path}")
         else:
-            # Es un dict
+            # It's a dict
             factsheet_path = self.output_path.replace("trust_evaluation", "factsheet_updated")
             factsheet_path = factsheet_path.replace(".json", "_codecarbon.json")
             with open(factsheet_path, "w", encoding="utf-8") as f:

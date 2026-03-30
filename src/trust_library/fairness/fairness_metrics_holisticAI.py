@@ -1,13 +1,13 @@
 """
 fairness_metrics_holisticai.py
 ===============
-Implementación de métricas de fairness utilizando HolisticAI como motor de cálculo.
+Implementation of fairness metrics using HolisticAI as the calculation engine.
 
-Las funciones mantienen la interfaz original basada en arrays crudos de numpy:
+Functions maintain the original interface based on raw numpy arrays:
     y_true          : ground-truth labels (0/1)
     y_pred          : predicted labels (0/1)
-    group_mask      : boolean array - True indica pertenencia al grupo *protegido* (group_a)
-    X               : matriz de características (necesaria para consistencia individual)
+    group_mask      : boolean array - True indicates membership in the *protected* (group_a) group
+    X               : feature matrix (needed for individual consistency)
 """
 
 import numpy as np
@@ -31,17 +31,17 @@ from holisticai.bias.metrics import (
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Helper: Extracción de tasas base (ya que HolisticAI devuelve solo el float)
+# Helper: Extraction of base rates (since HolisticAI returns only the float)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_base_rates(y: np.ndarray, mask: np.ndarray):
-    """Calcula las tasas base para rellenar los diccionarios del wrapper."""
+    """Calculates base rates to fill the wrapper dictionaries."""
     prot_rate = float(y[mask].mean()) if mask.sum() > 0 else 0.0
     unprot_rate = float(y[~mask].mean()) if (~mask).sum() > 0 else 0.0
     return prot_rate, unprot_rate
 
 def _get_tpr_fpr(y_true: np.ndarray, y_pred: np.ndarray, mask: np.ndarray):
-    """Calcula TPR y FPR manualmente para el wrapper (HolisticAI oculta estos pasos intermedios)."""
+    """Calculates TPR and FPR manually for the wrapper (HolisticAI hides these intermediate steps)."""
     positives = y_true[mask] == 1
     negatives = y_true[mask] == 0
     tpr = float((y_pred[mask][positives] == 1).sum() / positives.sum()) if positives.sum() > 0 else 0.0
@@ -50,12 +50,12 @@ def _get_tpr_fpr(y_true: np.ndarray, y_pred: np.ndarray, mask: np.ndarray):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Group Fairness Metrics (Vía HolisticAI)
+# Group Fairness Metrics (Via HolisticAI)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def statistical_parity_difference(y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
     """Statistical Parity Difference (SPD) via HolisticAI."""
-    # HolisticAI convención: group_a = protegido/unprivileged, group_b = no protegido
+    # HolisticAI convention: group_a = protected/unprivileged, group_b = unprotected
     group_a = group_mask
     group_b = ~group_mask
     
@@ -145,39 +145,39 @@ def accuracy_parity(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarr
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Individual Fairness (Vía HolisticAI)
+# Individual Fairness (Via HolisticAI)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dict:
     """
     Individual Consistency Score via HolisticAI.
-    HolisticAI implementa esto nativamente pidiendo X, y_pred y n_neighbors.
+    HolisticAI implements this natively by asking for X, y_pred and n_neighbors.
     """
-    # Importante: HolisticAI asume n_neighbors, su valor por defecto suele ser 5.
+    # Important: HolisticAI assumes n_neighbors, its default value is usually 5.
     val = consistency_score(X, y_pred, n_neighbors=k)
-    
+
     return {
-        "value": float(val), 
+        "value": float(val),
         "k": k
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Effect Size (Vía HolisticAI)
+# Effect Size (Via HolisticAI)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def cohens_d(y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
     """
     Cohen's D effect size via HolisticAI.
-    HolisticAI tiene esta métrica nativa en su módulo de bias.
+    HolisticAI has this native metric in its bias module.
     """
-    group_a = group_mask      # Protegido
-    group_b = ~group_mask     # No protegido
-    
-    # HolisticAI devuelve directamente el valor del efecto
+    group_a = group_mask      # Protected
+    group_b = ~group_mask     # Unprotected
+
+    # HolisticAI returns directly the effect value
     val = cohen_d(group_a, group_b, y_pred)
-    
-    # Extraemos las medias y la desviación para rellenar tu wrapper
+
+    # Extract the means and standard deviation to fill your wrapper
     g1 = y_pred[group_mask].astype(float)
     g2 = y_pred[~group_mask].astype(float)
     sigma = float(np.sqrt((g1.var() + g2.var()) / 2))
@@ -191,7 +191,7 @@ def cohens_d(y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Inequality / Information-Theory Metrics (Vía HolisticAI)
+# Inequality / Information-Theory Metrics (Via HolisticAI)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def generalized_entropy_index(
@@ -202,7 +202,7 @@ def generalized_entropy_index(
     """
     Generalized Entropy Index via HolisticAI.
     """
-    # HolisticAI calcula los beneficios internamente recibiendo y_pred y y_true
+    # HolisticAI calculates the benefits internally by receiving y_pred and y_true
     val = hai_generalized_entropy_index(y_pred, y_true, alpha=alpha)
 
     return {

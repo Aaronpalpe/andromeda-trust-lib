@@ -838,8 +838,6 @@ def z_test_diff(
     This function computes the Z-test statistic for the difference\
     in success rates. Also known as 2-SD Statistic.
 
-    Interpretation
-    --------------
     A value of 0 is desired. This test considers the data unfair if\
     the computed value is greater than 2 or smaller than -2, indicating\
     a statistically significant difference in success rates.

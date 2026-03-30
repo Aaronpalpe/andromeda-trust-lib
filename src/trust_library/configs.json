@@ -66,15 +66,15 @@
             "xai_consistency_score": 0.04
         },
         "privacy": {
-            "epsilon_dp": 0.1,
-            "epsilon_star": 0.1,
+            "epsilon_dp": 0.14,
+            "epsilon_star": 0.06,
             "shapr": 0.1,
-            "attribute_inference": 0.15,
-            "accuracy_ratio": 0.1,
-            "privacy_risk": 0.15,
-            "k_anonymity": 0.1,
-            "l_diversity": 0.1,
-            "t_closeness": 0.1
+            "attribute_inference": 0.12,
+            "accuracy_ratio": 0.06,
+            "privacy_risk": 0.1,
+            "k_anonymity": 0.14,
+            "l_diversity": 0.14,
+            "t_closeness": 0.14
         },
         "robustness": {
             "er_hopskipjump_attack": 0.04,
@@ -487,7 +487,7 @@
                 }
             },
             "params": {
-                "n_samples": 50,
+                "n_samples": 25,
                 "shap_threshold": 0.001,
                 "top_k": 5,
                 "seed": 42,
@@ -499,16 +499,26 @@
         "privacy": {
             "score_epsilon_dp": {
                 "thresholds": {
-                    "value": [2, 1, 0.5, 0.1],
+                    "value": [10, 6, 3, 0.1],
                     "description": "Differential privacy epsilon thresholds. Lower is better.",
                     "label": "Epsilon-DP Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 1,
+                    "max_val" : 10,
+                    "higher_is_better": false
                 }
             },
             "score_epsilon_star": {
                 "thresholds": {
-                    "value": [2, 1, 0.5, 0.1],
+                    "value": [2, 1.5, 1, 0.5],
                     "description": "Empirical epsilon* thresholds. Lower is better.",
                     "label": "Epsilon-Star Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.5,
+                    "max_val" : 2,
+                    "higher_is_better": false
                 }
             },
             "score_shapr": {
@@ -516,6 +526,11 @@
                     "value": [0.7, 0.5, 0.3, 0.1],
                     "description": "SHAPr membership risk thresholds. Lower is better.",
                     "label": "SHAPr Risk Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.1,
+                    "max_val" : 0.7,
+                    "higher_is_better": false
                 }
             },
             "score_attribute_inference": {
@@ -523,41 +538,71 @@
                     "value": [0.7, 0.5, 0.3, 0.1],
                     "description": "Attribute inference attack accuracy thresholds. Lower is better.",
                     "label": "Attribute Inference Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.1,
+                    "max_val" : 0.7,
+                    "higher_is_better": false
                 }
             },
             "score_accuracy_ratio": {
                 "thresholds": {
-                    "value": [0.7, 0.8, 0.9, 0.97],
-                    "description": "Accuracy ratio under data minimization. Higher is better.",
+                    "value": [1.0, 1.05, 1.1, 1.2],
+                    "description": "Accuracy ratio under data minimization (original / noisy). Values close to 1 indicate minimal performance loss. Higher values indicate more loss in accuracy.",
                     "label": "Accuracy Ratio Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 1.0,
+                    "max_val" : 1.2,
+                    "higher_is_better": false
                 }
             },
             "score_privacy_risk": {
                 "thresholds": {
-                    "value": [0.7, 0.5, 0.3, 0.1],
+                    "value": [0.7, 0.55, 0.35, 0.2],
                     "description": "Membership privacy risk thresholds. Lower is better.",
                     "label": "Privacy Risk Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.2,
+                    "max_val" : 0.7,
+                    "higher_is_better": false
                 }
             },
             "score_k_anonymity": {
                 "thresholds": {
-                    "value": [2, 5, 10, 20],
+                    "value": [5, 7, 9, 10],
                     "description": "k-anonymity thresholds. Higher is better.",
                     "label": "K-Anonymity Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 5,
+                    "max_val" : 10,
+                    "higher_is_better": true
                 }
             },
             "score_l_diversity": {
                 "thresholds": {
-                    "value": [1, 2, 3, 5],
+                    "value": [3, 4, 5, 6],
                     "description": "l-diversity thresholds. Higher is better.",
                     "label": "L-Diversity Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 3,
+                    "max_val" : 6,
+                    "higher_is_better": true
                 }
             },
             "score_t_closeness": {
                 "thresholds": {
-                    "value": [0.7, 0.5, 0.3, 0.1],
+                    "value": [0.5, 0.4, 0.3, 0.2],
                     "description": "t-closeness thresholds. Lower is better.",
                     "label": "T-Closeness Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.2,
+                    "max_val" : 0.5,
+                    "higher_is_better": false
                 }
             }
         },
@@ -708,39 +753,53 @@
                 }
             },
             "score_regularization": {
-                "parameter_regularization_technique": {
-                    "value": "The value of the parameter_XY",
+                "mappings": {
+                    "value": {
+                        "None": 1,
+                        "other": 3,
+                        "ridge_regression": 4,
+                        "lasso_regression": 4,
+                        "elasticnet_regression": 5
+                    },
                     "description": "The description of the paramter and its impact"
-                }
-            },
-            "score_factsheet_completeness": {
-                "parameter_split": {
-                    "value": "model_specific",
-                    "description": "Factsheet completeness is scored through custom logic in the metric implementation.",
-                    "label": "Factsheet Completeness Metadata"
                 }
             }
         },
         "sustainability": {
             "score_energy": {
                 "thresholds": {
-                    "value": [0.8, 0.4, 0.2, 0.1],
+                    "value": [10, 6, 3, 0.05],
                     "description": "Energy consumption (kWh) thresholds. Lower is better.",
                     "label": "Energy Consumption Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.05,
+                    "max_val" : 10,
+                    "higher_is_better": false
                 }
             },
             "score_emissions": {
                 "thresholds": {
-                    "value": [0.4, 0.2, 0.1, 0.05],
+                    "value": [1.2, 0.8, 0.4, 0.05],
                     "description": "CO2 emissions (kgCO2e) thresholds. Lower is better.",
                     "label": "Emissions Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.05,
+                    "max_val" : 1.2,
+                    "higher_is_better": false
                 }
             },
             "score_carbon_intensity": {
                 "thresholds": {
-                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "value": [1.2, 0.8, 0.4, 0.05],
                     "description": "Carbon intensity (kgCO2/kWh) thresholds. Lower is better.",
                     "label": "Carbon Intensity Thresholds"
+                },
+                "normalized": {
+                    "min_val" : 0.05,
+                    "max_val" : 1.2,
+                    "higher_is_better": false
                 }
             }
         }

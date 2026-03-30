@@ -41,7 +41,6 @@ class Pillar(ABC):
         properties: dict[str, dict[str, Any]] = {}
 
         for metric in metrics:
-            # Vemos lo que tarda cada métrica
             start_time = time.time()
             result = metric.evaluate(context, config)
             scores[metric.metric_key] = result.score

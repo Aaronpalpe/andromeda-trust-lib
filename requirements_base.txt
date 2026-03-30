@@ -48,7 +48,7 @@ funcy==1.16
 dash-renderer==1.9.1
 
 
-# pip install pandas, scipy, scikit-learn, holisticai, codecarbon, shap, lime, adversarial-robustness-toolbox, plotly, seaborn, nbformat
+# pip install pandas, scipy, scikit-learn, holisticai, codecarbon, shap, lime, adversarial-robustness-toolbox, plotly, seaborn, nbformat; torch, torchvision and jax
 # Package                        Version
 # ------------------------------ -----------
 # adversarial-robustness-toolbox 1.20.1

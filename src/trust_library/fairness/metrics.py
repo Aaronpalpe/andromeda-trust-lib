@@ -444,12 +444,11 @@ class ClassImbalanceMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Measures imbalance in size between protected and unprotected groups.",
+            "Metric Description": "Measures imbalance in size between protected and unprotected groups. 0 indicates perfect balance",
             "Depends on": "Dataset",
             "CI (manual)": f"{raw['value']:.4f}",
             "N Protected": raw["n_protected"],
             "N Unprotected": raw["n_unprotected"],
-            "Interpretation": "0 indicates perfect balance",
         }
 
 
@@ -627,10 +626,9 @@ class ZTestDiffMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Estadístico Z para la diferencia en tasas de éxito (Regla de las 2 Desviaciones Estándar).",
+            "Metric Description": "Estadístico Z para la diferencia en tasas de éxito (Regla de las 2 Desviaciones Estándar). Equitativo si el valor está entre -2 y 2.",
             "Depends on": "Model, Test Data, Factsheet",
             "Success Rate Protected": f"{raw['sr_protected']:.2%}",
             "Success Rate Unprotected": f"{raw['sr_unprotected']:.2%}",
             "Z-Test Score": f"{raw['value']:.4f}",
-            "Interpretation": "Equitativo si el valor está entre -2 y 2.",
         }
