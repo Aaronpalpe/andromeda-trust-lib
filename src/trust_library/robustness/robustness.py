@@ -7,22 +7,27 @@ from trust_library.utils import EvaluationContext
 
 from . import robustness_metrics_core as core
 from .metrics import (
-    HopSkipJumpAccuracyDropMetric,
-    HopSkipJumpASRMetric,
-    HopSkipJumpAdversarialAccuracyMetric,
-    HopSkipJumpEmpiricalRobustnessL2Metric,
-    HopSkipJumpEmpiricalRobustnessLinfMetric,
+    # HopSkipJumpAttackMetric,
+    # FastGradientAttackMetric,
+    # CarliniWagnerAttackMetric,
+    # DeepFoolAttackMetric,
+    # EnsembleRobustnessMetric,
+
+    AccuracyDropMetric,
+    ASRMetric,
+    AdversarialAccuracyMetric,
+    AdversarialAccuracyCorrectOnlyMetric,
+    RobustnessRatioMetric,
+    EmpiricalRobustnessL2Metric,
+    EmpiricalRobustnessLinfMetric,
+
     CliqueMethodMetric,
     CleverScoreMetric,
-    FastGradientAttackMetric,
-    CarliniWagnerAttackMetric,
-    DeepFoolAttackMetric,
+
     LossSensitivityMetric,
     ConfidenceScoreMetric,
     # PopulationStabilityIndexMetric,
-    RobustnessRatioHSJMetric,
     ExpectedCalibrationErrorMetric,
-
 )
 
 
@@ -35,25 +40,28 @@ class RobustnessPillar(Pillar):
     
     def get_metrics(self) -> List[Any]:
         return [
-            # HSJ-derived
-            HopSkipJumpAccuracyDropMetric(),           # accuracy_drop_pct/effective_robustness
-            HopSkipJumpASRMetric(),                    # asr_pct
-            HopSkipJumpAdversarialAccuracyMetric(),    # adv_accuracy
-            HopSkipJumpEmpiricalRobustnessL2Metric(),  # er_l2_success
-            HopSkipJumpEmpiricalRobustnessLinfMetric(),# er_linf_success
+            # HSJ grouped metric
+            # HopSkipJumpAttackMetric(),
+            # FastGradientAttackMetric(),                # fgsm_success
+            # CarliniWagnerAttackMetric(),               # cw_success
+            # DeepFoolAttackMetric(),                    # deepfool_success
+            # EnsembleRobustnessMetric(),               # ensemble_robustness
+
+            AccuracyDropMetric(),                     # accuracy_drop
+            ASRMetric(),                              # asr
+            AdversarialAccuracyMetric(),              # adv_accuracy, adv_accuracy_correct_only
+            AdversarialAccuracyCorrectOnlyMetric(),   # adv_accuracy_correct_only
+            RobustnessRatioMetric(),                  # robustness_ratio
+            EmpiricalRobustnessL2Metric(),            # er_l2_success (success-only)
+            EmpiricalRobustnessLinfMetric(),          # er_linf_success (success-only)
 
             # ART metrics
             CliqueMethodMetric(),                      # verification_error (tree-only)
             CleverScoreMetric(),                       # clever_score_mean (requires gradients)
-
-            FastGradientAttackMetric(),                # fgsm_success
-            CarliniWagnerAttackMetric(),               # cw_success
-            DeepFoolAttackMetric(),                   # deepfool_success
             # Other robustness metrics
             LossSensitivityMetric(),                   # loss_sensitivity
             ConfidenceScoreMetric(),                  # confidence_score
             # PopulationStabilityIndexMetric(),          # population_stability_index
-            RobustnessRatioHSJMetric(),                # robustness_ratio_hsj
             ExpectedCalibrationErrorMetric(),         # expected_calibration_error
         ]
 
@@ -123,20 +131,20 @@ class RobustnessPillar(Pillar):
         # --------------------------------------------
         # Best-effort eager compute (HSJ only)
         # --------------------------------------------
-        try:
-            metrics = core.hopskipjump_metrics(
-                model=context.model,
-                X_test=context.X_test,
-                y_test=context.y_test,
-                X_train=getattr(context, "X_train", None),
-                n_samples=n_samples,
-                seed=seed,
-                max_iter=max_iter,
-                max_eval=max_eval,
-                init_eval=init_eval,
-                init_size=init_size,
-                norm=norm,
-            )
-            context.extras["robustness_art_metrics"] = metrics
-        except Exception as exc:
-            context.extras["robustness_error"] = str(exc)
+        # try:
+        #     metrics = core.hopskipjump_metrics(
+        #         model=context.model,
+        #         X_test=context.X_test,
+        #         y_test=context.y_test,
+        #         X_train=getattr(context, "X_train", None),
+        #         n_samples=n_samples,
+        #         seed=seed,
+        #         max_iter=max_iter,
+        #         max_eval=max_eval,
+        #         init_eval=init_eval,
+        #         init_size=init_size,
+        #         norm=norm,
+        #     )
+        #     context.extras["robustness_art_metrics"] = metrics
+        # except Exception as exc:
+        #     context.extras["robustness_error"] = str(exc)

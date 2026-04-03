@@ -14,7 +14,6 @@ from art.attacks.evasion import CarliniL2Method, FastGradientMethod
 from art.estimators.classification import SklearnClassifier
 from art.attacks.evasion import DeepFool
 from scipy.stats import kendalltau, spearmanr
-import time
 
 
 def _safe_import_art_blackbox():
@@ -42,16 +41,16 @@ def _safe_import_art_metrics():
     return RobustnessVerificationTreeModelsCliqueMethod, clever_u
 
 
-def _safe_import_art_sklearn_wrappers():
-    """ART wrappers for scikit-learn models (needed for Clique Method)."""
-    try:
-        from art.estimators.classification.scikitlearn import ScikitlearnClassifier
-    except Exception as exc:  # pragma: no cover
-        raise ImportError(
-            "Clique Method requires ART scikit-learn wrappers. "
-            "Install with: pip install adversarial-robustness-toolbox"
-        ) from exc
-    return ScikitlearnClassifier
+# def _safe_import_art_sklearn_wrappers():
+#     """ART wrappers for scikit-learn models (needed for Clique Method)."""
+#     try:
+#         from art.estimators.classification.scikitlearn import ScikitlearnClassifier
+#     except Exception as exc:  # pragma: no cover
+#         raise ImportError(
+#             "Clique Method requires ART scikit-learn wrappers. "
+#             "Install with: pip install adversarial-robustness-toolbox"
+#         ) from exc
+#     return ScikitlearnClassifier
 
 
 logging.getLogger("art").setLevel(logging.ERROR)
@@ -135,7 +134,6 @@ def _attack_metrics_core(
     n_samples=50,
     seed=42,
     attack_name="attack",
-    compute_perturbation=True,
 ):
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
@@ -159,9 +157,9 @@ def _attack_metrics_core(
             "clean_accuracy": clean_acc * 100.0,
             "adv_accuracy": clean_acc * 100.0,
             "accuracy_drop_pct (effective_robustness)": 0.0,
-            "robustness_ratio (clean/adv)": 1.0,
-            "attack_success_rate_pct (correct_only)": 0.0,
+            "robustness_ratio (adv/clean)": 1.0,
             "adv_accuracy_correct_only": 0.0,
+            "attack_success_rate_pct (correct_only)": 0.0,
             "sample_size (n_eval)": float(n_total),
             "n_attacked": float(n_correct),
             "attack": attack_name,
@@ -192,27 +190,39 @@ def _attack_metrics_core(
         "clean_accuracy": clean_acc * 100.0,
         "adv_accuracy": adv_acc_full * 100.0,
         "accuracy_drop_pct (effective_robustness)": drop_pct,
-        "robustness_ratio (clean/adv)": adv_acc_full / clean_acc if clean_acc > 0 else 0.0,
+        "robustness_ratio (adv/clean)": adv_acc_full / clean_acc if clean_acc > 0 else 0.0,
+        "adv_accuracy_correct_only": adv_acc_correct * 100.0,        
         "attack_success_rate_pct (correct_only)": asr * 100.0,
-        "adv_accuracy_correct_only": adv_acc_correct * 100.0,
         "sample_size (n_eval)": float(n_total),
         "n_attacked": float(n_correct),
         "attack": attack_name,
     }
 
-    # Perturbations (opcional, como HSJ)
-    if compute_perturbation:
-        delta = X_adv - X_correct
-        flat = delta.reshape(delta.shape[0], -1)
-
-        l2 = np.linalg.norm(flat, ord=2, axis=1)
-        linf = np.max(np.abs(flat), axis=1)
-
+    success_mask = (y_pred_adv_correct != y_correct)
+    if np.sum(success_mask) > 0:
+        l2 = np.linalg.norm((X_adv[success_mask] - X_correct[success_mask]).reshape(np.sum(success_mask), -1), ord=2, axis=1)
+        linf = np.max(np.abs((X_adv[success_mask] - X_correct[success_mask]).reshape(np.sum(success_mask), -1)), axis=1)
         result.update({
-            "mean_l2": float(np.mean(l2)),
-            "mean_linf": float(np.mean(linf)),
+            "er_l2_success": float(np.mean(l2)),
+            "er_linf_success": float(np.mean(linf)),
+        })
+    else:
+        result.update({
+            "er_l2_success": 0.0,
+            "er_linf_success": 0.0,
         })
 
+    delta = X_adv - X_correct
+    flat = delta.reshape(delta.shape[0], -1)
+
+    l2 = np.linalg.norm(flat, ord=2, axis=1)
+    linf = np.max(np.abs(flat), axis=1)
+
+    result.update({
+        "mean_l2": float(np.mean(l2)),
+        "mean_linf": float(np.mean(linf)),
+    })
+    
     return result
 
 def hopskipjump_metrics(
@@ -312,9 +322,9 @@ def hopskipjump_metrics(
             "clean_accuracy": clean_acc_full,
             "adv_accuracy": clean_acc_full,
             "accuracy_drop_pct (effective_robustness)": 0.0,
-            "robustness_ratio (clean/adv)": 1.0,
-            "attack_success_rate_pct (correct_only)": 0.0,
+            "robustness_ratio (adv/clean)": 1.0,
             "adv_accuracy_correct_only": 0.0,
+            "attack_success_rate_pct (correct_only)": 0.0,
             "er_l2_success": 0.0,
             "er_linf_success": 0.0,
             "mean_l2": 0.0,
@@ -405,9 +415,9 @@ def hopskipjump_metrics(
         "clean_accuracy": clean_acc_full,
         "adv_accuracy": adv_acc_full,
         "accuracy_drop_pct (effective_robustness)": accuracy_drop_pct,
-        "robustness_ratio (clean/adv)": adv_acc_full / clean_acc_full if clean_acc_full > 0 else 0.0,
+        "robustness_ratio (adv/clean)": adv_acc_full / clean_acc_full if clean_acc_full > 0 else 0.0,
+        "adv_accuracy_correct_only": adv_acc_correct_only * 100.0, # predictions that remain correct after attack        
         "attack_success_rate_pct (correct_only)": asr_pct, # predictions that changed after attack 
-        "adv_accuracy_correct_only": adv_acc_correct_only * 100.0, # predictions that remain correct after attack
         "er_l2_success": er_l2_success, # average L2 perturbation on successful attacks
         "er_linf_success": er_linf_success, # average Linf perturbation on successful attacks
         "mean_l2": mean_l2, # average L2 perturbation on all attacked samples
@@ -425,6 +435,166 @@ def hopskipjump_metrics(
             "seed": int(seed),
         },
     }
+
+# Only for NN, LG, SVM models (GRADIENT-BASED - REQUIRES NN)
+def fgm_attack_metrics(*, art_clf, X_test, y_test, eps=0.2, n_samples=50, seed=42):
+    """For a given model this function calculates the fast gradient attack score.
+    First from the test data selects a random small test subset.
+    Then measures the accuracy of the model on this subset.
+    Next creates FSG attacks on this test set and measures the model's
+    accuracy on the attacks. Compares the before attack and after attack accuracies.
+    Returns the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
+    NOTE: FastGradientMethod requires gradient computation.
+    For sklearn models, use HopSkipJump (black-box) attack instead.
+    
+    Parameters
+    ----------
+    art_clf: object
+        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
+    X_test: pd.DataFrame or np.ndarray
+        Test features
+    y_test: pd.Series or np.ndarray
+        Test labels
+    eps: float
+        Perturbation magnitude
+    n_samples: int
+        Number of samples to evaluate
+    seed: int
+        Random seed
+
+    Returns
+    -------
+    FSG attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
+    """
+    # Verificar si es un ScikitlearnClassifier (no soporta gradientes)
+    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
+    # art_clf = ScikitlearnClassifier(model=model)
+
+    # Verificar soporte de gradientes antes de intentar el ataque
+    if not hasattr(art_clf, 'loss_gradient') or not callable(getattr(art_clf, 'loss_gradient', None)):
+        raise ValueError(
+            "FastGradientMethod requires an estimator derived from BaseEstimator and LossGradientsMixin.\n"
+            "sklearn models do NOT support gradient-based attacks.\n"
+            "Options:\n"
+            "  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n"
+            "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
+        )
+
+    attack = FastGradientMethod(estimator=art_clf, eps=eps)
+
+    return _attack_metrics_core(
+        model=art_clf,
+        X_test=X_test,
+        y_test=y_test,
+        attack=attack,
+        n_samples=n_samples,
+        seed=seed,
+        attack_name="FGM",
+    )
+
+# Only for NN models (GRADIENT-BASED). # Only for NN, LG, SVM models
+def carlini_wagner_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
+    """For a given model this function calculates the CW attack score.
+    First from the test data selects a random small test subset.
+    Then measures the accuracy of the model on this subset.
+    Next creates CW attacks on this test set and measures the model's
+    accuracy on the attacks. Compares the before attack and after attack accuracies.
+    Returns the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
+    NOTE: CarliniL2Method requires gradient computation.
+    For sklearn models, use HopSkipJump (black-box) attack instead.
+    Parameters
+    ----------
+    art_clf: object
+        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
+    X_test: pd.DataFrame or np.ndarray
+        Test features
+    y_test: pd.Series or np.ndarray
+        Test labels
+    n_samples: int
+        Number of samples to evaluate
+    seed: int
+        Random seed
+
+    Returns:
+        CW attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
+    """
+    # Verificar soporte de gradientes
+    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
+    # art_clf = ScikitlearnClassifier(model=model)
+
+    if not hasattr(art_clf, 'class_gradient') or not callable(getattr(art_clf, 'class_gradient', None)):
+        raise ValueError(
+            "CarliniL2Method requires an estimator derived from BaseEstimator and ClassGradientsMixin.\n"
+            "sklearn models do NOT support gradient-based attacks.\n"
+            "Options:\n"
+            "  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n"
+            "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
+        )
+
+    attack = CarliniL2Method(art_clf)
+
+    return _attack_metrics_core(
+        model=art_clf,
+        X_test=X_test,
+        y_test=y_test,
+        attack=attack,
+        n_samples=n_samples,
+        seed=seed,
+        attack_name="CarliniWagner",
+    )
+
+# Only for NN models (GRADIENT-BASED). Only for NN, LG, SVM models
+def deepfool_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
+    """For a given model this function calculates the deepfool attack score.
+    First from the test data selects a random small test subset.
+    Then measures the accuracy of the model on this subset.
+    Next creates deepfool attacks on this test set and measures the model's
+    accuracy on the attacks. Compares the before attack and after attack accuracies.
+    Returns  the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
+    NOTE: DeepFool requires gradient computation.
+    For sklearn models, use HopSkipJump (black-box) attack instead.
+
+    Parameters
+    ----------
+    art_clf: object
+        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
+    X_test: pd.DataFrame or np.ndarray
+        Test features
+    y_test: pd.Series or np.ndarray
+        Test labels
+    n_samples: int
+        Number of samples to evaluate
+    seed: int
+        Random seed
+
+    Returns
+    -------
+    Deepfool attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
+    """
+    # # Verificar soporte de gradientes
+    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
+    # art_clf = ScikitlearnClassifier(model=model)
+
+    if not hasattr(art_clf, 'class_gradient') or not callable(getattr(art_clf, 'class_gradient', None)):
+        raise ValueError(
+            "DeepFool requires an estimator derived from BaseEstimator and ClassGradientsMixin.\n"
+            "sklearn models do NOT support gradient-based attacks.\n"
+            "Options:\n"
+            "  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n"
+            "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
+        )
+
+    attack = DeepFool(art_clf)
+
+    return _attack_metrics_core(
+        model=art_clf,
+        X_test=X_test,
+        y_test=y_test,
+        attack=attack,
+        n_samples=n_samples,
+        seed=seed,
+        attack_name="DeepFool",
+    )
 
 # Only for DT, RF, GBDT models
 def clique_method_metrics(
@@ -625,36 +795,96 @@ def clever_score_metrics(
 
 
 
-def confidence_score_metrics(*, model, X_test, y_test):
-    """For a given model this function calculates the Confidence score.
-    It takes the average over confusion_matrix. Then returns a score according to the thresholds.
+# def confidence_score_metrics(*, model, X_test, y_test):
+#     """For a given model this function calculates the Confidence score.
+#     It takes the average over confusion_matrix. Then returns a score according to the thresholds.
 
+#     Parameters
+#     ----------
+#     model: object
+#         ML-model.
+#     X_test: pd.DataFrame
+#         Training data.
+#     y_test: pd.DataFrame
+#         Test labels.
+
+#     Returns
+#     -------
+#     Confidence score
+#     """
+#     X_df = _ensure_dataframe(X_test)
+#     y = np.asarray(y_test).reshape(-1)
+
+#     y_pred = np.asarray(model.predict(X_df)).reshape(-1)
+
+#     cm = confusion_matrix(y, y_pred)
+#     cm_norm = cm / cm.sum(axis=1, keepdims=True)
+
+#     confidence = float(np.mean(np.diag(cm_norm)) * 100.0)
+
+#     return {
+#         "confidence_score": confidence,
+#         "metric": "ConfidenceScore",
+#     }
+
+def confidence_score_metrics(*, model, X_test, y_test, thresholds=None):
+    """
+    Compute a confidence score based on the Jaccard index (Intersection over Union) across multiple confidence thresholds.
+    For each threshold T, we compute a binary prediction (positive if predicted probability >= T)
+    and calculate the Jaccard index: TP / (TP + FP + FN).
+    The final confidence score is the average Jaccard index across all specified thresholds.
+    
     Parameters
     ----------
     model: object
-        ML-model.
-    X_test: pd.DataFrame
-        Training data.
-    y_test: pd.DataFrame
+        ML-model (must implement predict_proba()).
+    X_test: pd.DataFrame or np.ndarray
+        Test features.
+    y_test: pd.Series or np.ndarray
         Test labels.
-
+    thresholds: list of float, optional
+        List of confidence thresholds to evaluate (default: [0.5, 0.6, 0.7, 0.8, 0.9]).  
+    
     Returns
     -------
-    Confidence score
+    Dictionary with confidence score and parameters used.
+
     """
-    X_df = _ensure_dataframe(X_test)
+    if thresholds is None:
+        thresholds = [0.5, 0.6, 0.7, 0.8, 0.9]
+        
     y = np.asarray(y_test).reshape(-1)
-
-    y_pred = np.asarray(model.predict(X_df)).reshape(-1)
-
-    cm = confusion_matrix(y, y_pred)
-    cm_norm = cm / cm.sum(axis=1, keepdims=True)
-
-    confidence = float(np.mean(np.diag(cm_norm)) * 100.0)
+    
+    if not hasattr(model, "predict_proba"):
+        raise ValueError("The model must implement predict_proba() method to compute confidence scores.")
+        
+    probas = model.predict_proba(X_test)
+    
+    #We assume binary classification and take the probability of the positive class. For multi-class, this can be adapted to compute per-class confidence scores.
+    pos_probas = probas[:, 1] if probas.shape[1] > 1 else probas
+    
+    jaccard_scores = []
+    
+    for t in thresholds:
+        y_pred_t = (pos_probas >= t).astype(int)
+        
+        cm = confusion_matrix(y, y_pred_t, labels=[0, 1])
+        TN, FP, FN, TP = cm.ravel()
+        
+        denominator = TP + FP + FN
+        if denominator == 0:
+            score_t = 0.0
+        else:
+            score_t = TP / denominator
+            
+        jaccard_scores.append(score_t)
+        
+    confidence = float(np.mean(jaccard_scores) * 100.0)
 
     return {
         "confidence_score": confidence,
         "metric": "ConfidenceScore",
+        "thresholds": thresholds
     }
 
 # Only for NN models
@@ -716,166 +946,6 @@ def loss_sensitivity_metrics(*, classifier, X_test):
 #             f"  3. Skip this metric for sklearn models"
 #         )
 
-
-# Only for NN, LG, SVM models (GRADIENT-BASED - REQUIRES NN)
-def fgm_attack_metrics(*, art_clf, X_test, y_test, eps=0.2, n_samples=50, seed=42):
-    """For a given model this function calculates the fast gradient attack score.
-    First from the test data selects a random small test subset.
-    Then measures the accuracy of the model on this subset.
-    Next creates FSG attacks on this test set and measures the model's
-    accuracy on the attacks. Compares the before attack and after attack accuracies.
-    Returns the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
-    NOTE: FastGradientMethod requires gradient computation.
-    For sklearn models, use HopSkipJump (black-box) attack instead.
-    
-    Parameters
-    ----------
-    art_clf: object
-        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
-    X_test: pd.DataFrame or np.ndarray
-        Test features
-    y_test: pd.Series or np.ndarray
-        Test labels
-    eps: float
-        Perturbation magnitude
-    n_samples: int
-        Number of samples to evaluate
-    seed: int
-        Random seed
-
-    Returns
-    -------
-    FSG attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
-    """
-    # Verificar si es un ScikitlearnClassifier (no soporta gradientes)
-    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
-    # art_clf = ScikitlearnClassifier(model=model)
-
-    # Verificar soporte de gradientes antes de intentar el ataque
-    if not hasattr(art_clf, 'loss_gradient') or not callable(getattr(art_clf, 'loss_gradient', None)):
-        raise ValueError(
-            "FastGradientMethod requires an estimator derived from BaseEstimator and LossGradientsMixin.\n"
-            "sklearn models do NOT support gradient-based attacks.\n"
-            "Options:\n"
-            "  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n"
-            "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
-        )
-
-    attack = FastGradientMethod(estimator=art_clf, eps=eps)
-
-    return _attack_metrics_core(
-        model=art_clf,
-        X_test=X_test,
-        y_test=y_test,
-        attack=attack,
-        n_samples=n_samples,
-        seed=seed,
-        attack_name="FGM",
-    )
-
-# Only for NN models (GRADIENT-BASED). # Only for NN, LG, SVM models
-def carlini_wagner_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
-    """For a given model this function calculates the CW attack score.
-    First from the test data selects a random small test subset.
-    Then measures the accuracy of the model on this subset.
-    Next creates CW attacks on this test set and measures the model's
-    accuracy on the attacks. Compares the before attack and after attack accuracies.
-    Returns the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
-    NOTE: CarliniL2Method requires gradient computation.
-    For sklearn models, use HopSkipJump (black-box) attack instead.
-    Parameters
-    ----------
-    art_clf: object
-        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
-    X_test: pd.DataFrame or np.ndarray
-        Test features
-    y_test: pd.Series or np.ndarray
-        Test labels
-    n_samples: int
-        Number of samples to evaluate
-    seed: int
-        Random seed
-
-    Returns:
-        CW attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
-    """
-    # Verificar soporte de gradientes
-    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
-    # art_clf = ScikitlearnClassifier(model=model)
-
-    if not hasattr(art_clf, 'class_gradient') or not callable(getattr(art_clf, 'class_gradient', None)):
-        raise ValueError(
-            "CarliniL2Method requires an estimator derived from BaseEstimator and ClassGradientsMixin.\n"
-            "sklearn models do NOT support gradient-based attacks.\n"
-            "Options:\n"
-            "  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n"
-            "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
-        )
-
-    attack = CarliniL2Method(art_clf)
-
-    return _attack_metrics_core(
-        model=art_clf,
-        X_test=X_test,
-        y_test=y_test,
-        attack=attack,
-        n_samples=n_samples,
-        seed=seed,
-        attack_name="CarliniWagner",
-    )
-
-# Only for NN models (GRADIENT-BASED). Only for NN, LG, SVM models
-def deepfool_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
-    """For a given model this function calculates the deepfool attack score.
-    First from the test data selects a random small test subset.
-    Then measures the accuracy of the model on this subset.
-    Next creates deepfool attacks on this test set and measures the model's
-    accuracy on the attacks. Compares the before attack and after attack accuracies.
-    Returns  the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
-    NOTE: DeepFool requires gradient computation.
-    For sklearn models, use HopSkipJump (black-box) attack instead.
-
-    Parameters
-    ----------
-    art_clf: object
-        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
-    X_test: pd.DataFrame or np.ndarray
-        Test features
-    y_test: pd.Series or np.ndarray
-        Test labels
-    n_samples: int
-        Number of samples to evaluate
-    seed: int
-        Random seed
-
-    Returns
-    -------
-    Deepfool attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
-    """
-    # # Verificar soporte de gradientes
-    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
-    # art_clf = ScikitlearnClassifier(model=model)
-
-    if not hasattr(art_clf, 'class_gradient') or not callable(getattr(art_clf, 'class_gradient', None)):
-        raise ValueError(
-            "DeepFool requires an estimator derived from BaseEstimator and ClassGradientsMixin.\n"
-            "sklearn models do NOT support gradient-based attacks.\n"
-            "Options:\n"
-            "  1. Use 'er_hopskipjump_attack' (black-box) which works with any model\n"
-            "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
-        )
-
-    attack = DeepFool(art_clf)
-
-    return _attack_metrics_core(
-        model=art_clf,
-        X_test=X_test,
-        y_test=y_test,
-        attack=attack,
-        n_samples=n_samples,
-        seed=seed,
-        attack_name="DeepFool",
-    )
 
 def ece_metrics(
     *,

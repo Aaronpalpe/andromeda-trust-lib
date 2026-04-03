@@ -77,20 +77,18 @@
             "t_closeness": 0.14
         },
         "robustness": {
-            "er_hopskipjump_attack": 0.04,
-            "attack_success_rate": 0.08,
             "adversarial_accuracy": 0.08,
-            "empirical_robustness_l2": 0.08,
-            "empirical_robustness_linf": 0.08,
+            "accuracy_drop": 0.08,
+            "robustness_ratio": 0.08,
+            "adversarial_accuracy_correct_only": 0.08,
+            "asr": 0.08,
+            "empirical_robustness_l2": 0.1,
+            "empirical_robustness_linf": 0.1,
             "clique_method": 0.08,
             "clever_score": 0.08,
-            "er_fast_gradient_attack": 0.08,
-            "er_carlini_wagner_attack": 0.08,
-            "er_deepfool_attack": 0.08,
             "loss_sensitivity": 0.08,
             "confidence_score": 0.08,
-            "robustness_ratio_hsj": 0.04,
-            "expected_calibration_error": 0.04
+            "expected_calibration_error": 0.08
         },
         "accountability": {
             "train_test_split": 0.15,
@@ -607,102 +605,148 @@
             }
         },
         "robustness": {
-            "score_hopskipjump_attack": {
-                "thresholds": {
-                    "value": [80, 60, 40, 20],
-                    "description": "Accuracy-drop percentage points after HopSkipJump attack. Lower is better.",
-                    "label": "HSJ Accuracy Drop Thresholds"
-                }
-            },
-            "score_attack_success_rate": {
-                "thresholds": {
-                    "value": [80, 60, 40, 20],
-                    "description": "Attack success rate after HopSkipJump. Lower is better.",
-                    "label": "Attack Success Rate Thresholds"
-                }
-            },
             "score_adversarial_accuracy": {
                 "thresholds": {
                     "value": [20, 40, 60, 80],
-                    "description": "Adversarial accuracy percentage. Higher is better.",
+                    "description": "Worst-case adversarial accuracy percentage. Higher is better.",
                     "label": "Adversarial Accuracy Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 100.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_accuracy_drop": {
+                "thresholds": {
+                    "value": [80, 60, 40, 20],
+                    "description": "Worst-case accuracy drop percentage points across attacks. Lower is better.",
+                    "label": "Accuracy Drop Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 100.0,
+                    "higher_is_better": false
+                }
+            },
+            "score_robustness_ratio": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Ratio of adversarial accuracy to clean accuracy. Higher is better.",
+                    "label": "Robustness Ratio Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_adversarial_accuracy_correct_only": {
+                "thresholds": {
+                    "value": [20, 40, 60, 80],
+                    "description": "Worst-case adversarial accuracy percentage. Higher is better.",
+                    "label": "Adversarial Accuracy (Correct Only) Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 100.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_asr": {
+                "thresholds": {
+                    "value": [80, 60, 40, 20],
+                    "description": "Worst-case Attack Success Rate (ASR) percentage. Lower is better.",
+                    "label": "Attack Success Rate Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 100.0,
+                    "higher_is_better": false
                 }
             },
             "score_empirical_robustness_l2": {
                 "thresholds": {
-                    "value": [0.05, 0.1, 0.2, 0.4],
-                    "description": "Empirical robustness under L2 norm (successful attacks). Higher is better.",
+                    "value": [0.1, 0.5, 1.0, 2.0],
+                    "description": "Empirical robustness under L2 norm for successful attacks. Higher is better.",
                     "label": "Empirical Robustness L2 Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.1,
+                    "max_val": 2.0,
+                    "higher_is_better": true
                 }
             },
             "score_empirical_robustness_linf": {
                 "thresholds": {
                     "value": [0.01, 0.03, 0.05, 0.1],
-                    "description": "Empirical robustness under Linf norm (successful attacks). Higher is better.",
+                    "description": "Empirical robustness under Linf norm for successful attacks (e.g., 8/255 = 0.031). Higher is better.",
                     "label": "Empirical Robustness Linf Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.01,
+                    "max_val": 0.1,
+                    "higher_is_better": true
                 }
             },
             "score_clique_method": {
                 "thresholds": {
                     "value": [0.5, 0.25, 0.1, 0.01],
-                    "description": "Clique-method verification error thresholds. Lower is better.",
-                    "label": "Clique Method Thresholds"
+                    "description": "Clique-method verification error thresholds for tree ensembles. Lower is better.",
+                    "label": "Clique Method Error Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.01,
+                    "max_val": 1.0,
+                    "higher_is_better": false
                 }
             },
             "score_clever_score": {
                 "thresholds": {
-                    "value": [0.2, 0.5, 1, 2.5],
-                    "description": "CLEVER score thresholds. Higher is better.",
+                    "value": [0.2, 0.5, 1.0, 2.5],
+                    "description": "CLEVER robustness score. Higher is better.",
                     "label": "CLEVER Score Thresholds"
-                }
-            },
-            "score_fast_gradient_attack": {
-                "thresholds": {
-                    "value": [80, 60, 40, 20],
-                    "description": "Accuracy-drop percentage points after FGSM/fast gradient attack. Lower is better.",
-                    "label": "Fast Gradient Attack Thresholds"
-                }
-            },
-            "score_carlini_wagner_attack": {
-                "thresholds": {
-                    "value": [80, 60, 40, 20],
-                    "description": "Accuracy-drop percentage points after Carlini-Wagner attack. Lower is better.",
-                    "label": "Carlini-Wagner Attack Thresholds"
-                }
-            },
-            "score_deepfool_attack": {
-                "thresholds": {
-                    "value": [80, 60, 40, 20],
-                    "description": "Accuracy-drop percentage points after DeepFool attack. Lower is better.",
-                    "label": "DeepFool Attack Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.2,
+                    "max_val": 2.0,
+                    "higher_is_better": true
                 }
             },
             "score_loss_sensitivity": {
                 "thresholds": {
-                    "value": [2, 1.5, 1, 0.5],
-                    "description": "Loss sensitivity thresholds. Lower is better.",
+                    "value": [2.0, 1.5, 1.0, 0.5],
+                    "description": "Local loss sensitivity via gradient estimation. Lower is better.",
                     "label": "Loss Sensitivity Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.5,
+                    "max_val": 2.0,
+                    "higher_is_better": false
                 }
             },
             "score_confidence_score": {
                 "thresholds": {
                     "value": [20, 40, 60, 80],
-                    "description": "Average confidence on correct predictions. Higher is better.",
+                    "description": "Average model confidence on predictions. Higher is better.",
                     "label": "Confidence Score Thresholds"
-                }
-            },
-            "score_robustness_ratio_hsj": {
-                "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Ratio of adversarial to clean accuracy after HSJ attack. Higher is better.",
-                    "label": "Robustness Ratio HSJ Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 100.0,
+                    "higher_is_better": true
                 }
             },
             "score_expected_calibration_error": {
                 "thresholds": {
                     "value": [0.2, 0.1, 0.05, 0.02],
-                    "description": "Expected calibration error thresholds. Lower is better.",
+                    "description": "Expected Calibration Error (ECE) thresholds. Lower is better.",
                     "label": "Expected Calibration Error Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.02,
+                    "max_val": 0.2,
+                    "higher_is_better": false
                 }
             },
             "params": {

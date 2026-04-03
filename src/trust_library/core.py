@@ -328,14 +328,14 @@ class TrustEvaluator:
         values = list(pillar_scores.values())
 
         # Close the polygon
-        categories += [categories[0]]
-        values += [values[0]]
+        categories_closed = categories + [categories[0]]
+        values_closed = values + [values[0]]
 
         fig_radar = go.Figure()
 
         fig_radar.add_trace(go.Scatterpolar(
-            r=values,
-            theta=categories,
+            r=values_closed,
+            theta=categories_closed,
             fill="toself",
             name="Model Score"
         ))
@@ -345,6 +345,11 @@ class TrustEvaluator:
                 radialaxis=dict(
                     visible=True,
                     range=[0, 5]
+                ),
+                # NEW: Ensure the order of categories is consistent in the radar chart
+                angularaxis=dict(
+                    categoryorder="array",
+                    categoryarray=categories
                 )
             ),
             title="Trust Pillar Radar Chart",
@@ -438,15 +443,18 @@ class TrustEvaluator:
 
         fig = go.Figure()
 
+        # Extract the base categories (pillars) from the first result to ensure consistent ordering
+        base_categories = list(list(results.values())[0]["pillar_score"].keys())
+
         for model_name, result in results.items():
 
             pillar_scores = result["pillar_score"]
 
-            categories = list(pillar_scores.keys())
-            values = list(pillar_scores.values())
+            # Ensure the values are in the same order as the base categories
+            values = [pillar_scores.get(c, 0) for c in base_categories]
 
-            # cerrar polígono
-            categories_closed = categories + [categories[0]]
+            # Close the polygon by repeating the first category and value at the end
+            categories_closed = base_categories + [base_categories[0]]
             values_closed = values + [values[0]]
 
             fig.add_trace(go.Scatterpolar(
@@ -462,6 +470,11 @@ class TrustEvaluator:
                 radialaxis=dict(
                     visible=True,
                     range=[0, 5]
+                ),
+                # ADDED: Force Plotly to respect the order
+                angularaxis=dict(
+                    categoryorder="array",
+                    categoryarray=base_categories
                 )
             ),
             title="Trust Pillar Comparison",

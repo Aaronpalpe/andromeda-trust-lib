@@ -31,11 +31,8 @@ class Pillar(ABC):
         ...
 
     def analyse(self, context: EvaluationContext, config: dict[str, dict]) -> Result:
-        t0 = time.time()
         self.prepare(context, config)
         metrics = self.get_metrics()
-        t1 = time.time()
-        print(f"Preparation completed in {t1 - t0:.2f} seconds. Starting metric evaluations...")
 
         scores: dict[str, float] = {}
         properties: dict[str, dict[str, Any]] = {}

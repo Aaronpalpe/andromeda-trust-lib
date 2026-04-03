@@ -9,6 +9,7 @@ from trust_library.utils import EvaluationContext
 import numpy as np
 from sklearn.inspection import partial_dependence
 import pandas as pd
+import time
 
 from .metrics import (
     SparsityMetric,
@@ -84,6 +85,7 @@ class ExplainabilityPillar(Pillar):
         }
 
         # Best-effort eager compute (but never let it crash the whole evaluation)
+        t0 = time.time()
         local_imps = None
         try:
             metrics = core.shap_based_metrics(
@@ -101,6 +103,10 @@ class ExplainabilityPillar(Pillar):
         except Exception as shap_exc:
             context.extras["explainability_error"] = str(shap_exc)
 
+        t1 = time.time()
+        print(f"Explainability preparation took {t1 - t0:.2f} seconds")
+
+        t0 = time.time()
         # Continue even if SHAP failed
         try:
             if hasattr(context.X_test, "columns"):
@@ -160,6 +166,8 @@ class ExplainabilityPillar(Pillar):
                 pass
 
             context.extras["pdp_averages"] = pdp_averages
+            t1 = time.time()
+            print(f"Additional explainability computations took {t1 - t0:.2f} seconds")
 
         except Exception as exc:
             context.extras["explainability_error"] = str(exc)
