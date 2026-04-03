@@ -89,7 +89,7 @@ class RobustnessPillar(Pillar):
         # Clique Method params (tree-only)
         # (lazy compute in metric)
         # -------------------------------
-        clique_params = params.get("clique", {})
+        clique_params = params.get("clique", {}) # NOT in "params" by default
         if not isinstance(clique_params, dict):
             clique_params = {}
 
@@ -107,7 +107,7 @@ class RobustnessPillar(Pillar):
         # CLEVER params (requires gradients)
         # (lazy compute in metric)
         # -------------------------------
-        clever_params = params.get("clever", {})
+        clever_params = params.get("clever", {}) # NOT in "params" by default
         if not isinstance(clever_params, dict):
             clever_params = {}
 

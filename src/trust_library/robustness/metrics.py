@@ -307,14 +307,13 @@ def _hsj_common_props(raw: dict) -> dict:
         "Clean Accuracy": float(raw.get("clean_accuracy", 0.0)),
         "Adversarial Accuracy": float(raw.get("adv_accuracy", 0.0)),
         "Accuracy Drop (%)": float(raw.get("accuracy_drop_pct", 0.0)),
-        "ASR (%)": float(raw.get("asr_pct", raw.get("attack_success_rate_pct", 0.0))),
+        "ASR (%)": float(raw.get("attack_success_rate_pct", 0.0)),
         "Mean L2 Perturbation": float(raw.get("mean_l2", 0.0)),
         "Mean Linf Perturbation": float(raw.get("mean_linf", 0.0)),
         "ER L2 (success-only)": float(raw.get("er_l2_success", 0.0)),
         "ER Linf (success-only)": float(raw.get("er_linf_success", 0.0)),
-        "N Eval (subset)": int(raw.get("n_eval", 0.0)),
+        "Sample Size (n_eval)": int(raw.get("sample_size (n_eval)", 0.0)),
         "N Attacked (correct-only)": int(raw.get("n_attacked", 0.0)),
-        "Sample Size": int(raw.get("sample_size", 0.0)),
         "Params": params,
         "Note": raw.get("note"),
     }
@@ -357,7 +356,7 @@ class HopSkipJumpASRMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_hsj(ctx)
-        val = float(m.get("asr_pct", m.get("attack_success_rate_pct", 0.0)))
+        val = float(m.get("attack_success_rate_pct", 0.0))
         return {"value": val, **m}
 
     def build_properties(self, raw: dict) -> dict:

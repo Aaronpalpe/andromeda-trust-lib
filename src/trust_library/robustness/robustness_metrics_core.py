@@ -11,27 +11,10 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix
 from art.metrics import loss_sensitivity
 from art.attacks.evasion import CarliniL2Method, FastGradientMethod
-from art.estimators.classification.scikitlearn import ScikitlearnClassifier
 from art.estimators.classification import SklearnClassifier
 from art.attacks.evasion import DeepFool
 from scipy.stats import kendalltau, spearmanr
 import time
-
-# # =============================================================================
-# # Helpers
-# # =============================================================================
-
-# def _validate_metric_value(value: float, metric_name: str) -> float:
-#     """Validate that metric value is not NaN or Inf."""
-#     if value is None:
-#         raise ValueError(f"Metric '{metric_name}' returned None value.")
-#     try:
-#         float_val = float(value)
-#         if np.isnan(float_val) or np.isinf(float_val):
-#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
-#     except (TypeError, ValueError) as e:
-#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
-#     return value
 
 
 def _safe_import_art_blackbox():
@@ -106,7 +89,7 @@ def _infer_classes(model, y_ref: np.ndarray) -> np.ndarray:
             if cls.ndim == 1 and cls.size > 0:
                 return cls
         except Exception:
-            pass
+            pass # raise ValueError("Model's 'classes_' attribute is not a valid 1D array of class labels.")
     return np.unique(np.asarray(y_ref))
 
 
@@ -143,6 +126,95 @@ def _featurewise_clip_values(X_train: pd.DataFrame | np.ndarray):
     return mins, maxs
 
 
+def _attack_metrics_core(
+    *,
+    model,
+    X_test,
+    y_test,
+    attack,
+    n_samples=50,
+    seed=42,
+    attack_name="attack",
+    compute_perturbation=True,
+):
+    X_df = _ensure_dataframe(X_test)
+    y = np.asarray(y_test).reshape(-1)
+
+    rng = np.random.RandomState(seed)
+    idx = rng.choice(len(X_df), size=min(n_samples, len(X_df)), replace=False)
+
+    X_eval = X_df.iloc[idx]
+    y_eval = y[idx]
+
+    # Clean predictions
+    y_pred_clean = np.asarray(model.predict(X_eval)).reshape(-1) #BEFORE model
+    clean_acc = float((y_pred_clean == y_eval).mean())
+
+    correct_mask = (y_pred_clean == y_eval)
+    n_total = len(X_eval)
+    n_correct = int(np.sum(correct_mask))
+
+    if n_correct == 0:
+        return {
+            "clean_accuracy": clean_acc * 100.0,
+            "adv_accuracy": clean_acc * 100.0,
+            "accuracy_drop_pct (effective_robustness)": 0.0,
+            "robustness_ratio (clean/adv)": 1.0,
+            "attack_success_rate_pct (correct_only)": 0.0,
+            "adv_accuracy_correct_only": 0.0,
+            "sample_size (n_eval)": float(n_total),
+            "n_attacked": float(n_correct),
+            "attack": attack_name,
+            "note": "No correctly classified samples.",
+        }
+
+    # Attack only correct samples 
+    X_correct = _to_numpy_float(X_eval.iloc[correct_mask]) # BEFORE X_eval
+    y_correct = y_eval[correct_mask]
+
+    X_adv = attack.generate(X_correct)
+
+    X_adv_df = _ensure_dataframe(X_adv, columns=X_eval.columns) 
+    y_pred_adv_correct = np.asarray(model.predict(X_adv_df)).reshape(-1) # BEFORE model
+
+    # Metrics
+    adv_acc_correct = float((y_pred_adv_correct == y_correct).mean())
+    asr = float((y_pred_adv_correct != y_correct).mean())
+
+    # Reconstruct full predictions
+    y_pred_adv_full = y_pred_clean.copy()
+    y_pred_adv_full[correct_mask] = y_pred_adv_correct
+
+    adv_acc_full = float((y_pred_adv_full == y_eval).mean())
+    drop_pct = max(0.0, clean_acc - adv_acc_full) * 100.0
+
+    result = {
+        "clean_accuracy": clean_acc * 100.0,
+        "adv_accuracy": adv_acc_full * 100.0,
+        "accuracy_drop_pct (effective_robustness)": drop_pct,
+        "robustness_ratio (clean/adv)": adv_acc_full / clean_acc if clean_acc > 0 else 0.0,
+        "attack_success_rate_pct (correct_only)": asr * 100.0,
+        "adv_accuracy_correct_only": adv_acc_correct * 100.0,
+        "sample_size (n_eval)": float(n_total),
+        "n_attacked": float(n_correct),
+        "attack": attack_name,
+    }
+
+    # Perturbations (opcional, como HSJ)
+    if compute_perturbation:
+        delta = X_adv - X_correct
+        flat = delta.reshape(delta.shape[0], -1)
+
+        l2 = np.linalg.norm(flat, ord=2, axis=1)
+        linf = np.max(np.abs(flat), axis=1)
+
+        result.update({
+            "mean_l2": float(np.mean(l2)),
+            "mean_linf": float(np.mean(linf)),
+        })
+
+    return result
+
 def hopskipjump_metrics(
     *,
     model,
@@ -164,26 +236,54 @@ def hopskipjump_metrics(
     Then measures the accuracy of the model on this subset.
     Next creates HopSkipJump attacks on this test set and measures the model's
     accuracy on the attacks. Compares the before attack and after attack accuracies.
-    Returns a dictionary with the following
-    metrics:
-        Args:
-            model: ML-model (compatible with ART).
-            X_test: Test features.
-            y_test: Test labels.
-            X_train: Optional train features (for feature-wise clipping).
-            n_samples: Number of test samples to use for evaluation (random subset).
-            seed: Random seed for reproducibility.
-            max_iter: Maximum number of iterations for HSJ attack.
-            max_eval: Maximum number of model evaluations for HSJ attack.
-            init_eval: Number of evaluations for initial HSJ attack.
-            init_size: Number of samples for initial HSJ attack.
-            norm: Norm to use for HSJ attack (e.g., 1, 2, np.inf).
-            beta: Scaling factor for accuracy drop calculation (default 1.0, set <1.0 to reduce drop).
-        Returns:
-            Dictionary with HSJ attack metrics
+    Returns a dictionary with the metrics.
+    Parameters
+    ----------
+    model: object
+        ML-model (compatible with ART).
+    X_test: pd.DataFrame or np.ndarray
+        Test features.
+    y_test: pd.Series or np.ndarray
+        Test labels.
+    X_train: pd.DataFrame or np.ndarray, optional
+        Optional train features (for feature-wise clipping).
+    n_samples: int
+        Number of test samples to use for evaluation (random subset).
+    seed: int
+        Random seed for reproducibility.
+    max_iter: int
+        Maximum number of iterations for HSJ attack.
+    max_eval: int
+        Maximum number of model evaluations for HSJ attack.
+    init_eval: int
+        Number of evaluations for initial HSJ attack.
+    init_size: int
+        Number of samples for initial HSJ attack.
+    norm: int | float | str
+        Norm to use for HSJ attack (e.g., 1, 2, np.inf).
+    beta: float
+        Scaling factor for accuracy drop calculation (default 1.0, set <1.0 to reduce drop).
+
+    Returns
+    -------
+    Dictionary with HSJ attack metrics: 
+        clean accuracy: accuracy on the clean test subset, 
+        adversarial accuracy: accuracy on the adversarial test subset, 
+        accuracy drop percentage: percentage decrease in accuracy due to adversarial attacks,
+        attack success rate percentage: percentage of successful attacks,
+        adversarial accuracy on correct-only subset: accuracy on correctly classified samples under adversarial attacks,
+        error rate L2 on successful attacks: average L2 perturbation magnitude on successful attacks,
+        error rate Linf on successful attacks: average Linf perturbation magnitude on successful attacks,
+        mean L2 perturbation magnitudes on successful attacks: average perturbation sizes for successful attacks,
+        mean Linf perturbation magnitudes on successful attacks: average perturbation sizes for successful attacks,
+        number of samples evaluated: total number of samples evaluated,
+        number of samples attacked: total number of samples subjected to adversarial attacks,
+        attack name: name of the attack method,
+        sample size: size of the evaluation subset,
+        note: additional notes or observations,
+        parameters used: parameters used for the HSJ attack.
     '''
     # Measure the execution time of this function to evaluate its efficiency
-    t0 = time.time()
     HopSkipJump, BlackBoxClassifier = _safe_import_art_blackbox()
 
     X_test_df = _ensure_dataframe(X_test)
@@ -211,18 +311,17 @@ def hopskipjump_metrics(
         return {
             "clean_accuracy": clean_acc_full,
             "adv_accuracy": clean_acc_full,
-            "accuracy_drop_pct": 0.0,
-            "asr_pct": 0.0,
-            "attack_success_rate_pct": 0.0,
+            "accuracy_drop_pct (effective_robustness)": 0.0,
+            "robustness_ratio (clean/adv)": 1.0,
+            "attack_success_rate_pct (correct_only)": 0.0,
             "adv_accuracy_correct_only": 0.0,
             "er_l2_success": 0.0,
             "er_linf_success": 0.0,
             "mean_l2": 0.0,
             "mean_linf": 0.0,
-            "n_eval": float(n_total),
+            "sample_size (n_eval)": float(n_total),
             "n_attacked": 0.0,
             "attack": "HopSkipJump",
-            "sample_size": float(n_total),
             "note": "No correctly classified samples in evaluation subset.",
             "params": {
                 "max_iter": int(max_iter),
@@ -302,23 +401,20 @@ def hopskipjump_metrics(
     else:
         er_l2_success = 0.0
         er_linf_success = 0.0
-    t1 = time.time()
-    print(f"HopSkipJump metrics computed in {t1 - t0:.2f} seconds on {n_total} samples with {n_correct} attacked.")
     return {
         "clean_accuracy": clean_acc_full,
         "adv_accuracy": adv_acc_full,
-        "accuracy_drop_pct": accuracy_drop_pct,
-        "asr_pct": asr_pct,
-        "attack_success_rate_pct": asr_pct,  # alias for compatibility
-        "adv_accuracy_correct_only": adv_acc_correct_only * 100.0,
-        "er_l2_success": er_l2_success,
-        "er_linf_success": er_linf_success,
-        "mean_l2": mean_l2,
-        "mean_linf": mean_linf,
-        "n_eval": float(n_total),
-        "n_attacked": float(n_correct),
+        "accuracy_drop_pct (effective_robustness)": accuracy_drop_pct,
+        "robustness_ratio (clean/adv)": adv_acc_full / clean_acc_full if clean_acc_full > 0 else 0.0,
+        "attack_success_rate_pct (correct_only)": asr_pct, # predictions that changed after attack 
+        "adv_accuracy_correct_only": adv_acc_correct_only * 100.0, # predictions that remain correct after attack
+        "er_l2_success": er_l2_success, # average L2 perturbation on successful attacks
+        "er_linf_success": er_linf_success, # average Linf perturbation on successful attacks
+        "mean_l2": mean_l2, # average L2 perturbation on all attacked samples
+        "mean_linf": mean_linf, # average Linf perturbation on all attacked samples
+        "sample_size (n_eval)": float(n_total), # total samples evaluated
+        "n_attacked": float(n_correct), # total samples attacked (correctly classified subset)
         "attack": "HopSkipJump",
-        "sample_size": float(n_total),
         "note": "HSJ attack metrics on correctly classified subset. Full subset adv accuracy also reported.",
         "params": {
             "max_iter": int(max_iter),
@@ -349,21 +445,39 @@ def clique_method_metrics(
     It uses RobustnessVerificationTreeModelsCliqueMethod function from
     IBM art library to calculate the score. Date must be normalized.
 
-    Args:
-        model: ML-model (Tree-based).
-        X_test: Test features.
-        y_test: Test labels.
-        X_train: Optional train features (for feature-wise clipping).
-        n_samples: Number of test samples to use for evaluation (random subset).
-        seed: Random seed for reproducibility.
-        eps_init: Initial perturbation size for the attack.
-        norm: Norm to use for measuring perturbations (e.g., 1, 2, np.inf).
-        nb_search_steps: Number of search steps for the attack.
-        max_clique: Maximum clique size to consider.
-        max_level: Maximum tree level to consider.
+    Parameters
+    ----------
+    model: object
+        ML-model (Tree-based).
+    X_test: pd.DataFrame or np.ndarray
+        Test features.
+    y_test: pd.Series or np.ndarray
+        Test labels.
+    X_train: pd.DataFrame or np.ndarray
+        Train features (for feature-wise clipping).
+    n_samples: int
+        Number of test samples to use for evaluation (random subset).
+    seed: int
+        Random seed for reproducibility.
+    eps_init: float
+        Initial perturbation size for the attack.
+    norm: float
+        Norm to use for measuring perturbations (e.g., 1, 2, np.inf).
+    nb_search_steps: int
+        Number of search steps for the attack.
+    max_clique: int
+        Maximum clique size to consider.
+    max_level: int
+        Maximum tree level to consider.
 
-    Returns:
-        Clique score
+    Returns
+    -------
+    Dictionary with Clique Method metrics:
+        robustness_bound: estimated robustness bound. No alteration below this distance can change the prediction. Higher is better,
+        verification_error: error rate of the robustness verification of the algorithm (lower is better),
+        sample_size: number of samples evaluated,
+        metric: name of the metric,
+        params: parameters used for the Clique Method attack.
     """
     X_df = _ensure_dataframe(X_test)
     X_np = _to_numpy_float(X_df)
@@ -435,17 +549,34 @@ def clever_score_metrics(
     """For a given Keras-NN model this function calculates the Untargeted-Clever score.
     It uses clever_u function from IBM art library.
     Returns a score according to the thresholds.
-        Args:
-            classifier: ML-model (Keras).
-            x: Test features.
-            n_samples: Number of test samples to use for evaluation (random subset).
-            seed: Random seed for reproducibility.
-            nb_batches: Number of batches to use for CLEVER estimation.
-            batch_size: Batch size to use for CLEVER estimation.
-            radius: Radius to use for CLEVER estimation.
-            norm: Norm to use for CLEVER estimation (e.g., 1, 2, np.inf).
-        Returns:
-            Clever score
+    
+    Parameters
+    ----------
+    classifier: object
+        ML-model (Keras).
+    x: pd.DataFrame or np.ndarray
+        Test features.
+    n_samples: int
+        Number of test samples to use for evaluation (random subset).
+    seed: int
+        Random seed for reproducibility.
+    nb_batches: int
+        Number of batches to use for CLEVER estimation.
+    batch_size: int
+        Batch size to use for CLEVER estimation.
+    radius: float
+        Radius to use for CLEVER estimation.
+    norm: int
+        Norm to use for CLEVER estimation (e.g., 1, 2, np.inf).
+
+    Returns
+    -------
+    Dictionary with CLEVER metrics:
+        clever_score_mean: Mean CLEVER score. It is an estimate of the minimum perturbation required to change the model's prediction. Higher is better,
+        clever_score_std: Standard deviation of CLEVER scores,
+        n_eval: Number of evaluations,
+        metric: name of the metric,
+        params: parameters used for the CLEVER estimation.
     """
     _, clever_u = _safe_import_art_metrics()
 
@@ -497,14 +628,19 @@ def clever_score_metrics(
 def confidence_score_metrics(*, model, X_test, y_test):
     """For a given model this function calculates the Confidence score.
     It takes the average over confusion_matrix. Then returns a score according to the thresholds.
-        Args:
-            model: ML-model.
-            train_data: pd.DataFrame containing the data.
-            test_data: pd.DataFrame containing the data.
-            threshold: list of threshold values
 
-        Returns:
-            Confidence score
+    Parameters
+    ----------
+    model: object
+        ML-model.
+    X_test: pd.DataFrame
+        Training data.
+    y_test: pd.DataFrame
+        Test labels.
+
+    Returns
+    -------
+    Confidence score
     """
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
@@ -524,14 +660,20 @@ def confidence_score_metrics(*, model, X_test, y_test):
 # Only for NN models
 def loss_sensitivity_metrics(*, classifier, X_test):
     """For a given Keras-NN model this function calculates the Loss Sensitivity score.
-    It uses loss_sensitivity function from IBM art library.
+    It uses loss_sensitivity function from IBM art library. 
+    Local loss sensitivity estimated through the gradients of the prediction at points in x.
     Returns a score according to the thresholds.
-        Args:
-            classifier: ML-model (Keras).
-            X_test: Test features.
 
-        Returns:
-            Loss Sensitivity score
+    Parameters
+    ----------
+    classifier: object
+        ML-model (Keras).
+    X_test: pd.DataFrame or np.ndarray
+        Test features.
+
+    Returns
+    -------
+    Loss Sensitivity score
     """
     try:
         X_df = _ensure_dataframe(X_test)
@@ -549,56 +691,65 @@ def loss_sensitivity_metrics(*, classifier, X_test):
         raise RuntimeError(f"Loss Sensitivity metric requires an ART classifier with predict method (e.g., PyTorchClassifier / TensorFlowV2Classifier). Error: {str(e)}")
 
 
-def _check_gradient_support(model, attack_name: str) -> None:
-    """
-    Verifica si el modelo soporta gradientes para ataques white-box.
+# def _check_gradient_support(model, attack_name: str) -> None:
+#     """
+#     Verifica si el modelo soporta gradientes para ataques white-box.
 
-    Ataques white-box (requieren gradientes):
-        - FastGradientMethod, CarliniL2Method, DeepFool, CLEVER, Loss Sensitivity
+#     Ataques white-box (requieren gradientes):
+#         - FastGradientMethod, CarliniL2Method, DeepFool, CLEVER, Loss Sensitivity
 
-    Para sklearn: Solo ataques black-box (HopSkipJump) funcionan.
-    Para PyTorch/TensorFlow: Usar PyTorchClassifier o TensorFlowV2Classifier de ART.
-    """
-    # Verificar si es un estimador de ART con soporte de gradientes
-    has_loss_gradient = hasattr(model, 'loss_gradient')
-    has_class_gradient = hasattr(model, 'class_gradient')
+#     Para sklearn: Solo ataques black-box (HopSkipJump) funcionan.
+#     Para PyTorch/TensorFlow: Usar PyTorchClassifier o TensorFlowV2Classifier de ART.
+#     """
+#     # Verificar si es un estimador de ART con soporte de gradientes
+#     has_loss_gradient = hasattr(model, 'loss_gradient')
+#     has_class_gradient = hasattr(model, 'class_gradient')
 
-    if not (has_loss_gradient or has_class_gradient):
-        raise ValueError(
-            f"{attack_name} requires gradient computation which is NOT supported by sklearn models.\n"
-            f"Options:\n"
-            f"  1. Use black-box attacks (HopSkipJump) which work with any model\n"
-            f"  2. For gradient-based attacks, wrap your model with:\n"
-            f"     - PyTorchClassifier (for PyTorch models)\n"
-            f"     - TensorFlowV2Classifier (for TensorFlow models)\n"
-            f"  3. Skip this metric for sklearn models"
-        )
+#     if not (has_loss_gradient or has_class_gradient):
+#         raise ValueError(
+#             f"{attack_name} requires gradient computation which is NOT supported by sklearn models.\n"
+#             f"Options:\n"
+#             f"  1. Use black-box attacks (HopSkipJump) which work with any model\n"
+#             f"  2. For gradient-based attacks, wrap your model with:\n"
+#             f"     - PyTorchClassifier (for PyTorch models)\n"
+#             f"     - TensorFlowV2Classifier (for TensorFlow models)\n"
+#             f"  3. Skip this metric for sklearn models"
+#         )
 
 
 # Only for NN, LG, SVM models (GRADIENT-BASED - REQUIRES NN)
-def fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42):
+def fgm_attack_metrics(*, art_clf, X_test, y_test, eps=0.2, n_samples=50, seed=42):
     """For a given model this function calculates the fast gradient attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
     Next creates FSG attacks on this test set and measures the model's
     accuracy on the attacks. Compares the before attack and after attack accuracies.
-    Returns a score according to the thresholds.
+    Returns the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
     NOTE: FastGradientMethod requires gradient computation.
     For sklearn models, use HopSkipJump (black-box) attack instead.
     
-    Args:
-        model: ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
-        X_test: Test features
-        y_test: Test labels
-        eps: Perturbation magnitude
-        n_samples: Number of samples to evaluate
-        seed: Random seed
+    Parameters
+    ----------
+    art_clf: object
+        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
+    X_test: pd.DataFrame or np.ndarray
+        Test features
+    y_test: pd.Series or np.ndarray
+        Test labels
+    eps: float
+        Perturbation magnitude
+    n_samples: int
+        Number of samples to evaluate
+    seed: int
+        Random seed
 
-    Returns:
-        FSG attack metrics
+    Returns
+    -------
+    FSG attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
     """
     # Verificar si es un ScikitlearnClassifier (no soporta gradientes)
-    art_clf = ScikitlearnClassifier(model=model)
+    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
+    # art_clf = ScikitlearnClassifier(model=model)
 
     # Verificar soporte de gradientes antes de intentar el ataque
     if not hasattr(art_clf, 'loss_gradient') or not callable(getattr(art_clf, 'loss_gradient', None)):
@@ -610,56 +761,47 @@ def fgm_attack_metrics(*, model, X_test, y_test, eps=0.2, n_samples=50, seed=42)
             "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
         )
 
-    X_df = _ensure_dataframe(X_test)
-    y = np.asarray(y_test).reshape(-1)
-
-    rng = np.random.RandomState(seed)
-    idx = rng.choice(len(X_df), size=min(n_samples, len(X_df)), replace=False)
-
-    X_eval = X_df.iloc[idx]
-    y_eval = y[idx]
-
-    y_pred_clean = model.predict(X_eval)
-    clean_acc = float((y_pred_clean == y_eval).mean())
-
     attack = FastGradientMethod(estimator=art_clf, eps=eps)
 
-    X_adv = attack.generate(_to_numpy_float(X_eval))
-    y_pred_adv = model.predict(_ensure_dataframe(X_adv, columns=X_eval.columns))
-
-    adv_acc = float((y_pred_adv == y_eval).mean())
-    drop_pct = max(0.0, clean_acc - adv_acc) * 100.0
-
-    return {
-        "clean_accuracy": clean_acc * 100.0,
-        "adv_accuracy": adv_acc * 100.0,
-        "accuracy_drop_pct": drop_pct,
-        "metric": "FGM",
-    }
+    return _attack_metrics_core(
+        model=art_clf,
+        X_test=X_test,
+        y_test=y_test,
+        attack=attack,
+        n_samples=n_samples,
+        seed=seed,
+        attack_name="FGM",
+    )
 
 # Only for NN models (GRADIENT-BASED). # Only for NN, LG, SVM models
-def carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
+def carlini_wagner_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
     """For a given model this function calculates the CW attack score.
-
-    NOTE: CarliniL2Method requires gradient computation.
-    For sklearn models, use HopSkipJump (black-box) attack instead.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
     Next creates CW attacks on this test set and measures the model's
     accuracy on the attacks. Compares the before attack and after attack accuracies.
-    Returns a score according to the thresholds.
-    Args:
-        model: ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
-        X_test: Test features
-        y_test: Test labels
-        n_samples: Number of samples to evaluate
-        seed: Random seed
+    Returns the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
+    NOTE: CarliniL2Method requires gradient computation.
+    For sklearn models, use HopSkipJump (black-box) attack instead.
+    Parameters
+    ----------
+    art_clf: object
+        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
+    X_test: pd.DataFrame or np.ndarray
+        Test features
+    y_test: pd.Series or np.ndarray
+        Test labels
+    n_samples: int
+        Number of samples to evaluate
+    seed: int
+        Random seed
 
     Returns:
-        CW attack metrics
+        CW attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
     """
     # Verificar soporte de gradientes
-    art_clf = ScikitlearnClassifier(model=model)
+    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
+    # art_clf = ScikitlearnClassifier(model=model)
 
     if not hasattr(art_clf, 'class_gradient') or not callable(getattr(art_clf, 'class_gradient', None)):
         raise ValueError(
@@ -670,54 +812,49 @@ def carlini_wagner_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
             "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
         )
 
-    X_df = _ensure_dataframe(X_test)
-    y = np.asarray(y_test).reshape(-1)
-
-    rng = np.random.RandomState(seed)
-    idx = rng.choice(len(X_df), size=min(n_samples, len(X_df)), replace=False)
-
-    X_eval = X_df.iloc[idx]
-    y_eval = y[idx]
-
-    clean_acc = float((model.predict(X_eval) == y_eval).mean())
-
     attack = CarliniL2Method(art_clf)
 
-    X_adv = attack.generate(_to_numpy_float(X_eval))
-    adv_acc = float((model.predict(_ensure_dataframe(X_adv, columns=X_eval.columns)) == y_eval).mean())
-
-    drop_pct = max(0.0, clean_acc - adv_acc) * 100.0
-
-    return {
-        "clean_accuracy": clean_acc * 100.0,
-        "adv_accuracy": adv_acc * 100.0,
-        "accuracy_drop_pct": drop_pct,
-        "metric": "CarliniWagner",
-    }
+    return _attack_metrics_core(
+        model=art_clf,
+        X_test=X_test,
+        y_test=y_test,
+        attack=attack,
+        n_samples=n_samples,
+        seed=seed,
+        attack_name="CarliniWagner",
+    )
 
 # Only for NN models (GRADIENT-BASED). Only for NN, LG, SVM models
-def deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
+def deepfool_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
     """For a given model this function calculates the deepfool attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
     Next creates deepfool attacks on this test set and measures the model's
     accuracy on the attacks. Compares the before attack and after attack accuracies.
-    Returns a score according to the thresholds.
+    Returns  the difference in accuracy as the score. Higher drop in accuracy means lower robustness.
     NOTE: DeepFool requires gradient computation.
     For sklearn models, use HopSkipJump (black-box) attack instead.
 
-    Args:
-        model: ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
-        X_test: Test features
-        y_test: Test labels
-        n_samples: Number of samples to evaluate
-        seed: Random seed
+    Parameters
+    ----------
+    art_clf: object
+        ART classifier with gradient support (PyTorchClassifier/TensorFlowV2Classifier)
+    X_test: pd.DataFrame or np.ndarray
+        Test features
+    y_test: pd.Series or np.ndarray
+        Test labels
+    n_samples: int
+        Number of samples to evaluate
+    seed: int
+        Random seed
 
-    Returns:
-        Deepfool attack metrics
+    Returns
+    -------
+    Deepfool attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
     """
-    # Verificar soporte de gradientes
-    art_clf = ScikitlearnClassifier(model=model)
+    # # Verificar soporte de gradientes
+    # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
+    # art_clf = ScikitlearnClassifier(model=model)
 
     if not hasattr(art_clf, 'class_gradient') or not callable(getattr(art_clf, 'class_gradient', None)):
         raise ValueError(
@@ -728,29 +865,113 @@ def deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
             "  2. For gradient attacks, use PyTorchClassifier or TensorFlowV2Classifier"
         )
 
-    X_df = _ensure_dataframe(X_test)
-    y = np.asarray(y_test).reshape(-1)
-
-    rng = np.random.RandomState(seed)
-    idx = rng.choice(len(X_df), size=min(n_samples, len(X_df)), replace=False)
-
-    X_eval = X_df.iloc[idx]
-    y_eval = y[idx]
-
-    clean_acc = float((model.predict(X_eval) == y_eval).mean())
-
     attack = DeepFool(art_clf)
 
-    X_adv = attack.generate(_to_numpy_float(X_eval))
-    adv_acc = float((model.predict(_ensure_dataframe(X_adv, columns=X_eval.columns)) == y_eval).mean())
+    return _attack_metrics_core(
+        model=art_clf,
+        X_test=X_test,
+        y_test=y_test,
+        attack=attack,
+        n_samples=n_samples,
+        seed=seed,
+        attack_name="DeepFool",
+    )
 
-    drop_pct = max(0.0, clean_acc - adv_acc) * 100.0
+def ece_metrics(
+    *,
+    model,
+    X_test,
+    y_test,
+    n_bins: int = 10,
+) -> dict:
+    """
+    Expected Calibration Error (ECE)
+    ECE measures the calibration of a model: how well the predicted probabilities reflect the true likelihood of correct predictions (it does not measure classification accuracy itself).
 
+    - Predictions are grouped into intervals (bins) based on their confidence scores.
+    - For each bin, we compute:
+    - the average confidence (conf_b)
+    - the average accuracy (acc_b)
+    - ECE is the weighted average of the absolute difference between these two quantities:
+
+    [
+    ECE = \sum_{b=1}^{B} \frac{|B_b|}{n} \cdot |acc_b - conf_b|
+    ]
+
+    where |B_b| is the number of samples in bin b, and n is the total number of samples.
+
+    Note: In binary classification, when using the maximum predicted probability as confidence, values lie in ([0.5, 1]), so bins in the interval ((0, 0.5]) remain empty.
+    
+    Parameters
+    ----------
+    model: object
+    X_test: pd.DataFrame or np.ndarray
+        Test features.  
+    y_test: pd.Series or np.ndarray
+        Test labels.
+    n_bins: int
+        Number of bins to use for ECE calculation.
+
+    Returns
+    -------
+    Dictionary with ECE metrics:
+        ece: Expected Calibration Error (lower is better),
+        n_bins: number of bins used for calculation,
+        bins: list of dictionaries with bin statistics (bin index, lower bound, upper bound, count, accuracy, confidence),
+        metric: name of the metric.
+    """
+
+    X_df = _ensure_dataframe(X_test)
+    y_true = np.asarray(y_test).reshape(-1)
+
+    if not hasattr(model, "predict_proba"):
+        raise RuntimeError("ECE requires model.predict_proba().")
+
+    probs = np.asarray(model.predict_proba(X_df))
+    confidences = np.max(probs, axis=1)
+    # predictions = np.argmax(probs, axis=1)
+    indices = np.argmax(probs, axis=1)
+    predictions = model.classes_[indices] # Mapeo a etiquetas reales
+
+    correct = (predictions == y_true).astype(int)
+
+    bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    n = len(y_true)
+
+    bin_stats = []
+
+    for b in range(n_bins):
+        lower = bin_edges[b]
+        upper = bin_edges[b + 1]
+
+        mask = (confidences > lower) & (confidences <= upper)
+
+        if not np.any(mask):
+            continue
+
+        bin_size = np.sum(mask)
+        acc_bin = np.mean(correct[mask])
+        conf_bin = np.mean(confidences[mask])
+
+        ece += (bin_size / n) * abs(acc_bin - conf_bin)
+
+        bin_stats.append({
+            "bin": int(b),
+            "lower": float(lower),
+            "upper": float(upper),
+            "count": int(bin_size),
+            "accuracy": float(acc_bin),
+            "confidence": float(conf_bin),
+        })
+        
+    if np.isnan(ece):
+        raise ValueError("ECE computation resulted in NaN. Check if model.predict_proba() returns valid probabilities and if n_bins is appropriate.")
     return {
-        "clean_accuracy": clean_acc * 100.0,
-        "adv_accuracy": adv_acc * 100.0,
-        "accuracy_drop_pct": drop_pct,
-        "metric": "DeepFool",
+        "ece": float(ece),
+        "n_bins": int(n_bins),
+        "bins": bin_stats,
+        "metric": "ECE",
     }
 
 # LO QUE SE HAN DESPLAZADO LOS DATOS DE TRAIN, NOSOTROS SOLO UN MOMENTO
@@ -885,54 +1106,4 @@ def deepfool_metrics(*, model, X_test, y_test, n_samples=10, seed=42):
 #         "bknc": len(bottom_neurons) / max(total_neurons, 1),
 #         "metric": "TKNC_BKNC",
 #     }
-
-def ece_metrics(
-    *,
-    model,
-    X_test,
-    y_test,
-    n_bins: int = 10,
-) -> dict:
-    """
-    Expected Calibration Error (ECE).
-    """
-
-    X_df = _ensure_dataframe(X_test)
-    y_true = np.asarray(y_test).reshape(-1)
-
-    if not hasattr(model, "predict_proba"):
-        raise RuntimeError("ECE requires model.predict_proba().")
-
-    probs = np.asarray(model.predict_proba(X_df))
-    confidences = np.max(probs, axis=1)
-    predictions = np.argmax(probs, axis=1)
-
-    correct = (predictions == y_true).astype(int)
-
-    bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
-    ece = 0.0
-    n = len(y_true)
-
-    for b in range(n_bins):
-        lower = bin_edges[b]
-        upper = bin_edges[b + 1]
-
-        mask = (confidences > lower) & (confidences <= upper)
-
-        if not np.any(mask):
-            continue
-
-        bin_size = np.sum(mask)
-        acc_bin = np.mean(correct[mask])
-        conf_bin = np.mean(confidences[mask])
-
-        ece += (bin_size / n) * abs(acc_bin - conf_bin)
-
-    if np.isnan(ece):
-        raise ValueError("ECE computation resulted in NaN. Check if model.predict_proba() returns valid probabilities and if n_bins is appropriate.")
-    return {
-        "ece": float(ece),
-        "n_bins": int(n_bins),
-        "metric": "ECE",
-    }
 
