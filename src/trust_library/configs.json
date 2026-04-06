@@ -486,10 +486,10 @@
             },
             "params": {
                 "n_samples": 25,
-                "shap_threshold": 0.001,
+                "shap_threshold": 0.05,
                 "top_k": 5,
                 "seed": 42,
-                "threshold_outlier_feature_relevance": 0.03,
+                "threshold_outlier_feature_relevance": 0.05,
                 "penalty_outlier_feature_relevance": 0,
                 "high_cor_correlated_features": 0.95
             }

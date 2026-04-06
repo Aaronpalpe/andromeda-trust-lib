@@ -22,9 +22,8 @@ from .metrics import (
     # PerformanceDifferenceMetric,
     NumberOfRulesMetric,
     AverageRuleLengthMetric,
-    RuleStatsMetric,
     TreeDepthMetric,
-    InteractionStrengthMetric,
+    # InteractionStrengthMetric,
     FaithfulnessMetric,
     MonotonicityMetric,
     # ShapleyCorrMetric,
@@ -46,7 +45,6 @@ from .metrics import (
     WeightedAverageExplainabilityScoreMetric,
     WeightedTreeGiniMetric,
     TreeDepthVarianceMetric,
-    TreeNumberOfRulesMetric,
     TreeNumberOfFeaturesMetric,
     XAIConsistencyScoreMetric,
 )
@@ -61,6 +59,16 @@ class ExplainabilityPillar(Pillar):
         return "explainability"
 
     def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:
+        '''
+        Context extra will provide:
+        - explainability_params: the parameters used for explainability computations (n_samples, shap_threshold, top_k, seed, threshold_outlier, penalty_outlier, high_cor)
+        - explainability_shap_metrics: the raw SHAP-based metrics computed
+            - feature_weights: the local importances for each sample and feature (shape: n_samples x n_features)
+            - base_values: the base values (mean of each feature) used for SHAP computations (shape: n_features)
+        - global_importances: the mean absolute importance of each feature across all samples (shape: n_features)
+        - conditional_importances: the mean absolute importance of each feature for each class (shape: n_classes x n_features). For rank alignment metric.
+        - pdp_averages: the average prediction of a subset for each feature (shape: n_features)
+        '''
         # Optional parameters (kept under mappings.explainability.params)
         params = (config or {}).get("params", {})
 
@@ -86,6 +94,7 @@ class ExplainabilityPillar(Pillar):
 
         # Best-effort eager compute (but never let it crash the whole evaluation)
         t0 = time.time()
+        # Local impotances: features importance for each individual prediction (shape: n_samples x n_features)
         local_imps = None
         try:
             metrics = core.shap_based_metrics(
@@ -99,6 +108,7 @@ class ExplainabilityPillar(Pillar):
             context.extras["explainability_shap_metrics"] = metrics
             local_imps = np.asarray(metrics["local_importances"])
             context.extras["feature_weights"] = local_imps
+            global_imps_array = np.asarray(metrics["global_imps_array"])
             context.extras["base_values"] = metrics["base_values"]
         except Exception as shap_exc:
             context.extras["explainability_error"] = str(shap_exc)
@@ -116,15 +126,14 @@ class ExplainabilityPillar(Pillar):
                 feature_names = [f"x{i}" for i in range(context.X_test.shape[1])]
                 X_df = pd.DataFrame(context.X_test, columns=feature_names)
 
-            # Global Importances
+            # Global Importances: mean absolute importance of each feature across all samples (shape: n_features)
             if local_imps is not None:
-                global_imps_array = np.abs(local_imps).mean(axis=0)
                 global_importances = {feat: float(imp) for feat, imp in zip(feature_names, global_imps_array)}
                 context.extras["global_importances"] = global_importances
             else:
                 global_importances = {}
 
-            # Conditional Importances
+            # Conditional Importances: mean absolute importance of each feature for each class (shape: n_classes x n_features)
             if local_imps is not None:
                 y_pred = context.model.predict(context.X_test)
                 if len(y_pred) > len(local_imps):
@@ -141,23 +150,30 @@ class ExplainabilityPillar(Pillar):
             else:
                 context.extras["conditional_importances"] = {}
 
-            # Partial Dependencies
+            # Partial Dependencies: average prediction for each feature (shape: n_features)
             pdp_averages = {}
-            if global_importances:
-                top_features = sorted(global_importances.keys(), key=lambda k: global_importances[k], reverse=True)[:top_k]
-            else:
-                top_features = feature_names[:top_k]
+            pdp_std = {}
+            # # Only compute for top_k features to save time (and only if we have local importances to rank them, otherwise just take the first top_k)
+            # if global_importances:
+            #     top_features = sorted(global_importances.keys(), key=lambda k: global_importances[k], reverse=True)[:top_k]
+            # else:
+            #     top_features = feature_names[:top_k]
+
+            # Calculate partial dependence for all features (but with low grid_resolution to save time), since we will use the std of the partial dependence for the XAI consistency metric, which requires all features to be computed.
+            top_features = feature_names
 
             try:
                 X_df_float = X_df.astype(float)
+                # If the dataset is too large, sample a subset for partial dependence to save time
                 X_df_float = X_df_float.sample(n=100, random_state=seed) if len(X_df_float) > 100 else X_df_float
                 for feat in top_features:
                     try:
                         feat_idx = feature_names.index(feat)
-                        # Try with kind="average" first (more reliable than "both")
                         try:
+                            # Again, grid_resolution=10 to save time, and kind="average" to get the average prediction for each feature value (instead of the full dependence which can be more expensive)
                             pdp_res = partial_dependence(context.model, X_df_float, features=[feat_idx], kind="average", grid_resolution=10)
                             pdp_averages[feat] = pdp_res["average"][0].tolist()
+                            pdp_std[feat] = np.std(pdp_res['average'])
                         except:
                             raise ValueError(f"partial_dependence with kind='average' failed for feature '{feat}'")      
                     except:
@@ -166,6 +182,7 @@ class ExplainabilityPillar(Pillar):
                 pass
 
             context.extras["pdp_averages"] = pdp_averages
+            context.extras["pdp_std"] = pdp_std
             t1 = time.time()
             print(f"Additional explainability computations took {t1 - t0:.2f} seconds")
 
@@ -182,16 +199,8 @@ class ExplainabilityPillar(Pillar):
             ModelSizeMetric(),
             FeatureRelevanceMetric(),
             # PerformanceDifferenceMetric(),
-            NumberOfRulesMetric(),
-            AverageRuleLengthMetric(),
-            RuleStatsMetric(),
-            TreeDepthMetric(),
-            InteractionStrengthMetric(),
-            FaithfulnessMetric(),
-            MonotonicityMetric(),
-            # ShapleyCorrMetric(),
-            # ROARMetric(),
-            InfidelityMetric(),
+
+            # InteractionStrengthMetric(),
             AlphaImportanceScoreMetric(),
             XAIEaseScoreMetric(),
             PositionParityMetric(),
@@ -204,11 +213,20 @@ class ExplainabilityPillar(Pillar):
             # MSEDegradationMetric(),
             # SurrogateFidelityMetric(),
             # SurrogateFeatureStabilityMetric(),
+            
+            FaithfulnessMetric(),
+            MonotonicityMetric(),
+            # ShapleyCorrMetric(),
+            # ROARMetric(),
+            InfidelityMetric(),
+
+            NumberOfRulesMetric(),
+            AverageRuleLengthMetric(),
+            TreeDepthMetric(),
             WeightedAverageDepthMetric(),
             WeightedAverageExplainabilityScoreMetric(),
             WeightedTreeGiniMetric(),
             TreeDepthVarianceMetric(),
-            TreeNumberOfRulesMetric(),
             TreeNumberOfFeaturesMetric(),
             XAIConsistencyScoreMetric(),
         ]

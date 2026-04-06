@@ -16,7 +16,7 @@ from .explainability_metrics_core import (
     # performance_difference, 
     number_of_rules, 
     average_rule_length, 
-    rule_stats, 
+    #rule_stats, 
     tree_depth, 
     faithfulness_metric, 
     monotonicity_metric, 
@@ -36,7 +36,6 @@ from .explainability_metrics_core import (
     weighted_average_explainability_score, 
     weighted_tree_gini, 
     tree_depth_variance, 
-    tree_number_of_rules, 
     tree_number_of_features, 
     xai_consistency,
 )
@@ -71,7 +70,6 @@ __all__ = [
     "weighted_average_explainability_score",
     "weighted_tree_gini",
     "tree_depth_variance",
-    "tree_number_of_rules",
     "tree_number_of_features",
     "xai_consistency",
 ]

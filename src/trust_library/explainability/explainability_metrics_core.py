@@ -38,21 +38,6 @@ from scipy.stats import entropy
 from sklearn.utils.validation import check_is_fitted
 from sklearn.base import is_classifier, is_regressor
 
-# # ============================================================
-# # Helpers
-# # ============================================================
-
-# def _validate_metric_value(value: float, metric_name: str) -> float:
-#     """Validate that metric value is not NaN or Inf."""
-#     if value is None:
-#         raise ValueError(f"Metric '{metric_name}' returned None value.")
-#     try:
-#         float_val = float(value)
-#         if np.isnan(float_val) or np.isinf(float_val):
-#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
-#     except (TypeError, ValueError) as e:
-#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
-#     return value
 
 # ============================================================
 # Silence SHAP
@@ -71,6 +56,7 @@ def suppress_shap_noise():
                 yield
 
 def _ensure_dataframe(X):
+    ''' Ensure X is a pandas DataFrame with column names. If it's already a DataFrame, return as is. If it's a numpy array, convert to DataFrame with generic column names. '''
     if hasattr(X, "columns"):
         return X
     X = np.asarray(X)
@@ -100,16 +86,38 @@ def shap_based_metrics(
     Compute SHAP-derived explainability metrics on a subsample of X using ONLY
     PermutationExplainer (algorithm="permutation") and assuming sklearn compatibility.
 
-    Returns a dict with:
-      - sparsity
-      - feature_entropy
-      - topk_concentration
-      - n_features
-      - explainer
-      - sample_size
+    Parameters
+    ----------
+    model: object
+        sklearn-compatible model already fitted.
+    X: pd.DataFrame or np.ndarray
+        The input data for which to compute explainability metrics.
+    n_samples: int, default=50
+        The number of samples to use for computing explainability metrics.
+    shap_threshold: float, default=1e-3
+        The threshold for considering a feature as important.
+    top_k: int, default=5
+        The number of top features to consider for concentration metrics.
+    seed: int, default=42
+        The random seed for reproducibility.
+
+
+    Returns
+    -------
+    Dict with the following keys:
+    - n_features: number of features in the dataset
+    - explainer: the SHAP explainer used (PermutationExplainer)
+    - sample_size: the number of samples used for SHAP computations
+    - shap_threshold: the threshold used for SHAP importance
+    - sparsity: the fraction of features with importance above the threshold
+    - feature_entropy: the normalized entropy of the global feature importance distribution. Higher means more uniform importance, lower means more concentrated.
+    - top_k: the number of top features considered for concentration
+    - topk_concentration: the fraction of total importance concentrated in the top_k features
+    - interaction_strength: the estimated strength of feature interactions (based on SHAP interaction values). Higher means more interactions, lower means more additive.
+    - base_values: the base values (mean of each feature) used for SHAP computations (shape: n_features). For faithfulness/monotonicity metrics, this can be used as the "baseline" input.
+    - local_importances: the local SHAP importances for each sample and feature (shape: n_samples x n_features)     
     """
-    # Measure the execution time of this function to evaluate its efficiency
-    t0 = time.time()
+
     shap = _safe_import_shap()
     X_full = _ensure_dataframe(X)
 
@@ -142,8 +150,8 @@ def shap_based_metrics(
     n_features = int(abs_vals.shape[1]) if abs_vals.ndim == 2 else int(X_eval.shape[1])
 
     # 1) Sparsity (fraction of features above threshold)
-    active = abs_vals > float(shap_threshold)
-    sparsity = float(active.sum(axis=1).mean() / max(n_features, 1))
+    active = abs_vals > float(shap_threshold) # boolean mask of shape (n_samples, n_features)
+    sparsity = float(active.sum(axis=1).mean() / max(n_features, 1)) # sum over features, then average over samples, then divide by total features
 
     # 2) Global feature entropy (normalized)
     global_importance = abs_vals.mean(axis=0)
@@ -154,8 +162,8 @@ def shap_based_metrics(
         entropy_norm = 0.0
     else:
         p = global_importance / total
-        entropy = float(-(p * np.log(p + 1e-12)).sum())
-        entropy_norm = float(entropy / float(np.log(d)))
+        entropy = float(-(p * np.log(p + 1e-12)).sum()) # Shannon entropy with small epsilon to avoid log(0)
+        entropy_norm = float(entropy / float(np.log(d))) # Highest when all features are equally important, lowest when one dominates
 
     # 3) Top-K concentration
     k = int(min(max(int(top_k), 1), d))
@@ -163,113 +171,105 @@ def shap_based_metrics(
     topk_concentration = 0.0 if total == 0.0 else float(sorted_imp[:k].sum() / total)
 
     # --- Interaction strength calculation ---
-    interaction_strength_value = np.nan
-    try:
-        # Convert to 3D tensor if not (PermutationExplainer returns 2D)
-        # Create a diagonalized tensor to simulate interactions
-        # This is approximate; real SHAP interaction requires TreeExplainer
-        if shap_values.ndim == 2:
-            # Create a tensor (n_samples, n_features, n_features) with diagonal = main effect
-            n_samples, n_features = shap_values.shape
-            shap_int = np.zeros((n_samples, n_features, n_features))
-            for i in range(n_features):
-                shap_int[:, i, i] = shap_values[:, i]
-        else:
-            shap_int = shap_values  # if already 3D
+    # interaction_strength_value = np.nan
+    # try:
+    #     # Convert to 3D tensor if not (PermutationExplainer returns 2D)
+    #     # Create a diagonalized tensor to simulate interactions
+    #     # This is approximate; real SHAP interaction requires TreeExplainer
+    #     if shap_values.ndim == 2:
+    #         # Create a tensor (n_samples, n_features, n_features) with diagonal = main effect
+    #         n_samples, n_features = shap_values.shape
+    #         shap_int = np.zeros((n_samples, n_features, n_features))
+    #         for i in range(n_features):
+    #             shap_int[:, i, i] = shap_values[:, i]
+    #     else:
+    #         shap_int = shap_values  # if already 3D
 
-        total = np.abs(shap_int).sum()
-        main_effect = np.sum(np.abs(np.diagonal(shap_int, axis1=1, axis2=2)))
-        interaction_strength_value = float((total - main_effect) / total) if total != 0 else 0.0
-    except Exception:
-        raise ValueError("Error computing interaction strength. Ensure SHAP values are in expected format.")
+
+    #     # explainer = shap.TreeExplainer(model)
+    #     # shap_int = explainer.shap_interaction_values(X)
+    #     # shap_int = np.abs(shap_int)
+    #     # if isinstance(shap_int, list):
+    #     #     shap_int = shap_int[1] if len(shap_int) > 1 else shap_int[0]
+
+
+    #     total = np.abs(shap_int).sum()
+    #     main_effect = np.sum(np.abs(np.diagonal(shap_int, axis1=1, axis2=2)))
+    #     interaction_strength_value = float((total - main_effect) / total) if total != 0 else 0.0
+    # except Exception:
+    #     raise ValueError("Error computing interaction strength. Ensure SHAP values are in expected format.")
 
     # --- Also returns base and local values ---
     base_values = np.mean(X_eval.values, axis=0)
     local_importances = shap_values
 
-    t1 = time.time()
-    print(f"SHAP-based metrics computed in {t1 - t0:.2f} seconds on {len(X_eval)} samples with {n_features} features.")
-
     return {
-        "sparsity": sparsity,
-        "feature_entropy": entropy_norm,
-        "topk_concentration": topk_concentration,
         "n_features": float(n_features),
         "explainer": "PermutationExplainer",
         "sample_size": float(len(X_eval)),
         "shap_threshold": float(shap_threshold),
+
+        "sparsity": sparsity,
+        "feature_entropy": entropy_norm,
         "top_k": float(k),
-        "interaction_strength": float(interaction_strength_value),
+        "topk_concentration": topk_concentration,
+        #"interaction_strength": float(interaction_strength_value),
         "base_values": base_values,
         "local_importances": local_importances,
+        "global_imps_array": global_importance,
     }
 
 
-def holistic_dependecies(model, y_pred, X):
-    """
-    Compute holistic explainability dependencies: global importances, conditional importances, and partial dependence.
-
-    Args:
-        model: sklearn-compatible model already fitted.
-        y_pred: predicted labels (y_pred) for X.
-        X: pandas DataFrame or numpy array with feature values.
-
-    Returns:
-        importances: permutation feature importances (global)
-        partial_dependencies: partial dependence for top features
-        conditional_importances: conditional permutation feature importances per label
-    """
-    X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X, columns=[f"x{i}" for i in range(X.shape[1])])
-    
-    # Definir proxy para estandarizar acceso a predicciones
-    proxy = BinaryClassificationProxy(
-        predict=model.predict,
-        predict_proba=model.predict_proba if hasattr(model, "predict_proba") else None,
-        classes=np.unique(y_pred)
-    )
-
-    # Global permutation importances
-    importances = compute_permutation_importance(X=X_df, y=y_pred, proxy=proxy)
-
-    # Conditional importances (per class)
-    conditional_importances = compute_conditional_permutation_importance(X=X_df, y=y_pred, proxy=proxy)
-
-    # Partial dependence for the top N features (taking top 3 by default)
-    top_n = 3
-    try:
-        top_feature_names = importances.top_n(top_n).feature_names
-    except Exception:
-        # fallback if no top_n defined
-        top_feature_names = X_df.columns[:top_n]
-
-    partial_dependencies = compute_partial_dependence(X_df, features=top_feature_names, proxy=proxy)
-
-    return importances, partial_dependencies, conditional_importances
 # ============================================================
 # Structural Explainability Metrics
 # ============================================================
 
-def algorithm_class(model, model_type=None) -> dict:
+def algorithm_class(model, model_type: str | None = None) -> dict:
+    '''
+    Identify the class of the model (e.g., "RandomForest", "SVM", "NeuralNetwork")
+    
+    Parameters
+    ----------
+    model: object
+        The model for which to identify the class.
+    model_type: str, optional
+        If provided, use this string as the model class instead of inferring from the model object.
+
+    Returns
+    -------
+    Dict with the following keys:
+    - model_type: the identified class of the model (e.g., "RandomForest", "SVM", "NeuralNetwork")
+    '''
     model_name = model_type if model_type is not None else type(model).__name__
-
-    # Simple example (you can externalize it to config)
-    # mapping = {
-    #     "LogisticRegression": 5,
-    #     "LinearRegression": 5,
-    #     "DecisionTreeClassifier": 3,
-    #     "RandomForestClassifier": 2,
-    # }
-
     return {
-        #"value": mapping.get(model_name, np.nan),
         "model_type": model_name,
     }
 
 
-def correlated_features(X_train, X_test, high_cor=0.95):
-    print("Computing correlated features with threshold:", high_cor)
+def correlated_features(X_train : pd.DataFrame | np.ndarray, X_test: pd.DataFrame | np.ndarray, high_cor=0.95):
+    '''
+    Calculate the percentage of features that are highly correlated with at least one other feature, based on a combined correlation matrix of X_train and X_test.
+    
+    Parameters
+    ----------
+    X_train: pd.DataFrame or np.ndarray
+        The training data.
+    X_test: pd.DataFrame or np.ndarray
+        The test data.
+    high_cor: float, default=0.95
+        The correlation threshold above which features are considered highly correlated.
+
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the percentage of features that are highly correlated with at least one other feature.
+    '''
+
+    X_train = _ensure_dataframe(X_train)
+    X_test = _ensure_dataframe(X_test)
+
     X_comb = pd.concat([X_train, X_test])
-    corr_matrix = X_comb.corr().abs()
+    corr_matrix = X_comb.corr().abs() # shape (n_features, n_features) with absolute correlation values
 
     upper = corr_matrix.where(
         np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
@@ -280,10 +280,26 @@ def correlated_features(X_train, X_test, high_cor=0.95):
 
     return {
         "value": float(pct_corr),
+        "highly_correlated_features": to_drop,
+        "threshold": float(high_cor),
     }
 
 
-def model_size(X_train):
+def model_size(X_train: pd.DataFrame | np.ndarray):
+    '''
+    Calculate the number of features in the dataset.
+
+    Parameters
+    ----------
+    X_train: pd.DataFrame or np.ndarray
+        The training data.
+
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the number of features in the dataset.
+    '''
+    X_train = _ensure_dataframe(X_train)
     n_features = X_train.shape[1]
 
     return {
@@ -348,16 +364,39 @@ def model_size(X_train):
 
 def feature_relevance(
     model,
-    X_train,
-    y_train,
+    global_imps_array : np.ndarray | None,
     threshold_outlier=0.03, 
 ):
-    if hasattr(model, "feature_importances_"):
-        importance = np.abs(model.feature_importances_)
-    elif hasattr(model, "coef_"):
-        importance = np.abs(model.coef_).flatten()
+    '''
+    Calculate the percentage of features that are considered irrelevant based on their importance being below a specified threshold. 
+    If SHAP global importances are available, use them; otherwise, fall back to model-provided feature importances.
+
+    Parameters
+    ----------
+    model: object
+        The model for which to calculate feature relevance. Must have either feature_importances_ or coef_ attribute if SHAP importances are not provided.
+    global_imps_array: np.ndarray or None
+        An array of global feature importances (e.g., from SHAP). If None, the function will attempt to use model-provided importances.
+    threshold_outlier: float, default=0.03
+        The importance threshold below which features are considered irrelevant.
+
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the percentage of features that are considered irrelevant.
+    - threshold: the importance threshold used to determine irrelevance.
+    - n_outliers: the number of features considered irrelevant.
+    - importances: the array of feature importances used for the calculation.
+    '''
+    if global_imps_array is not None:
+        importance = np.abs(global_imps_array)
     else:
-        raise ValueError("Model does not provide feature importances.")
+        if hasattr(model, "feature_importances_"):
+            importance = np.abs(model.feature_importances_)
+        elif hasattr(model, "coef_"):
+            importance = np.abs(model.coef_).flatten()
+        else:
+            raise ValueError("Model does not provide feature importances.")
 
     # Identify irrelevant features according to threshold
     irrelevant_features = np.sum(importance <= threshold_outlier)
@@ -367,6 +406,7 @@ def feature_relevance(
 
     return {
         "value": float(pct_irrelevant),
+        "threshold": float(threshold_outlier),
         "n_outliers": int(irrelevant_features),
         "importances": importance.tolist(),
     }
@@ -388,124 +428,355 @@ def feature_relevance(
 #         "perf_explainer": float(acc_g),
 #     }
 
-def number_of_rules(tree_model) -> dict:
-    # If it's a Random Forest, calculate the mean across all trees
-    if hasattr(tree_model, "estimators_"):
-        vals = [number_of_rules(est)["value"] for est in tree_model.estimators_]
-        return {"value": float(np.mean(vals)), "n_rules": float(np.mean(vals))}
-        
-    if hasattr(tree_model, "get_n_leaves"):
-        n_rules = tree_model.get_n_leaves()
-        return {"value": float(n_rules), "n_rules": float(n_rules)}
+    
+##########
+## HOLISTICAI
+#########
+
+# =============================================================================
+# Alpha Score
+# =============================================================================
+
+def alpha_score(feature_importances: list, alpha: float = 0.8) -> float:
+    '''
+    Calculate the alpha score, which measures the concentration of feature importance in the top features.
+    The alpha score is defined as the fraction of features that need to be included to reach a cumulative 
+    importance of alpha (e.g., 0.8). A lower alpha score indicates that fewer features are needed to reach 
+    the threshold, suggesting a more concentrated importance distribution.
+    (e. g. if feature importance values are [0.4, 0.1, 0.01, 0.01, 0] and alpha=0.8, the cumulative importance is 0.52, so the threshold is 0.8*0.52=0.416, which is reached by the first feature alone, so the alpha score would be 1/5=0.2)
+    
+    Parameters
+    ----------
+    feature_importances: list
+        A list of feature importance values (e.g., from SHAP or model coefficients).
+    alpha: float, default=0.8
+        The cumulative importance threshold to reach (e.g., 0.8 for 80%).
+
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the computed alpha score, where lower values indicate that fewer features are needed to reach the cumulative importance threshold.
+    - feature_importances: the input list of feature importance values.
+    - alpha: the cumulative importance threshold.
+    - n_features: the total number of features.
+    - n_top_features: the number of top features needed to reach the threshold.
+    ''' 
+    vals = np.abs(np.array(feature_importances, dtype=float))
+    n_total_features = len(feature_importances) # BEFORE was set to len(vals), but we want the original number of features, not the length of the array after filtering out zeros.
+    
+    if n_total_features == 0 or np.sum(vals) == 0.0:
+        return {"value": 0.0, "feature_importances": feature_importances, "alpha": float(alpha), "n_features": n_total_features, "n_top_features": 0}
+
+    vals_sorted = np.sort(vals)[::-1]  # Sort in descending order
+    cum_sum = np.cumsum(vals_sorted)  # Cumulative sum of sorted importances
+    threshold = alpha * np.sum(vals_sorted) # Total importance multiplied by alpha to get the threshold for cumulative importance
+    idx = np.searchsorted(cum_sum, threshold)  # Find the index where cumulative importance reaches or exceeds the threshold
+    
+    value = (idx + 1) / n_total_features
+    return {"value": value, "feature_importances": feature_importances, "alpha": float(alpha), "n_features": n_total_features, "n_top_features": int(idx + 1)}
+
+
+# =============================================================================
+# Spread Ratio & Spread Divergence
+# =============================================================================
+
+def _spread_base(feature_importances: list, divergence: bool = True) -> float:
+    '''
+    Calculate the base spread metric (either ratio or divergence). 
+    It calculates the distribution of feature importance values and compares it to a uniform distribution.
+    If divergence is True, it calculates the Jensen-Shannon divergence; if False, it calculates the ratio of entropies.
+    
+    Parameters
+    ----------
+    feature_importances: list
+        A list of feature importance values.
+    divergence: bool, default=True
+        If True, calculate spread divergence; otherwise, calculate spread ratio.
+
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the computed spread metric (divergence or ratio).
+    - feature_importances: the input list of feature importance values.
+
+    '''
+    tol = 1e-8
+    vals = np.abs(np.array(feature_importances, dtype=float)) # BEFORE without abs
+    
+    if len(vals) == 0 or np.sum(vals) < tol:
+        return {"value": 1.0, "feature_importances": feature_importances} if divergence else {"value": 0.0, "feature_importances": feature_importances}
+    if len(vals) == 1:
+        return {"value": 1.0, "feature_importances": feature_importances}
+
+    weights = vals / np.sum(vals)
+    equal_weights = np.ones(len(vals)) / len(vals)
+
+    if divergence:
+        metric = jensenshannon(weights, equal_weights, base=2)
     else:
-        raise ValueError("Model does not provide number of rules.")
+        metric = entropy(weights) / entropy(equal_weights)
+    return {"value": float(metric), "feature_importances": feature_importances}
+
+def spread_ratio(feature_importances: list) -> float:
+    '''
+    Calculate the spread ratio, which measures the evenness of feature importance distribution.
+    
+    Parameters
+    ----------
+    feature_importances: list
+        A list of feature importance values.
+
+    Returns
+    -------
+    dict with the following keys:
+    - value: the spread ratio, where higher values indicate a more even distribution of feature importance
+    - feature_importances: the input list of feature importance values.
+    '''
+    return _spread_base(feature_importances, divergence=False)
+
+def spread_divergence(feature_importances: list) -> float:
+    '''
+    Calculate the spread divergence, which measures the dissimilarity of feature importance distribution from an even distribution.
+    
+    Parameters
+    ----------
+    feature_importances: list
+        A list of feature importance values.
+
+    Returns
+    -------
+    dict with the following keys:
+    - value: the spread divergence, where higher values indicate a more uneven distribution.
+    - feature_importances: the input list of feature importance values.
+    '''
+    return _spread_base(feature_importances, divergence=True)
 
 
-def average_rule_length(tree_model) -> dict:
-    # If it's a Random Forest, calculate the mean across all trees
-    if hasattr(tree_model, "estimators_"):
-        vals = [average_rule_length(est)["value"] for est in tree_model.estimators_]
-        return {"value": float(np.mean(vals)), "avg_rule_length": float(np.mean(vals))}
+# =============================================================================
+# Position Parity
+# =============================================================================
+
+def position_parity(conditional_rankings: dict, global_ranking: list) -> float:
+    '''
+    Calculate the position parity, which measures how well the conditional feature rankings align with the global feature ranking.
+    For each group in the conditional rankings, it calculates the cumulative match of the conditional ranking with
+    the global ranking and averages this across groups. A higher position parity indicates better alignment between conditional and global rankings.
+    Take into account is cumulative, so that matches at higher ranks contribute more to the score than matches at lower ranks.
+
+    Parameters
+    ----------
+    conditional_rankings: dict
+        A dictionary where keys are group names and values are lists of feature names ranked by importance for that group.
+    global_ranking: list
+        A list of feature names ranked by importance globally.
+
+    Returns
+    -------
+    dict with the following keys:
+    - value: the computed position parity score, where higher values indicate better alignment between conditional and
+      global rankings.
+    - conditional_rankings: the input dictionary of conditional rankings.
+    - global_ranking: the input list of global ranking.
+    - conditional_position_parity: a dictionary with the average cumulative match for each group.
+    '''
+    conditional_position_parity = {}
+    for group_name, cond_features in conditional_rankings.items():
+        match_order = [c == r for c, r in zip(cond_features, global_ranking)] # boolean list indicating if the conditional feature at each position matches the global feature at that position
+        if not match_order: continue
+        m_order_cum = np.cumsum(match_order) / np.arange(1, len(match_order) + 1) # cumulative average of matches up to each position
+        conditional_position_parity[group_name] = np.mean(m_order_cum) # average cumulative match across all positions for this group
         
-    if not hasattr(tree_model, "tree_"):
-        raise ValueError("Model does not provide tree structure.")
+    if not conditional_position_parity:
+        return {"value": 1.0, "conditional_rankings": conditional_rankings, "global_ranking": global_ranking, "conditional_position_parity": conditional_position_parity}
+    
+    value = np.mean(list(conditional_position_parity.values()))
+
+    return {"value": float(value), "conditional_rankings": conditional_rankings, "global_ranking": global_ranking, "conditional_position_parity": conditional_position_parity}
+
+
+# =============================================================================
+# Rank Alignment
+# =============================================================================
+
+def _get_top_alpha_features(importances_dict: dict, alpha: float) -> set:
+    sorted_items = sorted(importances_dict.items(), key=lambda x: abs(x[1]), reverse=True)
+    total = sum(abs(v) for k, v in sorted_items)
+    cum = 0
+    top = []
+    for k, v in sorted_items:
+        top.append(k)
+        cum += abs(v)
+        if cum >= alpha * total:
+            break
+    return set(top)
+
+def rank_alignment(conditional_importances: dict, global_importances: dict, alpha: float = 0.8, aggregation: bool = True):
+    '''
+    Calculate the rank alignment, which measures the similarity of the top alpha features between conditional and global feature importance distributions.
+    For each group in the conditional importances, it identifies the top alpha features and compares them to the top alpha features of the global importances using Jaccard similarity. 
+    The final score is either the average similarity across groups or the list of similarities for each group. 
+    Note that is a set-based comparison, so it does not take into account the order of features within the top alpha, only whether they are included or not.
+    
+    Parameters
+    ----------
+    conditional_importances: dict
+        A dictionary where keys are group names and values are dictionaries of feature importances for that group.
+    global_importances: dict
+        A dictionary of global feature importances.
+    alpha: float, default=0.8
+        The cumulative importance threshold to identify the top features (e.g., 0.8 for
+        80% of total importance).
+    aggregation: bool, default=True 
+        If True, return the average similarity across groups; if False, return the list of similarities for each group.
+    
+    Returns
+    -------
+    If aggregation is True:
+    - dict with the following keys
+        - value: the average Jaccard similarity of top alpha features between conditional and global importances across groups.
+        - top_global_features: the list of top alpha features from global importances.
+        - top_conditional_features: a dictionary where keys are group names and values are lists of
+        - top alpha features for each group from conditional importances.
+        - conditional_importances: the input dictionary of conditional importances.
+        - global_importances: the input dictionary of global importances.
+    If aggregation is False:
+    - list of dictionaries, each with the following keys:
+        - group: the group name.
+        - value: the Jaccard similarity of top alpha features between conditional and global importances for this group.
+        - top_global_features: the list of top alpha features from global importances.
+        - top_conditional_features: the list of top alpha features for this group from conditional importances.
+        - conditional_importances: the input dictionary of conditional importances.
+        - global_importances: the input dictionary of global importances.
+    '''
+    top_global = _get_top_alpha_features(global_importances, alpha)
+    top_global_list = list(top_global)
+    
+    similarities = []
+    top_conditionals = {} # Dictionary for storing the top alpha features of each group
+    detailed_results = [] # List for storing detailed results for each group when aggregation is False
+    
+    for group, cond_imps in conditional_importances.items():
+        top_cond = _get_top_alpha_features(cond_imps, alpha)
+        top_conditionals[group] = list(top_cond)
         
-    children_left = tree_model.tree_.children_left
-    children_right = tree_model.tree_.children_right
-
-    def node_depth(node, depth=0):
-        if children_left[node] == children_right[node]:
-            return [depth]
-        depths = []
-        if children_left[node] != -1:
-            depths += node_depth(children_left[node], depth + 1)
-        if children_right[node] != -1:
-            depths += node_depth(children_right[node], depth + 1)
-        return depths
-
-    depths = node_depth(0)
-    avg_depth = np.mean(depths) if depths else 0.0
-
-    return {"value": float(avg_depth), "avg_rule_length": float(avg_depth)}
-
-def rule_stats(rule_model) -> dict:
-    # If it's a Random Forest, calculate the mean across all trees
-    if hasattr(rule_model, "estimators_"):
-        vals = []
-        for est in rule_model.estimators_:
-            try:
-                res = rule_stats(est)
-                if not np.isnan(res.get("value", np.nan)):
-                    vals.append(res["value"])
-            except ValueError:
-                continue
-        if not vals:
-            raise ValueError("Model does not provide rule information.")
-        return {"value": float(np.mean(vals)), "avg_rule_length": float(np.mean(vals))}
+        intersection = len(top_global.intersection(top_cond))
+        union = len(top_global.union(top_cond))
+        sim = intersection / union if union > 0 else 0.0
+        similarities.append(sim)
         
-    if not hasattr(rule_model, "rules_"):
-        raise ValueError("Model does not provide rule information.")
+        detailed_results.append({
+            "group": group,
+            "value": sim, 
+            "top_global_features": top_global_list,
+            "top_conditional_features": list(top_cond),
+            "conditional_importances": conditional_importances, 
+            "global_importances": global_importances
+        })
 
-    rules = rule_model.rules_
-    n_rules = len(rules)
-    lengths = [len(rule.conditions) for rule in rules] if n_rules > 0 else [0]
+    if aggregation:
+        return {
+            "value": float(np.mean(similarities)) if similarities else 1.0, 
+            "top_global_features": top_global_list,
+            "top_conditional_features": top_conditionals,
+            "conditional_importances": conditional_importances,  
+            "global_importances": global_importances
+        }
+    
+    return detailed_results
 
-    return {
-        "value": float(np.mean(lengths)),
-        "n_rules": int(n_rules),
-        "avg_rule_length": float(np.mean(lengths)),
-    }
 
-def tree_depth(tree_model) -> dict:
-    # If it's a Random Forest, calculate the mean across all trees
-    if hasattr(tree_model, "estimators_"):
-        vals = [tree_depth(est)["value"] for est in tree_model.estimators_]
-        return {"value": float(np.mean(vals)), "max_depth": float(np.mean(vals))}
-        
-    if hasattr(tree_model, "get_depth"):
-        depth = tree_model.get_depth()
-        return {"value": float(depth), "max_depth": float(depth)}
-    else:
-        raise ValueError("Model does not provide tree depth.")
+# =============================================================================
+# XAI Ease Score
+# =============================================================================
 
-# def interaction_strength(model, X) -> dict:
-#     try:
-#         explainer = shap.TreeExplainer(model)
-#         shap_int = explainer.shap_interaction_values(X)
-#         shap_int = np.abs(shap_int)
+def calculate_discrete_derivative(y_values):
+    dy = np.diff(y_values)
+    dx = np.ones_like(dy)
+    return dy / dx
 
-#         total = shap_int.sum()
-#         # shap_interaction_values devuelve tensores (n_samples, n_features, n_features)
-#         # o una lista de ellos si es multiclase. Asumimos el formato estándar:
-#         if isinstance(shap_int, list):
-#             shap_int = shap_int[1] if len(shap_int) > 1 else shap_int[0]
-            
-#         main_effect = np.sum(np.diagonal(shap_int, axis1=1, axis2=2))
-#         interaction_strength = (total - main_effect) / total if total != 0 else 0.0
-        
-#         return {"value": float(interaction_strength)}
-#     except Exception:
-#         raise ValueError("Error computing interaction strength. Ensure SHAP values are in expected format.")
+def cosine_similarity(v1, v2):
+    norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
+    if norm1 == 0 or norm2 == 0: return 0.0
+    return np.dot(v1, v2) / (norm1 * norm2)
+
+def compare_tangents(points):
+    num_sections = 3
+    n = len(points)
+    if n < num_sections:
+        return (1, 1), True
+
+    cut1 = n // 3
+    cut2 = 2 * n // 3
+    sections = [points[:cut1 + 1], points[cut1:cut2 + 1], points[cut2:]]
+    slopes = []
+    
+    for section in sections:
+        if len(section) > 1:
+            avg_slope = np.mean(calculate_discrete_derivative(section))
+        else:
+            avg_slope = 0
+        slopes.append(avg_slope + 1e-5)
+
+    similarities = [cosine_similarity([slopes[i]], [slopes[i + 1]]) for i in range(len(slopes) - 1)]
+    return similarities, False
+
+def xai_ease_score(pdp_averages: dict, global_ranked_features: list) -> float:
+    '''
+    Calculate the XAI Ease Score, which evaluates the ease of understanding the relationship between features and
+    model predictions based on the shape of partial dependence plots (PDPs) for the top globally ranked features.
+    For each top feature, it analyzes the average PDP values and compares the tangents of the PDP curve across three sections (beginning, middle, end).
+    The score is based on the similarity of the tangents across sections, with the intuition that more similar tangents indicate a simpler relationship that is easier to understand.
+    
+    Parameters
+    ----------
+    pdp_averages: dict
+        A dictionary where keys are feature names and values are lists of average PDP values for those features.
+    global_ranked_features: list   
+        A list of feature names ranked by global importance, with the most important features first.
+
+    Returns
+    -------
+    float: the XAI Ease Score, where higher values indicate that the relationships between features and predictions are easier to understand based on the shape of the PDPs.
+    '''
+    threshold = 0.0
+    levels = ["Hard", "Medium", "Easy"]
+    scores_list = []
+
+    for feat in global_ranked_features:
+        if feat not in pdp_averages: continue
+        r, few_points = compare_tangents(pdp_averages[feat])
+        score_val = sum([1 for rr in r if rr > threshold])
+        scores_list.append({"feature": feat, "scores": levels[score_val]})
+
+    if not scores_list: return 1.0
+
+    df = pd.DataFrame(scores_list)
+    counts = df.groupby("scores")["feature"].count()
+    total = counts.sum()
+
+    values = []
+    for level in levels: # levels are ordered from hardest to easiest, so that higher levels contribute more to the score
+        cnt = counts.get(level, 0)
+        prop = cnt / total
+        values.append(levels.index(level) * prop)
+
+    value = sum(values)/2
+    return {"value": value, "pdp_averages": pdp_averages, "global_ranked_features": global_ranked_features} # max_score is 2
+
 
 ###########################
-## AIX 360 ¿FIT? XPLIQUE todo el dataset
+## AIX 360
 ###########################
 
 def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarray) -> dict:
     """ This metric evaluates the correlation between the importance assigned by the interpretability algorithm
     to attributes and the effect of each of the attributes on the performance of the predictive model.
-    The higher the importance, the higher should be the effect, and vice versa, The metric evaluates this by
+    The higher the importance, the higher should be the effect, and vice versa. The metric evaluates this by
     incrementally removing each of the attributes deemed important by the interpretability metric, and
     evaluating the effect on the performance, and then calculating the correlation between the weights (importance)
     of the attributes and corresponding model performance. [#]_
 
-    References:
-        .. [#] `David Alvarez Melis and Tommi Jaakkola. Towards robust interpretability with self-explaining
-           neural networks. In S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-Bianchi, and R. Garnett, editors,
-           Advances in Neural Information Processing Systems 31, pages 7775-7784. 2018.
-           <https://papers.nips.cc/paper/8003-towards-robust-interpretability-with-self-explaining-neural-networks.pdf>`_
-
-    Args:
+    Parameters:
         model: Trained classifier, such as a ScikitClassifier that implements
             a predict() and a predict_proba() methods.
         x (numpy.ndarray): row of data.
@@ -514,6 +785,12 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
 
     Returns:
         float: correlation between attribute importance weights and corresponding effect on classifier.
+
+    References:
+    .. [#] `David Alvarez Melis and Tommi Jaakkola. Towards robust interpretability with self-explaining
+        neural networks. In S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-Bianchi, and R. Garnett, editors,
+        Advances in Neural Information Processing Systems 31, pages 7775-7784. 2018.
+        <https://papers.nips.cc/paper/8003-towards-robust-interpretability-with-self-explaining-neural-networks.pdf>`_
     """
     # Ensure that all have the same length
     assert len(x) == len(coefs) == len(base)
@@ -530,7 +807,6 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
         x_copy_pr = model.predict_proba(x_copy.reshape(1,-1))
         pred_probs[ind] = x_copy_pr[0][pred_class]
 
-    # corr = -np.corrcoef(coefs, pred_probs)[0, 1]
     if np.std(coefs) == 0 or np.std(pred_probs) == 0:
         corr = 0.0  # If there is no variation, there is no correlation
     else:
@@ -553,12 +829,7 @@ def monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
     is added, the performance of the model should correspondingly increase, thereby resulting in monotonically
     increasing model performance. [#]_
 
-    References:
-        .. [#] `Ronny Luss, Pin-Yu Chen, Amit Dhurandhar, Prasanna Sattigeri, Karthikeyan Shanmugam, and
-           Chun-Chen Tu. Generating Contrastive Explanations with Monotonic Attribute Functions. CoRR abs/1905.13565. 2019.
-           <https://arxiv.org/pdf/1905.12698.pdf>`_
-
-    Args:
+    Parameters:
         model: Trained classifier, such as a ScikitClassifier that implements
             a predict() and a predict_proba() methods.
         x (numpy.ndarray): row of data.
@@ -567,6 +838,11 @@ def monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
 
     Returns:
         bool: True if the relationship is monotonic.
+
+    References:
+        .. [#] `Ronny Luss, Pin-Yu Chen, Amit Dhurandhar, Prasanna Sattigeri, Karthikeyan Shanmugam, and
+           Chun-Chen Tu. Generating Contrastive Explanations with Monotonic Attribute Functions. CoRR abs/1905.13565. 2019.
+           <https://arxiv.org/pdf/1905.12698.pdf>`_
     """
     #find predicted class
     pred_class = np.argmax(model.predict_proba(x.reshape(1,-1)), axis=1)[0]
@@ -591,10 +867,25 @@ def monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
     }
 
 
-def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
+def infidelity(model, X_test: np.ndarray, feature_weights: np.ndarray) -> Dict[str, float]:
     """
     Computes the infidelity by evaluating whether perturbations to important features lead to proportional changes in model output.
     Implementation of https://arxiv.org/pdf/1901.09392.pdf, based on https://github.com/chihkuanyeh/saliency_evaluation/blob/master/infid_sen_utils.py
+
+    Parameters
+    ----------
+    model: object
+        The predictive model to evaluate. Must have a predict() method.
+    X_test: pd.DataFrame or np.ndarray
+        The test data for which to compute infidelity.
+    feature_weights: np.ndarray
+        The importance weights for each feature, typically obtained from an interpretability method. Should have the same number of rows as X_test and the same number of columns as features in X_test.
+
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the computed infidelity score, where lower values indicate better fidelity of the feature importance weights to the model's behavior.
+
     """
     X_np = np.asarray(X_test, dtype=float)
     num_datapoints, num_features = X_np.shape
@@ -645,165 +936,108 @@ def infidelity(model, X_test, feature_weights) -> Dict[str, float]:
         raise ValueError("Infidelity is NaN. Check if model predictions and feature weights are valid.")
     return {"value": mean_infid}
 
-##########
-## HOLISTICAI
-#########
-
-# =============================================================================
-# Alpha Score
-# =============================================================================
-
-def alpha_score(feature_importances: list, alpha: float = 0.8) -> float:
-    vals = np.array(feature_importances, dtype=float)
-    vals = vals[vals > 0]
-    if len(vals) == 0:
-        return 0.0
+def number_of_rules(tree_model) -> dict:
+    '''
+    Calculate the number of rules in a tree-based model. For Random Forests, it calculates the mean number of rules across all trees.
     
-    vals_sorted = np.sort(vals)[::-1]
-    cum_sum = np.cumsum(vals_sorted)
-    threshold = alpha * np.sum(vals_sorted)
-    idx = np.searchsorted(cum_sum, threshold)
+    Parameters
+    ----------
+    tree_model: object
+        The tree-based (or rule-based) model for which to calculate the number of rules. Must have either get_n_leaves() method or be a Random Forest with estimators_ attribute.
     
-    return (idx + 1) / len(feature_importances)
-
-
-# =============================================================================
-# Spread Ratio & Spread Divergence
-# =============================================================================
-
-def _spread_base(feature_importances: list, divergence: bool = True) -> float:
-    tol = 1e-8
-    vals = np.array(feature_importances, dtype=float)
+    Returns
+    ------- 
+    Dict with the following keys:
+    - value: the number of rules in the model (or mean number of rules across trees for Random Forests).
+    '''
+    if hasattr(tree_model, "rules_"):
+        return {"value": float(len(tree_model.rules_))}
     
-    if len(vals) == 0 or np.sum(vals) < tol:
-        return 1.0 if divergence else 0.0
-    if len(vals) == 1:
-        return 1.0
-
-    weights = vals / np.sum(vals)
-    equal_weights = np.ones(len(vals)) / len(vals)
-
-    if divergence:
-        metric = jensenshannon(weights, equal_weights, base=2)
-    else:
-        metric = entropy(weights) / entropy(equal_weights)
-    return float(metric)
-
-def spread_ratio(feature_importances: list) -> float:
-    return _spread_base(feature_importances, divergence=False)
-
-def spread_divergence(feature_importances: list) -> float:
-    return _spread_base(feature_importances, divergence=True)
-
-
-# =============================================================================
-# Position Parity
-# =============================================================================
-
-def position_parity(conditional_rankings: dict, global_ranking: list) -> float:
-    conditional_position_parity = {}
-    for group_name, cond_features in conditional_rankings.items():
-        match_order = [c == r for c, r in zip(cond_features, global_ranking)]
-        if not match_order: continue
-        m_order_cum = np.cumsum(match_order) / np.arange(1, len(match_order) + 1)
-        conditional_position_parity[group_name] = np.mean(m_order_cum)
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [number_of_rules(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals))}
         
-    if not conditional_position_parity:
-        return 1.0
-    return float(np.mean(list(conditional_position_parity.values())))
+    if hasattr(tree_model, "get_n_leaves"):
+        n_rules = tree_model.get_n_leaves()
+        return {"value": float(n_rules)}
+    else:
+        raise ValueError("Model does not provide number of rules.")
 
 
-# =============================================================================
-# Rank Alignment
-# =============================================================================
-
-def _get_top_alpha_features(importances_dict: dict, alpha: float) -> set:
-    sorted_items = sorted(importances_dict.items(), key=lambda x: abs(x[1]), reverse=True)
-    total = sum(abs(v) for k, v in sorted_items)
-    cum = 0
-    top = []
-    for k, v in sorted_items:
-        top.append(k)
-        cum += abs(v)
-        if cum >= alpha * total:
-            break
-    return set(top)
-
-def rank_alignment(conditional_importances: dict, global_importances: dict, alpha: float = 0.8, aggregation: bool = True):
-    top_global = _get_top_alpha_features(global_importances, alpha)
-    similarities = []
+def average_rule_length(tree_model) -> dict:
+    '''
+    Calculate the average rule length (depth) in a tree-based model. For Random Forests, it calculates the mean average rule length across all trees.
     
-    for group, cond_imps in conditional_importances.items():
-        top_cond = _get_top_alpha_features(cond_imps, alpha)
-        intersection = len(top_global.intersection(top_cond))
-        union = len(top_global.union(top_cond))
-        similarities.append(intersection / union if union > 0 else 0.0)
-
-    if aggregation:
-        return float(np.mean(similarities)) if similarities else 1.0
-    return similarities
-
-
-# =============================================================================
-# XAI Ease Score
-# =============================================================================
-
-def calculate_discrete_derivative(y_values):
-    dy = np.diff(y_values)
-    dx = np.ones_like(dy)
-    return dy / dx
-
-def cosine_similarity(v1, v2):
-    norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
-    if norm1 == 0 or norm2 == 0: return 0.0
-    return np.dot(v1, v2) / (norm1 * norm2)
-
-def compare_tangents(points):
-    num_sections = 3
-    n = len(points)
-    if n < num_sections:
-        return (1, 1), True
-
-    cut1 = n // 3
-    cut2 = 2 * n // 3
-    sections = [points[:cut1 + 1], points[cut1:cut2 + 1], points[cut2:]]
-    slopes = []
+    Parameters
+    ----------
+    tree_model: object
+        The tree-based (or rule-based) model for which to calculate the average rule length. Must have a tree_ attribute with children_left and children_right arrays, or be a Random Forest with estimators_ attribute.
     
-    for section in sections:
-        if len(section) > 1:
-            avg_slope = np.mean(calculate_discrete_derivative(section))
-        else:
-            avg_slope = 0
-        slopes.append(avg_slope + 1e-5)
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the average rule length in the model (or mean average rule length across trees for Random Forests).
 
-    similarities = [cosine_similarity([slopes[i]], [slopes[i + 1]]) for i in range(len(slopes) - 1)]
-    return similarities, False
+    '''
 
-def xai_ease_score(pdp_averages: dict, global_ranked_features: list) -> float:
-    threshold = 0.0
-    levels = ["Hard", "Medium", "Easy"]
-    scores_list = []
+    if hasattr(tree_model, "rules_"):
+        rules = tree_model.rules_
+        n_rules = len(rules)
+        lengths = [len(rule.conditions) for rule in rules] if n_rules > 0 else [0]
+        return {"value": float(np.mean(lengths))}
 
-    for feat in global_ranked_features:
-        if feat not in pdp_averages: continue
-        r, few_points = compare_tangents(pdp_averages[feat])
-        score_val = sum([1 for rr in r if rr > threshold])
-        scores_list.append({"feature": feat, "scores": levels[score_val]})
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [average_rule_length(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals))}
+        
+    if not hasattr(tree_model, "tree_"):
+        raise ValueError("Model does not provide tree structure.")
+        
+    children_left = tree_model.tree_.children_left
+    children_right = tree_model.tree_.children_right
 
-    if not scores_list: return 1.0
+    def node_depth(node, depth=0):
+        if children_left[node] == children_right[node]:
+            return [depth]
+        depths = []
+        if children_left[node] != -1:
+            depths += node_depth(children_left[node], depth + 1)
+        if children_right[node] != -1:
+            depths += node_depth(children_right[node], depth + 1)
+        return depths
 
-    df = pd.DataFrame(scores_list)
-    counts = df.groupby("scores")["feature"].count()
-    total = counts.sum()
+    depths = node_depth(0)
+    avg_depth = np.mean(depths) if depths else 0.0
 
-    values = []
-    for level in levels:
-        cnt = counts.get(level, 0)
-        prop = cnt / total
-        values.append(levels.index(level) * prop)
+    return {"value": float(avg_depth)}
 
-    return float(sum(values) / 2) # max_score is 2
+def tree_depth(tree_model) -> dict:
+    '''
+    Calculate the maximum depth of a tree-based model. For Random Forests, it calculates the mean depth across all trees.
 
+    Parameters
+    ----------
+    tree_model: object
+        The tree-based model for which to calculate the tree depth. Must have a get_depth() method, or be a Random Forest with estimators_ attribute.
+    
+    Returns
+    -------
+    Dict with the following keys:
+    - value: the maximum depth of the tree model (or mean depth across trees for Random Forests).
+    '''
+    # If it's a Random Forest, calculate the mean across all trees
+    if hasattr(tree_model, "estimators_"):
+        vals = [tree_depth(est)["value"] for est in tree_model.estimators_]
+        return {"value": float(np.mean(vals))}
+        
+    if hasattr(tree_model, "get_depth"):
+        depth = tree_model.get_depth()
+        return {"value": float(depth)}
+    else:
+        raise ValueError("Model does not provide tree depth.")
+    
 # =============================================================================
 # Helper Functions for Trees
 # =============================================================================
@@ -947,8 +1181,9 @@ def weighted_average_depth(tree_model) -> Dict[str, float]:
         
     depths, counts = get_depths_counts(0, tree_obj, [], [])
     n_samples = sum(counts)
-    if n_samples == 0: return {"value": 0.0}
-    return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum())}
+    if n_samples == 0 : raise ValueError("No samples to calculate weighted average depth.")
+    all_list = [f"{d}*({c}/{n_samples})" for d, c in zip(depths, counts)]
+    return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum()), "list": all_list}
 
 def weighted_average_explainability_score(tree_model) -> Dict[str, float]:
     """
@@ -980,10 +1215,11 @@ def weighted_average_explainability_score(tree_model) -> Dict[str, float]:
     if tree_obj is None or not hasattr(tree_obj, 'children_left'): 
         raise ValueError("Model must have attribute 'tree_'.")
         
-    depths, counts = get_cuts_counts(0, tree_obj, [], [], set())
+    depths, counts = get_cuts_counts(0, tree_obj, [], [], set()) # cuts instead of depths (eliminates duplicates), but the same logic applies for weighting
     n_samples = sum(counts)
     if n_samples == 0: raise ValueError("No samples to calculate weighted average explainability score.")
-    return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum())}
+    all_list = [f"{d}*({c}/{n_samples})" for d, c in zip(depths, counts)]
+    return {"value": float((np.array(depths) * (np.array(counts) / n_samples)).sum()), "list": all_list }
 
 def weighted_tree_gini(tree_model) -> Dict[str, float]: # ALGO DIFERENTE
     """
@@ -1059,31 +1295,12 @@ def tree_depth_variance(tree_model) -> Dict[str, float]:
     depths, _ = get_depths_counts(0, tree_obj, [], [])
     if not depths: raise ValueError("No leaf nodes to calculate depth variance.")
     depths_arr = np.array(depths)
-    return {"value": float(np.mean((depths_arr - np.mean(depths_arr)) ** 2))}
+    return {"value": float(np.mean((depths_arr - np.mean(depths_arr)) ** 2)), "leaf_depths": depths_arr.tolist()}
 
-def tree_number_of_rules(surrogate) -> Dict[str, float]:
-    """
-    Calculates the number of rules in a decision tree surrogate model.
-
-    Parameters
-    ----------
-        surrogate: A surrogate model, typically a decision tree, for which the number of rules is to be calculated.
-
-    Returns
-    -------
-        int: The number of rules present in the surrogate model.
-    """
-    # If it's a Random Forest, calculate the mean across all trees
-    if hasattr(surrogate, "estimators_"):
-        vals = [tree_number_of_rules(est)["value"] for est in surrogate.estimators_]
-        return {"value": float(np.mean(vals))}
-        
-    if surrogate is None: raise ValueError("Surrogate cannot be None.")
-    return {"value": float(get_number_of_rules(surrogate.tree_))}
 
 def tree_number_of_features(surrogate) -> Dict[str, float]:
     """
-    Calculates the number of features used in a decision tree surrogate model.
+    Calculates the number of features used in a decision tree model.
 
     Parameters
     ----------
@@ -1106,11 +1323,6 @@ def tree_number_of_features(surrogate) -> Dict[str, float]:
 # =============================================================================
 # Ensemble XAI Consistency Metrics (Custom)
 # =============================================================================
-
-
-# ----------------------------
-# Auxiliary functions
-# ----------------------------
 
 def to_scalar(val):
     """
@@ -1187,30 +1399,30 @@ def compute_lime(model, X, mode='classification', num_samples=20, seed=42):
 #     importances = dict(zip(feature_names, vals))
 #     return importances
 
-def shap_importance_from_local(local_importances, feature_names):
-    abs_vals = np.abs(local_importances)
-    global_importance = abs_vals.mean(axis=0)
-    return dict(zip(feature_names, global_importance))
+# def shap_importance_from_local(local_importances, feature_names):
+#     abs_vals = np.abs(local_importances)
+#     global_importance = abs_vals.mean(axis=0)
+#     return dict(zip(feature_names, global_importance))
 
-def compute_pdp_importance(model, X, random_state=42):
-    # Check that the model is a valid estimator
-    if not (is_classifier(model) or is_regressor(model)):
-        if not (hasattr(model, 'predict') and hasattr(model, 'fit')):
-            raise ValueError("Model must be a fitted sklearn-compatible estimator for PDP computation.")
+# def compute_pdp_importance(model, X, random_state=42):
+#     # Check that the model is a valid estimator
+#     if not (is_classifier(model) or is_regressor(model)):
+#         if not (hasattr(model, 'predict') and hasattr(model, 'fit')):
+#             raise ValueError("Model must be a fitted sklearn-compatible estimator for PDP computation.")
 
-    # Convertir a float para evitar errores de dtype
-    X_float = X.astype(float)
-    X_float = X_float.sample(n=100, random_state=random_state) if len(X_float) > 100 else X_float
+#     # Convertir a float para evitar errores de dtype
+#     X_float = X.astype(float)
+#     X_float = X_float.sample(n=100, random_state=random_state) if len(X_float) > 100 else X_float
 
-    importances = {}
-    for col in X_float.columns:
-        try:
-            pdp_result = partial_dependence(model, X_float, [col], kind='average', grid_resolution=20)
-            val = np.std(pdp_result['average'])
-            importances[col] = val
-        except Exception as e:
-            raise ValueError(f"Failed to compute PDP for feature '{col}': {e}")
-    return importances
+#     importances = {}
+#     for col in X_float.columns:
+#         try:
+#             pdp_result = partial_dependence(model, X_float, [col], kind='average', grid_resolution=20)
+#             val = np.std(pdp_result['average'])
+#             importances[col] = val
+#         except Exception as e:
+#             raise ValueError(f"Failed to compute PDP for feature '{col}': {e}")
+#     return importances
 
 # def compute_pfi(model, X, y, random_state=42):
 #     r = permutation_importance(model, X, y, n_repeats=5, random_state=random_state)
@@ -1263,13 +1475,48 @@ def get_aggregated_score(matrix):
     values = matrix.values[np.triu_indices(len(matrix), k=1)]
     return np.mean(values)
 
-def xai_consistency(model, shap_values, X, y, k=5, mode='classification', random_state=42) -> Dict[str, Any]:
+def xai_consistency(model, global_importances, pdp_std, X, k=5, mode='classification', random_state=42) -> Dict[str, Any]:
+    '''
+    Calculate the XAI Consistency Score, which evaluates the consistency of feature importance rankings across different 
+    interpretability methods (LIME, SHAP, PDP) for the top K features. The score is based on the Jaccard similarity of the 
+    top K features identified by each method, averaged across all pairs of methods. Higher scores indicate greater consistency 
+    in identifying important features across methods.
+
+    Parameters
+    ----------
+    model: object
+        The predictive model for which to evaluate XAI consistency. Must be a fitted sklearn-compatible estimator.
+    global_importances: dict
+        A dictionary of global feature importances from SHAP, where keys are feature names and values
+        are the importance scores. This is required for the consistency calculation.
+    pdp_std: dict   
+        A dictionary of feature importance scores derived from the standard deviation of partial dependence plots (PDPs), where keys are feature names and values are the standard deviation of the PDP values for those features.
+    X: pd.DataFrame or np.ndarray
+        The input data used for computing LIME explanations. Must have the same features as those in
+        global_importances and pdp_std.
+    k: int, optional    
+        The number of top features to consider for the consistency calculation (default is 5).
+    mode: str, optional
+        The mode for LIME explanations, either 'classification' or 'regression' (default
+        is 'classification').
+    random_state: int, optional 
+        The random state for reproducibility of LIME explanations (default is 42).
+
+    Returns
+    -------
+    dict: A dictionary containing the following keys:
+    - value: the computed XAI Consistency Score, where higher values indicate greater consistency in feature importance rankings across methods.
+    - consistency_matrix: a matrix showing the pairwise Jaccard similarity of top K features
+        between each pair of methods.
+    - top_k_details: a string detailing the top K features and their importance values for each method, for interpretability.
+    - rankings: a dictionary containing the feature importance rankings for each method (LIME, SHAP, PDP) used in the consistency calculation.
+    '''
     np.random.seed(random_state)
     random.seed(random_state)
 
     # Initial validations
-    if shap_values is None:
-        raise ValueError("SHAP values are required for XAI consistency computation.")
+    if global_importances is None:
+        raise ValueError("Global importances (SHAP) are required for XAI consistency computation.")
 
     if X is None or (hasattr(X, 'shape') and X.shape[0] == 0):
         raise ValueError("X data is required and cannot be empty.")
@@ -1289,17 +1536,9 @@ def xai_consistency(model, shap_values, X, y, k=5, mode='classification', random
     except Exception as e:
         raise ValueError(f"Failed to compute LIME importances: {e}")
 
-    # SHAP
-    try:
-        rankings['SHAP'] = shap_importance_from_local(shap_values, X.columns)
-    except Exception as e:
-        raise ValueError(f"Failed to compute SHAP importances: {e}")
-
-    # PDP
-    try:
-        rankings['PDP'] = compute_pdp_importance(model, X, random_state=random_state)
-    except Exception as e:
-        raise ValueError(f"Failed to compute PDP importances: {e}")
+    rankings['SHAP']= global_importances
+        
+    rankings['PDP'] = pdp_std
 
     matrix = calculate_consistency_matrix(rankings, k=k)
     score = get_aggregated_score(matrix)
