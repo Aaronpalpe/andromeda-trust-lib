@@ -37,6 +37,7 @@ class TrainTestSplitMetric(BaseMetric):
         return {
             "Metric Description": "Ratio between the training and test set sizes.",
             "Depends on": "Training and Testing Data",
+            "Formula": "Train Ratio = round(100 * N_train / (N_train + N_test)); Test Ratio = 100 - Train Ratio",
             "Train/Test split": f"{raw['train_ratio']}/{raw['test_ratio']}",
         }
 
@@ -51,12 +52,10 @@ class MissingDataMetric(BaseMetric):
         super().__init__("missing_data", "score_missing_data")
 
     def compute(self, ctx) -> Dict[str, int]:
-        return {
-            "value": core.count_missing_values(
-                ctx.train_data,
-                ctx.test_data,
-            ).get("value", 0)
-        }
+        return core.count_missing_values(
+            ctx.train_data,
+            ctx.test_data,
+        )
 
     def compute_score(self, raw: Dict[str, Any], config: Dict[str, Any]) -> float:
         mappings = (
@@ -72,6 +71,7 @@ class MissingDataMetric(BaseMetric):
         return {
             "Metric Description": "Number of missing values across the training and test data.",
             "Depends on": "Training and Test Data",
+            "Formula": "Missing Data = Missing(train) + Missing(test)",
             "Train missing values": raw.get("missing_train", 0),
             "Test missing values": raw.get("missing_test", 0),
             "Null values count": raw["value"],
@@ -118,6 +118,7 @@ class NormalizationMetric(BaseMetric):
         return {
             "Metric Description": "Normalization strategy inferred from training and test data statistics.",
             "Depends on": "Training and Testing Data",
+            "Formula": "Heuristic classification based on train/test mean-std closeness to (0,1) and value ranges in [0,1]",
             "Training mean": f"{raw['train_mean']:.4f}",
             "Training std": f"{raw['train_std']:.4f}",
             "Test mean": f"{raw['test_mean']:.4f}",
@@ -186,7 +187,8 @@ class FactsheetCompletenessMetric(BaseMetric):
         return {
             "Metric Description": "Completeness of the factsheet based on present versus expected fields.",
             "Depends on": "Factsheet",
+            "Formula": "Completeness Ratio = Present Fields / Total Expected Fields",
             "Fields present": f"{raw['present']}/{raw['total']}",
-            "Completeness": f"{raw['ratio']:.2%}",
             "Missing fields": raw["missing"] if raw["missing"] else "None",
+            "Completeness": f"{raw['ratio']:.2%}",
         }

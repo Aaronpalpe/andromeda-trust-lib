@@ -22,7 +22,7 @@ class EpsilonMetric(BaseMetric):
             ctx.factsheet
             .get("privacy", {})
             .get("epsilon", {})
-            .get("value", [])
+            .get("value", None)
         )
 
         return core.epsilon_dp(
@@ -33,6 +33,7 @@ class EpsilonMetric(BaseMetric):
         return {
             "Metric Description": "Theoretical epsilon value from the factsheet's differential privacy analysis. Lower epsilon implies stronger privacy guarantees (less theoretical leakage).",
             "Depends on": "Training Mechanism",
+            "Formula": "Epsilon-DP = epsilon (as declared in factsheet privacy analysis)",
             "Epsilon": f"{raw['value']:.6f}",
         }
 
@@ -59,6 +60,7 @@ class EpsilonStarMetric(BaseMetric):
         return {
             "Metric Description": "Empirical epsilon* estimated from the loss distribution. Lower is better (less membership leakage).",
             "Depends on": "Model and Train/Test Data",
+            "Formula": "epsilon* = log(max over threshold-based membership ratios)",
             "Delta Used": f"{raw['delta']:.2e}",
             "Epsilon*": f"{raw['value']:.6f}",
         }
@@ -87,6 +89,7 @@ class SHAPRMetric(BaseMetric):
         return {
             "Metric Description": "Approximate membership inference risk estimated with SHAPr. Lower values indicate lower risk.",
             "Depends on": "Model and Train/Test Data",
+            "Formula": "SHAPr Risk = mean marginal contribution in prediction-space nearest-neighbor analysis",
             "Average Marginal Contribution": f"{raw['value']:.6f}",
             "Sample Size": raw["sample_size"],
             "k Neighbors": raw["k_neighbors"],
@@ -128,6 +131,7 @@ class AttributeInferenceMetric(BaseMetric):
         return {
             "Metric Description": "Attribute inference risk for the declared sensitive attribute.",
             "Depends on": "Model, Train/Test Data, and Sensitive Attribute",
+            "Formula": "Attribute Inference = attack score predicting sensitive attribute from non-sensitive features and labels",
             "Sensitive Attribute": raw["sensitive"],
             "Risk Score": (
                 f"{raw['value']:.6f}" if raw["value"] is not None else "N/A"
@@ -156,6 +160,7 @@ class PrivacyRiskMetric(BaseMetric):
         return {
             "Metric Description": "Membership inference privacy risk derived from predicted probabilities.",
             "Depends on": "Model and Predicted Probabilities",
+            "Formula": "Privacy Risk = mean posterior membership risk score",
             "Mean Privacy Risk": f"{raw['value']:.6f}",
         }
 
@@ -180,8 +185,9 @@ class AccuracyRatioMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Accuracy ratio between the original model and the data-minimized variant (original/noisy). Values close to 1 indicate minimal performance loss. Higher values indicate more loss in accuracy.",
+            "Metric Description": "Accuracy ratio between the original model and the data-minimized variant (original/noisy). Values close to 1 indicate minimal performance loss; larger values indicate greater utility loss.",
             "Depends on": "Model and Test Data",
+            "Formula": "Accuracy Ratio = Accuracy(original test) / Accuracy(noisy test)",
             "selector_type": f"{raw['args']['selector_type']}",
             "modifier_type": f"{raw['args']['modifier_type']}",
             "n_features" : raw["args"]["n_feats"],
@@ -218,6 +224,7 @@ class KAnonymityMetric(BaseMetric):
         return {
             "Metric Description": "Minimum k value achieved for the quasi-identifier groups. Higher values indicate better privacy protection.",
             "Depends on": "Quasi Identifiers and Data",
+            "Formula": "k-Anonymity = min over equivalence classes of group size",
             "Quasi Identifiers": raw["quasi_identifiers"],
             "Minimum k": raw["value"],
         }
@@ -260,6 +267,7 @@ class LDiversityMetric(BaseMetric):
         return {
             "Metric Description": "Minimum l value achieved for the quasi-identifier groups and sensitive attributes.",
             "Depends on": "Quasi Identifiers, Sensitive Attributes, and Data",
+            "Formula": "l-Diversity = min over quasi-identifier groups of distinct sensitive values",
             "Quasi Identifiers": raw["quasi_identifiers"],
             "Sensitive Attributes": raw["sensitive_attributes"],
             "Minimum l": raw["value"],
@@ -303,6 +311,7 @@ class TClosenessMetric(BaseMetric):
         return {
             "Metric Description": "Maximum t value measuring distribution closeness within quasi-identifier groups.",
             "Depends on": "Quasi Identifiers, Sensitive Attributes, and Data",
+            "Formula": "t-Closeness = max distance between group-sensitive distribution and global-sensitive distribution",
             "Quasi Identifiers": raw["quasi_identifiers"],
             "Sensitive Attributes": raw["sensitive_attributes"],
             "Maximum t": raw["value"],

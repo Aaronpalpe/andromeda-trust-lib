@@ -734,9 +734,10 @@ class AdversarialAccuracyMetric(BaseMetric):
         return {
             "Metric Description": "Worst-case adversarial accuracy across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
-            "Value (%)": float(raw.get("value", 0.0)),
+            "Formula": "Adversarial Accuracy = Accuracy(model(x_adv), y_true)",
             "Average Adv Accuracy (%)": float(raw.get("average_adv_accuracy", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
+            "Adversarial Accuracy (%)": float(raw.get("value", 0.0)),
         }
     
 class AccuracyDropMetric(BaseMetric):
@@ -753,10 +754,11 @@ class AccuracyDropMetric(BaseMetric):
         return {
             "Metric Description": "Worst-case accuracy drop across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
-            "Value (%)": float(raw.get("value", 0.0)),
+            "Formula": "Accuracy Drop = Clean Accuracy - Adversarial Accuracy",
             "Average Drop (%)": float(raw.get("average_accuracy_drop", 0.0)),
             "Results from Individual Attacks": raw.get("attacks", {}),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
+            "Accuracy Drop (%)": float(raw.get("value", 0.0)),
         }
 
 class RobustnessRatioMetric(BaseMetric):
@@ -773,9 +775,10 @@ class RobustnessRatioMetric(BaseMetric):
         return {
             "Metric Description": "Worst-case robustness ratio (Adversarial Accuracy / Clean Accuracy) across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
-            "Value": float(raw.get("value", 0.0)),
+            "Formula": "Robustness Ratio = Adversarial Accuracy / Clean Accuracy",
             "Average Robustness Ratio": float(raw.get("average_robustness_ratio", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
+            "Robustness Ratio": float(raw.get("value", 0.0)),
         }
 
 
@@ -793,9 +796,10 @@ class AdversarialAccuracyCorrectOnlyMetric(BaseMetric):
         return {
             "Metric Description": "Worst-case adversarial accuracy restricted to originally correctly classified samples.",
             "Depends on": "Model, Test Data, and Attack Results",
-            "Value (%)": float(raw.get("value", 0.0)),
+            "Formula": "Adversarial Accuracy (Correct-Only) = Accuracy on adversarial examples generated from originally correct samples",
             "Average Adv Accuracy (Correct Only) (%)": float(raw.get("average_adv_accuracy_correct_only", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
+            "Adversarial Accuracy (Correct Only) (%)": float(raw.get("value", 0.0)),
         }
     
 
@@ -813,9 +817,10 @@ class ASRMetric(BaseMetric):
         return {
             "Metric Description": "Worst-case attack success rate across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
-            "Value (%)": float(raw.get("value", 0.0)),
+            "Formula": "ASR = Successful Attacks / Attacks Attempted",
             "Average ASR (%)": float(raw.get("average_asr", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
+            "Attack Success Rate (%)": float(raw.get("value", 0.0)),
         }
 
 
@@ -833,9 +838,10 @@ class EmpiricalRobustnessL2Metric(BaseMetric):
         return {
             "Metric Description": "Worst-case empirical robustness measured with L2 distance for successful attacks.",
             "Depends on": "Model, Test Data, and Attack Results",
-            "Value": float(raw.get("value", 0.0)),
+            "Formula": "ER-L2 = mean(||x_adv - x||_2) over successful attacks",
             "Average ER L2": float(raw.get("average_er_l2_success", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
+            "Empirical Robustness L2": float(raw.get("value", 0.0)),
         }
 
 
@@ -853,9 +859,10 @@ class EmpiricalRobustnessLinfMetric(BaseMetric):
         return {
             "Metric Description": "Worst-case empirical robustness measured with Linf distance for successful attacks.",
             "Depends on": "Model, Test Data, and Attack Results",
-            "Value": float(raw.get("value", 0.0)),
+            "Formula": "ER-Linf = mean(||x_adv - x||_inf) over successful attacks",
             "Average ER Linf": float(raw.get("average_er_linf_success", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
+            "Empirical Robustness Linf": float(raw.get("value", 0.0)),
         }
     
 # ============================================================
@@ -877,12 +884,13 @@ class CliqueMethodMetric(BaseMetric):
         return {
             "Metric Description": "Clique Method verification error for tree-based models. Lower indicates stronger verified robustness.",
             "Depends on": "Tree-Based Model and Test Data",
-            "Value": float(raw.get("value", 0.0)),
+            "Formula": "Clique Method Score = verification error from ART tree robustness verification",
             "Robustness Bound": float(raw.get("robustness_bound", 0.0)),
             "Verification Error": float(raw.get("verification_error", 0.0)),
             "Sample Size": int(raw.get("sample_size", 0.0)),
             "Params": params,
             "Metric": raw.get("metric"),
+            "Clique Method Score": float(raw.get("value", 0.0)),
         }
 
 
@@ -905,12 +913,12 @@ class CleverScoreMetric(BaseMetric):
         return {
             "Metric Description": "Mean CLEVER score for a gradient-capable classifier. Higher values indicate greater robustness.",
             "Depends on": "Gradient-Capable Model and Test Data",
-            "CLEVER Mean": float(raw.get("value", 0.0)),
-            #"CLEVER Mean": float(raw.get("clever_score_mean", 0.0)),
+            "Formula": "CLEVER = estimate of minimum adversarial perturbation norm via local Lipschitz constants",
             "CLEVER Std": float(raw.get("clever_score_std", 0.0)),
             "N Eval": int(raw.get("n_eval", 0.0)),
             "Params": params,
             "Metric": raw.get("metric"),
+            "CLEVER Mean": float(raw.get("value", 0.0)),
         }
 
 
@@ -928,9 +936,10 @@ class ConfidenceScoreMetric(BaseMetric):
         return {
             "Metric Description": "Confidence score computed from thresholded prediction consistency. Average Jaccard index (TP / (TP + FP + FN)) over multiple probability thresholds, where predictions are binarized at each threshold. Higher indicates more confident predictions.",
             "Depends on": "Model and Test Data",
-            "Value (%)": float(raw.get("value", 0.0)),
+            "Formula": "Confidence Score = mean_t Jaccard(y_true_bin(t), y_pred_bin(t))",
             "Metric": raw.get("metric"),
             "Thresholds": raw.get("thresholds"),
+            "Confidence Score (%)": float(raw.get("value", 0.0)),
         }
 
     
@@ -948,8 +957,9 @@ class LossSensitivityMetric(BaseMetric):
         return {
             "Metric Description": "Local loss sensitivity estimated from gradients. Measures how sensitive model loss is to input perturbations.",
             "Depends on": "Gradient-Capable Model and Test Data",
-            "Value": float(raw.get("value", 0.0)),
+            "Formula": "Loss Sensitivity = expected norm of gradient of loss with respect to input",
             "Metric": raw.get("metric"),
+            "Loss Sensitivity": float(raw.get("value", 0.0)),
         }
 
 
@@ -970,8 +980,9 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
         return {
             "Metric Description": "Expected Calibration Error computed as the weighted gap between confidence and accuracy across bins.",
             "Depends on": "Model and Test Data",
-            "Value": float(raw.get("value", 0.0)),
+            "Formula": "ECE = sum_b (n_b / n) * |acc(b) - conf(b)|",
             "Number of Bins": raw.get("n_bins"),
             "Bins stats": raw.get("bins"),
             "Metric": raw.get("metric"),
+            "Expected Calibration Error": float(raw.get("value", 0.0)),
         }

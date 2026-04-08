@@ -28,10 +28,11 @@ class EnergyConsumptionMetric(BaseMetric):
         return {
             "Metric Description": "Total training energy consumed (CPU + GPU + RAM).",
             "Depends on": "Factsheet Sustainability Fields",
-            "Energy Consumed (kWh)": f"{raw['value']:.6f}",
+            "Formula": "Energy Consumed = CPU Energy + GPU Energy + RAM Energy",
             "CPU Energy (kWh)": f"{raw['cpu_energy']:.6f}",
             "GPU Energy (kWh)": f"{raw['gpu_energy']:.6f}",
             "RAM Energy (kWh)": f"{raw['ram_energy']:.6f}",
+            "Energy Consumed (kWh)": f"{raw['value']:.6f}",
         }
 
 
@@ -58,12 +59,13 @@ class EmissionsMetric(BaseMetric):
         return {
             "Metric Description": "Total CO2 emissions during training estimated (Energy consumed * Carbon Intensity).",
             "Depends on": "Factsheet Sustainability Fields",
+            "Formula": "Emissions = Energy Consumed * Carbon Intensity",
             "Energy Consumed (kWh)": f"{raw['energy_consumed']:.6f}",
             "Carbon Intensity (kgCO2/kWh)": f"{raw['value'] / raw['energy_consumed']:.6f}" if raw['energy_consumed'] > 0 else "N/A",
-            "Emissions (kgCO2)": f"{raw['value']:.6f}",
             "Training Duration (s)": f"{raw['duration']:.2f}",
             "PUE": raw["pue"],
             "WUE": raw["wue"],
+            "Emissions (kgCO2)": f"{raw['value']:.6f}",
         }
 
 

@@ -62,12 +62,12 @@ class SparsityMetric(BaseMetric):
         return {
             "Metric Description": "Fraction of features whose SHAP importance is above the configured threshold.",
             "Depends on": "Model and Test Data",
-            "Value": float(raw["value"]),
+            "Formula": "Sparsity = (# features with |importance| > threshold) / (# features)",
             "N Features": int(raw.get("n_features", 0)),
             "Sample Size": int(raw.get("sample_size", 0)),
             "SHAP Threshold": float(raw.get("shap_threshold", 0.0)),
             "Explainer": raw.get("explainer"),
-            #"Feature Importances": np.abs(raw.get("local_importances", []))
+            "Sparsity": float(raw["value"]),
         }
 
 
@@ -85,11 +85,12 @@ class FeatureEntropyMetric(BaseMetric):
         return {
             "Metric Description": "Normalized entropy of the global SHAP importance distribution across features. Lower values indicate that importance is concentrated in fewer features, while higher values suggest a more even distribution of importance.",
             "Depends on": "Model and Test Data",
-            "Value": float(raw["value"]),
+            "Formula": "Feature Entropy = -sum_i p_i log(p_i) / log(n_features)",
             "N Features": int(raw.get("n_features", 0)),
             "Sample Size": int(raw.get("sample_size", 0)),
             "Explainer": raw.get("explainer"),
-            "Global Feature Importances": raw.get("global_imps_array", np.array([])).tolist()
+            "Global Feature Importances": raw.get("global_imps_array", np.array([])).tolist(),
+            "Feature Entropy": float(raw["value"]),
         }
 
 
@@ -107,12 +108,13 @@ class TopKConcentrationMetric(BaseMetric):
         return {
             "Metric Description": "Fraction of total global SHAP importance captured by the top-k most important features. Higher values indicate that a small subset of features accounts for most of the importance.",
             "Depends on": "Model and Test Data",
-            "Value": float(raw["value"]),
+            "Formula": "Top-K Concentration = sum(top-k global importances) / sum(all global importances)",
             "Top K": int(raw.get("top_k", 0)),
             "N Features": int(raw.get("n_features", 0)),
             "Sample Size": int(raw.get("sample_size", 0)),
             "Explainer": raw.get("explainer"),
-            "Global Feature Importances": raw.get("global_imps_array", np.array([])).tolist()
+            "Global Feature Importances": raw.get("global_imps_array", np.array([])).tolist(),
+            "Top-K Concentration": float(raw["value"]),
         }
 
 # class InteractionStrengthMetric(BaseMetric):
@@ -131,11 +133,11 @@ class TopKConcentrationMetric(BaseMetric):
 
 class AlgorithmClassMetric(BaseMetric):
     def __init__(self):
-        super().__init__("algorithm_class", "score_algorithm_class") #AÑADIR
+        super().__init__("algorithm_class", "score_algorithm_class")
 
     def compute(self, ctx: EvaluationContext) -> dict:
         model_type = ctx.factsheet.get("general", {}).get("model_type", {}).get("value")
-        # Si es None o null 
+        # If model_type is missing in the factsheet, fail explicitly.
         if model_type is None:
             raise ValueError("Model type not found in factsheet under general.model_type.value.")
         return core.algorithm_class(ctx.model, model_type=model_type)
@@ -159,7 +161,7 @@ class AlgorithmClassMetric(BaseMetric):
         return {
             "Metric Description": "Identifies the model class using the provided model type or inferred model class name.",
             "Depends on": "Model Metadata",
-            #"Value": f"{raw['value']:.6f}",
+            "Formula": "Algorithm Class Score is assigned via mapping by model_type",
             "Model Type": raw.get("model_type"),
         }
 
@@ -180,9 +182,10 @@ class CorrelatedFeaturesMetric(BaseMetric):
         return {
             "Metric Description": "Percentage of features highly correlated with at least one other feature in combined train and test data.",
             "Depends on": "Training and Test Data",
-            "Percentage of highly correlated features": f"{raw['value']:.6f}",
+            "Formula": "Correlated Features = (# features with any |corr| >= threshold) / (# features)",
             "Highly correlated features": raw.get("highly_correlated_features", []),
             "High correlation threshold": f"{raw['threshold']:.2f}",
+            "Percentage of highly correlated features": f"{raw['value']:.6f}",
         }
 
 
@@ -197,6 +200,7 @@ class ModelSizeMetric(BaseMetric):
         return {
             "Metric Description": "Number of input features in the training data.",
             "Depends on": "Training Data",
+            "Formula": "Model Size = Number of input features",
             "Number of Features": f"{raw['value']:.6f}",
         }
 
@@ -227,6 +231,7 @@ class FeatureRelevanceMetric(BaseMetric):
         return {
             "Metric Description": "Percentage of features considered irrelevant because their importance is below the configured threshold.",
             "Depends on": "Model or Global Feature Importances",
+            "Formula": "Feature Relevance = (# features with importance > threshold) / (# features)",
             "Threshold for irrelevance": f"{raw.get('threshold'):.2f}",
             "Number of irrelevant features": raw.get("n_outliers"),
             "Importances": raw.get("importances", []),
@@ -248,11 +253,12 @@ class AlphaImportanceScoreMetric(BaseMetric):
         return {
             "Metric Description": "Fraction of top features needed to reach the alpha share of total feature importance.",
             "Depends on": "Global Feature Importances",
-            "Value": f"{raw['value']:.4f}",
+            "Formula": "Alpha Score = (# top features needed to reach alpha cumulative importance) / (# features)",
             "Feature Importances": raw.get("feature_importances", []),
             "Alpha": f"{raw.get('alpha', 0.8):.2f}",
             "Total Features": int(raw.get("n_features", 0)),
             "Top Features for Alpha": int(raw.get("n_top_features", 0)),
+            "Alpha Score": f"{raw['value']:.4f}",
         }
 
 class SpreadRatioMetric(BaseMetric):
@@ -268,8 +274,9 @@ class SpreadRatioMetric(BaseMetric):
         return {
             "Metric Description": "Evenness of the feature importance distribution compared against a uniform distribution.",
             "Depends on": "Global Feature Importances",
-            "Value": f"{raw['value']:.4f}",
-            "Feature Importances": raw.get("feature_importances", [])
+            "Formula": "Spread Ratio = min(normalized importances) / max(normalized importances)",
+            "Feature Importances": raw.get("feature_importances", []),
+            "Spread Ratio": f"{raw['value']:.4f}",
         }
 
 class SpreadDivergenceMetric(BaseMetric):
@@ -285,8 +292,9 @@ class SpreadDivergenceMetric(BaseMetric):
         return {
             "Metric Description": "Jensen-Shannon divergence between the feature importance distribution and an even distribution.",
             "Depends on": "Global Feature Importances",
-            "Value": f"{raw['value']:.4f}",
-            "Feature Importances": raw.get("feature_importances", [])
+            "Formula": "Spread Divergence = JSD(importance_distribution, uniform_distribution)",
+            "Feature Importances": raw.get("feature_importances", []),
+            "Spread Divergence": f"{raw['value']:.4f}",
         }
 
 class PositionParityMetric(BaseMetric):
@@ -307,10 +315,11 @@ class PositionParityMetric(BaseMetric):
         return {
             "Metric Description": "Average cumulative alignment between conditional feature rankings and the global feature ranking.",
             "Depends on": "Global and Conditional Feature Rankings",
-            "Value": f"{raw['value']:.4f}",
+            "Formula": "Position Parity = mean over groups of cumulative positional overlap with global ranking",
             "Conditional Rankings": raw.get("conditional_rankings", {}),
             "Global Ranking": raw.get("global_ranking", []),
-            "Conditional Position Parity": raw.get("conditional_position_parity", {})
+            "Conditional Position Parity": raw.get("conditional_position_parity", {}),
+            "Position Parity": f"{raw['value']:.4f}",
         }
 
 class RankAlignmentMetric(BaseMetric):
@@ -326,11 +335,12 @@ class RankAlignmentMetric(BaseMetric):
         return {
             "Metric Description": "Jaccard similarity between top-alpha features from conditional and global importance distributions.",
             "Depends on": "Global and Conditional Feature Importances",
-            "Value": f"{raw['value']:.4f}",
+            "Formula": "Rank Alignment = mean_g Jaccard(Top(global), Top(group g))",
             "Conditional Importances": raw.get("conditional_importances", {}),
             "Global Importances": raw.get("global_importances", {}),
             "Top Global Features": raw.get("top_global_features", []),
-            "Top Conditional Features": raw.get("top_conditional_features", [])
+            "Top Conditional Features": raw.get("top_conditional_features", []),
+            "Rank Alignment": f"{raw['value']:.4f}",
         }
 
 class XAIEaseScoreMetric(BaseMetric):
@@ -348,9 +358,10 @@ class XAIEaseScoreMetric(BaseMetric):
         return {
             "Metric Description": "Ease of interpreting top features based on similarity of PDP curve tangents across sections.",
             "Depends on": "PDP Averages and Global Ranked Features",
-            "Value": f"{raw['value']:.4f}",
+            "Formula": "XAI Ease Score = mean pairwise similarity of PDP tangent profiles over top-ranked features",
             "PDP Averages": raw.get("pdp_averages", {}),
-            "Global Ranked Features": raw.get("global_ranked_features", [])
+            "Global Ranked Features": raw.get("global_ranked_features", []),
+            "XAI Ease Score": f"{raw['value']:.4f}",
         }
     
 
@@ -362,8 +373,7 @@ class FaithfulnessMetric(BaseMetric):
     def __init__(self): super().__init__("faithfulness", "score_faithfulness")
         
     def compute(self, ctx: EvaluationContext) -> dict:
-        # Extraemos la instancia, coeficientes (importancias locales) y la base
-        # Si no se proveen para una instancia, promediamos sobre las 10 primeras de X_test por defecto
+        # Use local feature weights and a baseline vector; aggregate over first test instances.
         X_np = np.asarray(ctx.X_test)
         base = ctx.extras.get("base_values", np.mean(X_np, axis=0))
         local_importances = ctx.extras.get("feature_weights") 
@@ -372,7 +382,7 @@ class FaithfulnessMetric(BaseMetric):
             raise ValueError("Missing 'feature_weights' in ctx.extras for FaithfulnessMetric.")
 
         scores = []
-        # Evaluamos las primeras N instancias si no se especifica una sola
+        # Evaluate first N instances for a stable aggregate value.
         limit = min(len(X_np), 10) 
         for i in range(limit):
             res = core.faithfulness_metric(ctx.model, X_np[i], local_importances[i], base)
@@ -384,7 +394,8 @@ class FaithfulnessMetric(BaseMetric):
         return {
             "Metric Description": "Correlation between feature importance weights and the prediction change when each feature is replaced by a baseline value.",
             "Depends on": "Model, Test Data, Local Feature Weights, and Base Values",
-            "Value": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
+            "Formula": "Faithfulness = corr(feature importance, prediction change after feature removal)",
+            "Faithfulness": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
         }
 
 class MonotonicityMetric(BaseMetric):
@@ -410,7 +421,8 @@ class MonotonicityMetric(BaseMetric):
         return {
             "Metric Description": "Proportion of instances where prediction confidence increases monotonically as features are added by importance.",
             "Depends on": "Model, Test Data, Local Feature Weights, and Base Values",
-            "Value (Ratio)": f"{raw['value']:.4f}" if not np.isnan(raw['value']) else "N/A"
+            "Formula": "Monotonicity = (# instances with monotonic confidence progression) / (# instances)",
+            "Monotonicity": f"{raw['value']:.4f}" if not np.isnan(raw['value']) else "N/A"
         }
 
 # =============================================================================
@@ -422,7 +434,7 @@ class InfidelityMetric(BaseMetric):
         super().__init__("infidelity", "score_infidelity")
         
     def compute(self, ctx: EvaluationContext) -> dict:
-        feature_weights = ctx.extras.get("feature_weights") # Se asumen los pesos sobre X_test
+        feature_weights = ctx.extras.get("feature_weights")
         
         if feature_weights is None:
             raise ValueError("Missing 'feature_weights' in ctx.extras for InfidelityMetric.")
@@ -437,6 +449,7 @@ class InfidelityMetric(BaseMetric):
         return {
             "Metric Description": "Measures whether perturbations on important features produce proportional changes in model output.",
             "Depends on": "Model, Test Data, and Local Feature Weights",
+            "Formula": "Infidelity = expected discrepancy between attribution-weighted perturbation and model output change",
             "Infidelity Score": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
         }
 
@@ -554,19 +567,16 @@ def _get_or_compute_xai_consistency(ctx: EvaluationContext) -> dict:
     if isinstance(cached, dict):
         return cached
 
-    # Aquí usamos su propia clave de error
+    # Use a dedicated cache error key for this metric family.
     if _CONSISTENCY_ERROR_KEY in ctx.extras:
         raise RuntimeError(str(ctx.extras[_CONSISTENCY_ERROR_KEY]))
 
-    # Determinamos si es clasificación o regresión basado en el modelo
+    # Detect mode from model capabilities.
     mode = 'classification' if hasattr(ctx.model, 'predict_proba') else 'regression'
     
-    # Parámetro 'k' por defecto a 5 si no se pasa por extras
-    # k = ctx.extras.get("xai_consistency_k", 3)
     params = ctx.extras.get("explainability_params", {})
 
     try:
-        # Usamos X_test y y_test para la consistencia
         metrics = core.xai_consistency(
             model=ctx.model, 
             global_importances=ctx.extras.get("global_importances"),
@@ -599,8 +609,9 @@ class XAIConsistencyScoreMetric(BaseMetric):
         return {
             "Metric Description": "Average pairwise Jaccard similarity of top-k features across LIME, SHAP, and PDP importance rankings.",
             "Depends on": "Model, Test Data, SHAP Global Importances, and PDP Importances",
-            "XAI Consistency Score": f"{raw['value']:.4f}" if not np.isnan(raw.get("value", np.nan)) else "N/A",
+            "Formula": "XAI Consistency = mean pairwise Jaccard similarity among top-k feature sets from multiple XAI methods",
             "Top-K Rankings Details": raw.get("top_k_details", "No details available"),
-            "Consistency Matrix": raw.get("matrix", "No matrix available")
+            "Consistency Matrix": raw.get("matrix", "No matrix available"),
+            "XAI Consistency Score": f"{raw['value']:.4f}" if not np.isnan(raw.get("value", np.nan)) else "N/A",
         }
     

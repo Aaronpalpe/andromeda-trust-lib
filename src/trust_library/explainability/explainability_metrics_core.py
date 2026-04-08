@@ -344,10 +344,10 @@ def model_size(X_train: pd.DataFrame | np.ndarray):
 
 #     # pct_dominant = (np.searchsorted(cumulative, 0.6 * total) + 1) / len(importance)
 
-#     # Número de características necesarias para llegar al 60% acumulado
+#     # Number of features needed to reach 60% cumulative importance
 #     n_dominant = np.searchsorted(cumulative, 0.6 * total) + 1
     
-#     # Porcentaje de características que NO alcanzan el 60%
+#     # Percentage of features that do NOT reach 60%
 #     pct_marginal = 1 - n_dominant / len(importance)
 
 #     return {
@@ -923,7 +923,7 @@ def infidelity(model, X_test: np.ndarray, feature_weights: np.ndarray) -> Dict[s
         pdt_ptb = model.predict(x_ptb)
         pdt_diff = pdt - pdt_ptb
 
-        # Evitamos divisiones por cero en el cálculo de beta
+        # Avoid division by zero in beta computation.
         denominator = np.mean(ks * exp_sum * exp_sum)
         beta = np.mean(ks * pdt_diff * exp_sum) / (denominator if denominator != 0 else 1e-10)
         exp_sum *= beta
@@ -1350,7 +1350,7 @@ def get_top_k(importance_dict, k, return_values=False):
     return set([feat for feat, val in sorted_feats[:k]])
 
 # ----------------------------
-# Métodos XAI
+# XAI methods
 # ----------------------------
 
 def compute_lime(model, X, mode='classification', num_samples=20, seed=42):

@@ -466,11 +466,11 @@ def fgm_attack_metrics(*, art_clf, X_test, y_test, eps=0.2, n_samples=50, seed=4
     -------
     FSG attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
     """
-    # Verificar si es un ScikitlearnClassifier (no soporta gradientes)
+    # Check whether this is a ScikitlearnClassifier (it does not support gradients).
     # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
     # art_clf = ScikitlearnClassifier(model=model)
 
-    # Verificar soporte de gradientes antes de intentar el ataque
+    # Validate gradient support before running the attack.
     if not hasattr(art_clf, 'loss_gradient') or not callable(getattr(art_clf, 'loss_gradient', None)):
         raise ValueError(
             "FastGradientMethod requires an estimator derived from BaseEstimator and LossGradientsMixin.\n"
@@ -518,7 +518,7 @@ def carlini_wagner_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
     Returns:
         CW attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
     """
-    # Verificar soporte de gradientes
+    # Validate gradient support.
     # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
     # art_clf = ScikitlearnClassifier(model=model)
 
@@ -571,7 +571,7 @@ def deepfool_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
     -------
     Deepfool attack metrics (clean accuracy, adversarial accuracy, accuracy drop percentage, metric name)
     """
-    # # Verificar soporte de gradientes
+    # # Validate gradient support.
     # ScikitlearnClassifier = _safe_import_art_sklearn_wrappers()
     # art_clf = ScikitlearnClassifier(model=model)
 
@@ -923,7 +923,7 @@ def loss_sensitivity_metrics(*, classifier, X_test):
 
 # def _check_gradient_support(model, attack_name: str) -> None:
 #     """
-#     Verifica si el modelo soporta gradientes para ataques white-box.
+#     Check whether the model supports gradients for white-box attacks.
 
 #     Ataques white-box (requieren gradientes):
 #         - FastGradientMethod, CarliniL2Method, DeepFool, CLEVER, Loss Sensitivity
@@ -931,7 +931,7 @@ def loss_sensitivity_metrics(*, classifier, X_test):
 #     Para sklearn: Solo ataques black-box (HopSkipJump) funcionan.
 #     Para PyTorch/TensorFlow: Usar PyTorchClassifier o TensorFlowV2Classifier de ART.
 #     """
-#     # Verificar si es un estimador de ART con soporte de gradientes
+#     # Check whether it is an ART estimator with gradient support.
 #     has_loss_gradient = hasattr(model, 'loss_gradient')
 #     has_class_gradient = hasattr(model, 'class_gradient')
 
@@ -1059,7 +1059,7 @@ def ece_metrics(
 #     train = np.asarray(train_values).reshape(-1)
 #     current = np.asarray(current_values).reshape(-1)
 
-#     # bins definidos sobre train (práctica estándar)
+#     # Bins defined on train split (standard practice)
 #     breakpoints = np.linspace(
 #         np.min(train),
 #         np.max(train),
