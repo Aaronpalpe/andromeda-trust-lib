@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any
+from typing import Any, Dict
 
 from trust_library.base_metric import BaseMetric
 from trust_library.utils import EvaluationContext
@@ -60,7 +60,8 @@ class SparsityMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Average fraction of active features (|SHAP| above threshold). Lower is more interpretable.",
+            "Metric Description": "Fraction of features whose SHAP importance is above the configured threshold.",
+            "Depends on": "Model and Test Data",
             "Value": float(raw["value"]),
             "N Features": int(raw.get("n_features", 0)),
             "Sample Size": int(raw.get("sample_size", 0)),
@@ -82,7 +83,8 @@ class FeatureEntropyMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Normalized entropy of mean(|SHAP|) across features. Lower indicates explanations concentrated on fewer features.",
+            "Metric Description": "Normalized entropy of the global SHAP importance distribution across features. Lower values indicate that importance is concentrated in fewer features, while higher values suggest a more even distribution of importance.",
+            "Depends on": "Model and Test Data",
             "Value": float(raw["value"]),
             "N Features": int(raw.get("n_features", 0)),
             "Sample Size": int(raw.get("sample_size", 0)),
@@ -103,7 +105,8 @@ class TopKConcentrationMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Fraction of total global SHAP importance accounted for by the top-k features. Higher indicates more concentrated explanations.",
+            "Metric Description": "Fraction of total global SHAP importance captured by the top-k most important features. Higher values indicate that a small subset of features accounts for most of the importance.",
+            "Depends on": "Model and Test Data",
             "Value": float(raw["value"]),
             "Top K": int(raw.get("top_k", 0)),
             "N Features": int(raw.get("n_features", 0)),
@@ -154,9 +157,9 @@ class AlgorithmClassMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Score assigned based on model class type.",
+            "Metric Description": "Identifies the model class using the provided model type or inferred model class name.",
+            "Depends on": "Model Metadata",
             #"Value": f"{raw['value']:.6f}",
-            "Depends on" : "Model",
             "Model Type": raw.get("model_type"),
         }
 
@@ -175,8 +178,8 @@ class CorrelatedFeaturesMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Penalty based on percentage of highly correlated features.",
-            "Depends on": "Training Data",
+            "Metric Description": "Percentage of features highly correlated with at least one other feature in combined train and test data.",
+            "Depends on": "Training and Test Data",
             "Percentage of highly correlated features": f"{raw['value']:.6f}",
             "Highly correlated features": raw.get("highly_correlated_features", []),
             "High correlation threshold": f"{raw['threshold']:.2f}",
@@ -192,7 +195,7 @@ class ModelSizeMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Score based on number of input features.",
+            "Metric Description": "Number of input features in the training data.",
             "Depends on": "Training Data",
             "Number of Features": f"{raw['value']:.6f}",
         }
@@ -222,10 +225,10 @@ class FeatureRelevanceMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Evaluates concentration and outliers in feature importance distribution.",
+            "Metric Description": "Percentage of features considered irrelevant because their importance is below the configured threshold.",
+            "Depends on": "Model or Global Feature Importances",
             "Threshold for irrelevance": f"{raw.get('threshold'):.2f}",
             "Number of irrelevant features": raw.get("n_outliers"),
-            "Depends on": "Model and Training Data",
             "Importances": raw.get("importances", []),
             "Percentage of features whose importance contributes is greater than threshold": f"{raw['value']:.6f}",
         }
@@ -243,7 +246,8 @@ class AlphaImportanceScoreMetric(BaseMetric):
     
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Smallest proportion of features that account for alpha (0.8) of the overall feature importance.",
+            "Metric Description": "Fraction of top features needed to reach the alpha share of total feature importance.",
+            "Depends on": "Global Feature Importances",
             "Value": f"{raw['value']:.4f}",
             "Feature Importances": raw.get("feature_importances", []),
             "Alpha": f"{raw.get('alpha', 0.8):.2f}",
@@ -262,7 +266,8 @@ class SpreadRatioMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Degree of evenness in the distribution of feature importance values (0 to 1).",
+            "Metric Description": "Evenness of the feature importance distribution compared against a uniform distribution.",
+            "Depends on": "Global Feature Importances",
             "Value": f"{raw['value']:.4f}",
             "Feature Importances": raw.get("feature_importances", [])
         }
@@ -278,7 +283,8 @@ class SpreadDivergenceMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Inverse of Jensen-Shannon distance for feature importances. Lower concentrates interpretability.",
+            "Metric Description": "Jensen-Shannon divergence between the feature importance distribution and an even distribution.",
+            "Depends on": "Global Feature Importances",
             "Value": f"{raw['value']:.4f}",
             "Feature Importances": raw.get("feature_importances", [])
         }
@@ -299,7 +305,8 @@ class PositionParityMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Measures how well top feature importances maintain ranking considering conditional classes/regions.",
+            "Metric Description": "Average cumulative alignment between conditional feature rankings and the global feature ranking.",
+            "Depends on": "Global and Conditional Feature Rankings",
             "Value": f"{raw['value']:.4f}",
             "Conditional Rankings": raw.get("conditional_rankings", {}),
             "Global Ranking": raw.get("global_ranking", []),
@@ -317,7 +324,8 @@ class RankAlignmentMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Jaccard similarity of top alpha features between global and conditional importances.",
+            "Metric Description": "Jaccard similarity between top-alpha features from conditional and global importance distributions.",
+            "Depends on": "Global and Conditional Feature Importances",
             "Value": f"{raw['value']:.4f}",
             "Conditional Importances": raw.get("conditional_importances", {}),
             "Global Importances": raw.get("global_importances", {}),
@@ -338,7 +346,8 @@ class XAIEaseScoreMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Measures ease of explaining predictions using partial dependence plot similarity.",
+            "Metric Description": "Ease of interpreting top features based on similarity of PDP curve tangents across sections.",
+            "Depends on": "PDP Averages and Global Ranked Features",
             "Value": f"{raw['value']:.4f}",
             "PDP Averages": raw.get("pdp_averages", {}),
             "Global Ranked Features": raw.get("global_ranked_features", [])
@@ -373,7 +382,8 @@ class FaithfulnessMetric(BaseMetric):
         
     def build_properties(self, raw: dict) -> dict: 
         return {
-            "Metric Description": "Correlation between feature importance and model performance drop (Faithfulness).", 
+            "Metric Description": "Correlation between feature importance weights and the prediction change when each feature is replaced by a baseline value.",
+            "Depends on": "Model, Test Data, Local Feature Weights, and Base Values",
             "Value": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
         }
 
@@ -398,7 +408,8 @@ class MonotonicityMetric(BaseMetric):
         
     def build_properties(self, raw: dict) -> dict: 
         return {
-            "Metric Description": "Proportion of instances showing monotonic performance increase when adding features by importance.", 
+            "Metric Description": "Proportion of instances where prediction confidence increases monotonically as features are added by importance.",
+            "Depends on": "Model, Test Data, Local Feature Weights, and Base Values",
             "Value (Ratio)": f"{raw['value']:.4f}" if not np.isnan(raw['value']) else "N/A"
         }
 
@@ -424,7 +435,8 @@ class InfidelityMetric(BaseMetric):
         
     def build_properties(self, raw: dict) -> dict: 
         return {
-            "Metric Description": "Measures if perturbations in important features proportionally affect the model's output. Lower is better.", 
+            "Metric Description": "Measures whether perturbations on important features produce proportional changes in model output.",
+            "Depends on": "Model, Test Data, and Local Feature Weights",
             "Infidelity Score": f"{raw['value']:.6f}" if not np.isnan(raw['value']) else "N/A"
         }
 
@@ -438,21 +450,33 @@ class NumberOfRulesMetric(BaseMetric):
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.number_of_rules(ctx.model) # return core.number_of_rules(getattr(ctx.model, "tree_", ctx.model))
     def build_properties(self, raw: dict) -> dict: 
-        return {"Metric Description": "Number of leaves/rules in the tree.", "Value": f"{raw['value']:.0f}"}
+        return {
+            "Metric Description": "Number of rules in a tree or rule-based model (mean across trees for ensembles).",
+            "Depends on": "Tree or Rule-Based Model",
+            "Value": f"{raw['value']:.0f}"
+        }
 
 class AverageRuleLengthMetric(BaseMetric):
     def __init__(self): super().__init__("average_rule_length", "score_average_rule_length")
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.average_rule_length(ctx.model)
     def build_properties(self, raw: dict) -> dict: 
-        return {"Metric Description": "Average depth/length of paths in the tree.", "Value": f"{raw['value']:.4f}"}
+        return {
+            "Metric Description": "Average rule length or path depth in a tree or rule-based model.",
+            "Depends on": "Tree or Rule-Based Model",
+            "Value": f"{raw['value']:.4f}"
+        }
 
 class TreeDepthMetric(BaseMetric):
     def __init__(self): super().__init__("tree_depth", "score_tree_depth")
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.tree_depth(ctx.model)
     def build_properties(self, raw: dict) -> dict: 
-        return {"Metric Description": "Maximum depth of the tree model.", "Value": f"{raw['value']:.0f}"}
+        return {
+            "Metric Description": "Maximum tree depth (mean depth for tree ensembles).",
+            "Depends on": "Tree-Based Model",
+            "Value": f"{raw['value']:.0f}"
+        }
        
 
 
@@ -465,35 +489,58 @@ class WeightedAverageDepthMetric(BaseMetric):
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.weighted_average_depth(ctx.model)
     def build_properties(self, raw: dict) -> dict:
-        return {"Metric Description": "Average depth of a tree weighted by samples.", "Value": f"{raw['value']:.6f}", "Depth*Weight List": raw.get("list", "Only with decision trees for legibility")}
+        return {
+            "Metric Description": "Sample-weighted average depth of tree leaf paths.",
+            "Depends on": "Tree-Based Model",
+            "Value": f"{raw['value']:.6f}",
+            "Depth*Weight List": raw.get("list", "Only with decision trees for legibility")
+        }
 
 class WeightedAverageExplainabilityScoreMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_average_explainability_score", "score_weighted_average_explainability")
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.weighted_average_explainability_score(ctx.model)
     def build_properties(self, raw: dict) -> dict:
-        return {"Metric Description": "Average explainability score of a tree.", "Value": f"{raw['value']:.6f}", "Explainability*Weight List": raw.get("list", "Only with decision trees for legibility")}
+        return {
+            "Metric Description": "Sample-weighted average explainability score based on the number of unique cuts per path.",
+            "Depends on": "Tree-Based Model",
+            "Value": f"{raw['value']:.6f}",
+            "Explainability*Weight List": raw.get("list", "Only with decision trees for legibility")
+        }
 
 class WeightedTreeGiniMetric(BaseMetric):
     def __init__(self): super().__init__("weighted_tree_gini", "score_weighted_tree_gini")
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.weighted_tree_gini(ctx.model)
     def build_properties(self, raw: dict) -> dict:
-        return {"Metric Description": "Weighted Gini index for the tree (WGNI).", "Value": f"{raw['value']:.6f}"}
+        return {
+            "Metric Description": "Weighted impurity score of leaf nodes across the tree.",
+            "Depends on": "Tree-Based Model",
+            "Value": f"{raw['value']:.6f}"
+        }
 
 class TreeDepthVarianceMetric(BaseMetric):
     def __init__(self): super().__init__("tree_depth_variance", "score_tree_depth_variance")
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.tree_depth_variance(ctx.model)
     def build_properties(self, raw: dict) -> dict:
-        return {"Metric Description": "Variance of the depths of the leaves.", "Value": f"{raw['value']:.6f}", "Leaf Depths": raw.get("leaf_depths", "Only with decision trees for legibility")}
+        return {
+            "Metric Description": "Variance of leaf depths in the tree structure.",
+            "Depends on": "Tree-Based Model",
+            "Value": f"{raw['value']:.6f}",
+            "Leaf Depths": raw.get("leaf_depths", "Only with decision trees for legibility")
+        }
 
 class TreeNumberOfFeaturesMetric(BaseMetric):
     def __init__(self): super().__init__("tree_number_of_features", "score_tree_number_of_features")
     def compute(self, ctx: EvaluationContext) -> dict:
         return core.tree_number_of_features(ctx.model)
     def build_properties(self, raw: dict) -> dict:
-        return {"Metric Description": "Number of features actively used.", "Value": f"{raw['value']:.0f}"}
+        return {
+            "Metric Description": "Number of distinct features actively used by the tree.",
+            "Depends on": "Tree-Based Model",
+            "Value": f"{raw['value']:.0f}"
+        }
 
 # =============================================================================
 # Custom Ensemble XAI Consistency Wrapper
@@ -550,7 +597,8 @@ class XAIConsistencyScoreMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Global XAI Consistency Score. Average Jaccard similarity of top-K features across LIME, SHAP, PDP, PFI, and Surrogate.",
+            "Metric Description": "Average pairwise Jaccard similarity of top-k features across LIME, SHAP, and PDP importance rankings.",
+            "Depends on": "Model, Test Data, SHAP Global Importances, and PDP Importances",
             "XAI Consistency Score": f"{raw['value']:.4f}" if not np.isnan(raw.get("value", np.nan)) else "N/A",
             "Top-K Rankings Details": raw.get("top_k_details", "No details available"),
             "Consistency Matrix": raw.get("matrix", "No matrix available")

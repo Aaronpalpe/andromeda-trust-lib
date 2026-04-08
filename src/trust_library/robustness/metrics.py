@@ -732,7 +732,8 @@ class AdversarialAccuracyMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Worst-case adversarial accuracy (%) across all ensemble attacks.",
+            "Metric Description": "Worst-case adversarial accuracy across the available attack suite.",
+            "Depends on": "Model, Test Data, and Attack Results",
             "Value (%)": float(raw.get("value", 0.0)),
             "Average Adv Accuracy (%)": float(raw.get("average_adv_accuracy", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
@@ -750,7 +751,8 @@ class AccuracyDropMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Worst-case accuracy drop (%) across all ensemble attacks.",
+            "Metric Description": "Worst-case accuracy drop across the available attack suite.",
+            "Depends on": "Model, Test Data, and Attack Results",
             "Value (%)": float(raw.get("value", 0.0)),
             "Average Drop (%)": float(raw.get("average_accuracy_drop", 0.0)),
             "Results from Individual Attacks": raw.get("attacks", {}),
@@ -769,7 +771,8 @@ class RobustnessRatioMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Worst-case robustness ratio (Adversarial Accuracy / Clean Accuracy) across the ensemble.",
+            "Metric Description": "Worst-case robustness ratio (Adversarial Accuracy / Clean Accuracy) across the available attack suite.",
+            "Depends on": "Model, Test Data, and Attack Results",
             "Value": float(raw.get("value", 0.0)),
             "Average Robustness Ratio": float(raw.get("average_robustness_ratio", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
@@ -788,7 +791,8 @@ class AdversarialAccuracyCorrectOnlyMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Worst-case adversarial accuracy (evaluated only on originally correctly classified samples) (%) across the ensemble.",
+            "Metric Description": "Worst-case adversarial accuracy restricted to originally correctly classified samples.",
+            "Depends on": "Model, Test Data, and Attack Results",
             "Value (%)": float(raw.get("value", 0.0)),
             "Average Adv Accuracy (Correct Only) (%)": float(raw.get("average_adv_accuracy_correct_only", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
@@ -807,7 +811,8 @@ class ASRMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Worst-case Attack Success Rate (ASR) (%) across all ensemble attacks.",
+            "Metric Description": "Worst-case attack success rate across the available attack suite.",
+            "Depends on": "Model, Test Data, and Attack Results",
             "Value (%)": float(raw.get("value", 0.0)),
             "Average ASR (%)": float(raw.get("average_asr", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
@@ -826,7 +831,8 @@ class EmpiricalRobustnessL2Metric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Worst-case empirical robustness (L2 norm distance) for successful attacks across the ensemble.",
+            "Metric Description": "Worst-case empirical robustness measured with L2 distance for successful attacks.",
+            "Depends on": "Model, Test Data, and Attack Results",
             "Value": float(raw.get("value", 0.0)),
             "Average ER L2": float(raw.get("average_er_l2_success", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
@@ -845,7 +851,8 @@ class EmpiricalRobustnessLinfMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Worst-case empirical robustness (Linf norm distance) for successful attacks across the ensemble.",
+            "Metric Description": "Worst-case empirical robustness measured with Linf distance for successful attacks.",
+            "Depends on": "Model, Test Data, and Attack Results",
             "Value": float(raw.get("value", 0.0)),
             "Average ER Linf": float(raw.get("average_er_linf_success", 0.0)),
             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
@@ -868,10 +875,8 @@ class CliqueMethodMetric(BaseMetric):
     def build_properties(self, raw: dict) -> dict:
         params = raw.get("params", {}) if isinstance(raw.get("params"), dict) else {}
         return {
-            "Metric Description": (
-                "Clique Method robustness verification error for tree-based models. "
-                "Lower indicates stronger verified robustness."
-            ),
+            "Metric Description": "Clique Method verification error for tree-based models. Lower indicates stronger verified robustness.",
+            "Depends on": "Tree-Based Model and Test Data",
             "Value": float(raw.get("value", 0.0)),
             "Robustness Bound": float(raw.get("robustness_bound", 0.0)),
             "Verification Error": float(raw.get("verification_error", 0.0)),
@@ -898,10 +903,8 @@ class CleverScoreMetric(BaseMetric):
     def build_properties(self, raw: dict) -> dict:
         params = raw.get("params", {}) if isinstance(raw.get("params"), dict) else {}
         return {
-            "Metric Description": (
-                "CLEVER score (mean). Higher values indicate greater robustness. "
-                "Requires an ART classifier with gradients (e.g., PyTorchClassifier)."
-            ),
+            "Metric Description": "Mean CLEVER score for a gradient-capable classifier. Higher values indicate greater robustness.",
+            "Depends on": "Gradient-Capable Model and Test Data",
             "CLEVER Mean": float(raw.get("value", 0.0)),
             #"CLEVER Mean": float(raw.get("clever_score_mean", 0.0)),
             "CLEVER Std": float(raw.get("clever_score_std", 0.0)),
@@ -923,11 +926,8 @@ class ConfidenceScoreMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": (
-                #"Average confidence: mean of diagonal elements in normalized confusion matrix. "
-                "Compute a confidence score as the average Jaccard index (TP / (TP + FP + FN)) over multiple probability thresholds, where predictions are binarized at each threshold."
-                "Higher indicates more confident predictions. Range: [0, 100]."
-            ),
+            "Metric Description": "Confidence score computed from thresholded prediction consistency. Average Jaccard index (TP / (TP + FP + FN)) over multiple probability thresholds, where predictions are binarized at each threshold. Higher indicates more confident predictions.",
+            "Depends on": "Model and Test Data",
             "Value (%)": float(raw.get("value", 0.0)),
             "Metric": raw.get("metric"),
             "Thresholds": raw.get("thresholds"),
@@ -946,11 +946,8 @@ class LossSensitivityMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": (
-                "Local loss sensitivity estimated via gradients. "
-                "Measures how sensitive model loss is to input perturbations. "
-                "Requires gradient-capable classifier."
-            ),
+            "Metric Description": "Local loss sensitivity estimated from gradients. Measures how sensitive model loss is to input perturbations.",
+            "Depends on": "Gradient-Capable Model and Test Data",
             "Value": float(raw.get("value", 0.0)),
             "Metric": raw.get("metric"),
         }
@@ -971,10 +968,8 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": (
-                "Expected Calibration Error (ECE): weighted average difference "
-                "between predicted confidence and empirical accuracy across bins."
-            ),
+            "Metric Description": "Expected Calibration Error computed as the weighted gap between confidence and accuracy across bins.",
+            "Depends on": "Model and Test Data",
             "Value": float(raw.get("value", 0.0)),
             "Number of Bins": raw.get("n_bins"),
             "Bins stats": raw.get("bins"),

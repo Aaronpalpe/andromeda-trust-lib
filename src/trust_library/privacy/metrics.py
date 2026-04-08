@@ -31,7 +31,7 @@ class EpsilonMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Theoretical epsilon from DP analysis, given in factsheet. Lower epsilon implies stronger privacy guarantees (less theoretical leakage).",
+            "Metric Description": "Theoretical epsilon value from the factsheet's differential privacy analysis. Lower epsilon implies stronger privacy guarantees (less theoretical leakage).",
             "Depends on": "Training Mechanism",
             "Epsilon": f"{raw['value']:.6f}",
         }
@@ -57,7 +57,8 @@ class EpsilonStarMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Empirical epsilon* from loss distribution. Lower is better (less membership leakage).",
+            "Metric Description": "Empirical epsilon* estimated from the loss distribution. Lower is better (less membership leakage).",
+            "Depends on": "Model and Train/Test Data",
             "Delta Used": f"{raw['delta']:.2e}",
             "Epsilon*": f"{raw['value']:.6f}",
         }
@@ -84,7 +85,8 @@ class SHAPRMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Approximate SHAPr membership risk.",
+            "Metric Description": "Approximate membership inference risk estimated with SHAPr. Lower values indicate lower risk.",
+            "Depends on": "Model and Train/Test Data",
             "Average Marginal Contribution": f"{raw['value']:.6f}",
             "Sample Size": raw["sample_size"],
             "k Neighbors": raw["k_neighbors"],
@@ -124,7 +126,8 @@ class AttributeInferenceMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Attribute inference risk.",
+            "Metric Description": "Attribute inference risk for the declared sensitive attribute.",
+            "Depends on": "Model, Train/Test Data, and Sensitive Attribute",
             "Sensitive Attribute": raw["sensitive"],
             "Risk Score": (
                 f"{raw['value']:.6f}" if raw["value"] is not None else "N/A"
@@ -151,7 +154,8 @@ class PrivacyRiskMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Membership inference privacy risk.",
+            "Metric Description": "Membership inference privacy risk derived from predicted probabilities.",
+            "Depends on": "Model and Predicted Probabilities",
             "Mean Privacy Risk": f"{raw['value']:.6f}",
         }
 
@@ -176,7 +180,8 @@ class AccuracyRatioMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "Accuracy ratio for data minimization (original/noisy). Values close to 1 indicate minimal performance loss. Higher values indicate more loss in accuracy",
+            "Metric Description": "Accuracy ratio between the original model and the data-minimized variant (original/noisy). Values close to 1 indicate minimal performance loss. Higher values indicate more loss in accuracy.",
+            "Depends on": "Model and Test Data",
             "selector_type": f"{raw['args']['selector_type']}",
             "modifier_type": f"{raw['args']['modifier_type']}",
             "n_features" : raw["args"]["n_feats"],
@@ -211,7 +216,8 @@ class KAnonymityMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "Metric Description": "k-Anonymity.",
+            "Metric Description": "Minimum k value achieved for the quasi-identifier groups. Higher values indicate better privacy protection.",
+            "Depends on": "Quasi Identifiers and Data",
             "Quasi Identifiers": raw["quasi_identifiers"],
             "Minimum k": raw["value"],
         }
@@ -252,7 +258,8 @@ class LDiversityMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "Metric Description": "l-Diversity.",
+            "Metric Description": "Minimum l value achieved for the quasi-identifier groups and sensitive attributes.",
+            "Depends on": "Quasi Identifiers, Sensitive Attributes, and Data",
             "Quasi Identifiers": raw["quasi_identifiers"],
             "Sensitive Attributes": raw["sensitive_attributes"],
             "Minimum l": raw["value"],
@@ -294,7 +301,8 @@ class TClosenessMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, float]) -> Dict[str, Any]:
         return {
-            "Metric Description": "t-Closeness.",
+            "Metric Description": "Maximum t value measuring distribution closeness within quasi-identifier groups.",
+            "Depends on": "Quasi Identifiers, Sensitive Attributes, and Data",
             "Quasi Identifiers": raw["quasi_identifiers"],
             "Sensitive Attributes": raw["sensitive_attributes"],
             "Maximum t": raw["value"],

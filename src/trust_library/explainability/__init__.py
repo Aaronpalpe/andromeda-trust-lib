@@ -50,7 +50,7 @@ __all__ = [
     # "performance_difference",
     "number_of_rules",
     "average_rule_length",
-    "rule_stats",
+    #"rule_stats",
     "tree_depth",
     "faithfulness_metric",
     "monotonicity_metric",

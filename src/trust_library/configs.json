@@ -39,31 +39,28 @@
             "sparsity": 0.04,
             "feature_entropy": 0.04,
             "topk_concentration": 0.04,
-            "algorithm_class": 0.1,
-            "correlated_features": 0.04,
-            "model_size": 0.06,
-            "feature_relevance": 0.04,
-            "number_of_rules": 0.02,
-            "average_rule_length": 0.02,
-            "rule_stats": 0.02,
-            "tree_depth": 0.02,
-            "interaction_strength": 0.02,
-            "faithfulness": 0.06,
-            "monotonicity": 0.06,
-            "infidelity": 0.02,
+            "algorithm_class": 0.12,
+            "correlated_features": 0.06,
+            "model_size": 0.02,
+            "feature_relevance": 0.06,
             "alpha_score": 0.04,
             "xai_ease_score": 0.04,
             "position_parity": 0.04,
             "rank_alignment": 0.04,
             "spread_ratio": 0.04,
             "spread_divergence": 0.04,
+            "faithfulness": 0.06,
+            "monotonicity": 0.06,
+            "infidelity": 0.04,
+            "number_of_rules": 0.02,
+            "average_rule_length": 0.02,
+            "tree_depth": 0.02,
             "weighted_average_depth": 0.02,
             "weighted_average_explainability_score": 0.02,
             "weighted_tree_gini": 0.02,
             "tree_depth_variance": 0.02,
-            "tree_number_of_rules": 0.02,
             "tree_number_of_features": 0.02,
-            "xai_consistency_score": 0.04
+            "xai_consistency_score": 0.06
         },
         "privacy": {
             "epsilon_dp": 0.14,
@@ -278,22 +275,37 @@
             "score_sparsity": {
                 "thresholds": {
                     "value": [0.8, 0.6, 0.4, 0.2],
-                    "description": "Fraction of active features (|SHAP| above threshold). Lower is better.",
+                    "description": "Fraction of active features (|SHAP| above threshold). Lower is better (implies higher sparsity).",
                     "label": "Sparsity Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": false
                 }
             },
             "score_feature_entropy": {
                 "thresholds": {
                     "value": [0.8, 0.6, 0.4, 0.2],
-                    "description": "Normalized entropy of feature importance. Lower is better.",
+                    "description": "Normalized Shannon entropy of feature importance. Lower is better (indicates concentrated importance).",
                     "label": "Feature Entropy Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": false
                 }
             },
             "score_topk_concentration": {
                 "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Share of total importance captured by top-k features. Higher is better.",
+                    "value": [0.4, 0.6, 0.8, 0.95],
+                    "description": "Share of total importance captured by the top-k features. Higher is better.",
                     "label": "Top-K Concentration Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
                 }
             },
             "score_algorithm_class": {
@@ -318,170 +330,266 @@
             },
             "score_correlated_features": {
                 "thresholds": {
-                    "value": [0.4, 0.25, 0.15, 0.05],
-                    "description": "Fraction of highly correlated features. Lower is better.",
+                    "value": [0.4, 0.2, 0.1, 0.05],
+                    "description": "Fraction of features that are highly correlated. Lower is better (less multicollinearity).",
                     "label": "Correlated Features Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 0.5,
+                    "higher_is_better": false
                 }
             },
             "score_model_size": {
                 "thresholds": {
-                    "value": [100, 50, 25, 15],
-                    "description": "Number of input features. Smaller models are usually easier to interpret.",
+                    "value": [100, 50, 20, 10],
+                    "description": "Total number of input features. Smaller feature spaces are easier to interpret.",
                     "label": "Model Size Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 100.0,
+                    "higher_is_better": false
                 }
             },
             "score_feature_relevance": {
                 "thresholds": {
-                    "value": [0.2, 0.15, 0.1, 0.05],
-                    "description": "Fraction of features needed to explain 60% of total importance. Higher indicates less concentration.",
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Fraction of features considered irrelevant (importance <= threshold). Higher is better (model relies on fewer features).",
                     "label": "Feature Relevance Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_alpha_score": {
+                "thresholds": {
+                    "value": [0.8, 0.5, 0.3, 0.1],
+                    "description": "Minimum fraction of features needed to reach alpha cumulative importance. Lower is better.",
+                    "label": "Alpha Importance Score Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": false
+                }
+            },
+            "score_xai_ease_score": {
+                "thresholds": {
+                    "value": [0.25, 0.5, 0.75, 0.9],
+                    "description": "Ease-of-explanation score from PDP tangent alignment. Higher is better (simpler PDP shapes).",
+                    "label": "XAI Ease Score Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_position_parity": {
+                "thresholds": {
+                    "value": [0.4, 0.6, 0.8, 0.9],
+                    "description": "Cumulative alignment of conditional feature rankings vs global ranking. Higher is better.",
+                    "label": "Position Parity Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_rank_alignment": {
+                "thresholds": {
+                    "value": [0.4, 0.6, 0.8, 0.9],
+                    "description": "Jaccard similarity of top-alpha features between global and conditional importance. Higher is better.",
+                    "label": "Rank Alignment Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_spread_ratio": {
+                "thresholds": {
+                    "value": [0.8, 0.6, 0.4, 0.2],
+                    "description": "Evenness of feature-importance distribution (Entropy Ratio). Lower is better (implies higher concentration).",
+                    "label": "Spread Ratio Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": false
+                }
+            },
+            "score_spread_divergence": {
+                "thresholds": {
+                    "value": [0.2, 0.4, 0.6, 0.8],
+                    "description": "Jensen-Shannon divergence from a uniform distribution. Higher is better (farther from uniform implies concentration).",
+                    "label": "Spread Divergence Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_faithfulness": {
+                "thresholds": {
+                    "value": [0.2, 0.5, 0.7, 0.9],
+                    "description": "Correlation between feature attribution and effect on model predictions. Higher is better.",
+                    "label": "Faithfulness Thresholds"
+                },
+                "normalized": {
+                    "min_val": -1.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_monotonicity": {
+                "thresholds": {
+                    "value": [0.4, 0.6, 0.8, 1.0],
+                    "description": "Proportion of monotonic explanation behavior across feature additions. Higher is better.",
+                    "label": "Monotonicity Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
+                }
+            },
+            "score_infidelity": {
+                "thresholds": {
+                    "value": [1.0, 0.5, 0.1, 0.01],
+                    "description": "Expected difference between model perturbations and explanation dot products. Lower is better.",
+                    "label": "Infidelity Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": false
                 }
             },
             "score_number_of_rules": {
                 "thresholds": {
                     "value": [100, 50, 20, 10],
-                    "description": "Number of extracted decision rules. Lower is better.",
+                    "description": "Number of extracted decision rules. Lower is better (easier cognitive load).",
                     "label": "Number of Rules Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 100.0,
+                    "higher_is_better": false
                 }
             },
             "score_average_rule_length": {
                 "thresholds": {
-                    "value": [12, 8, 5, 3],
-                    "description": "Average rule length/depth. Lower is better.",
+                    "value": [10, 7, 5, 3],
+                    "description": "Average length of conditions in a rule. Lower is better.",
                     "label": "Average Rule Length Thresholds"
-                }
-            },
-            "score_rule_stats": {
-                "thresholds": {
-                    "value": [12, 8, 5, 3],
-                    "description": "Aggregate rule complexity (average length). Lower is better.",
-                    "label": "Rule Statistics Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 10.0,
+                    "higher_is_better": false
                 }
             },
             "score_tree_depth": {
                 "thresholds": {
-                    "value": [15, 10, 6, 4],
+                    "value": [15, 10, 6, 3],
                     "description": "Maximum tree depth. Lower is better.",
                     "label": "Tree Depth Thresholds"
-                }
-            },
-            "score_interaction_strength": {
-                "thresholds": {
-                    "value": [0.8, 0.6, 0.4, 0.2],
-                    "description": "Fraction of explanation mass due to interactions. Lower often implies simpler explanations.",
-                    "label": "Interaction Strength Thresholds"
-                }
-            },
-            "score_faithfulness": {
-                "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Correlation between attribution relevance and model behavior. Higher is better.",
-                    "label": "Faithfulness Thresholds"
-                }
-            },
-            "score_monotonicity": {
-                "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Proportion of monotonic explanation behavior across feature additions. Higher is better.",
-                    "label": "Monotonicity Thresholds"
-                }
-            },
-            "score_infidelity": {
-                "thresholds": {
-                    "value": [0.4, 0.25, 0.15, 0.05],
-                    "description": "Infidelity under perturbations. Lower is better.",
-                    "label": "Infidelity Thresholds"
-                }
-            },
-            "score_alpha_score": {
-                "thresholds": {
-                    "value": [0.8, 0.6, 0.4, 0.2],
-                    "description": "Minimum feature fraction needed to explain alpha mass. Lower is better.",
-                    "label": "Alpha Importance Score Thresholds"
-                }
-            },
-            "score_xai_ease_score": {
-                "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Ease-of-explanation score from PDP alignment. Higher is better.",
-                    "label": "XAI Ease Score Thresholds"
-                }
-            },
-            "score_position_parity": {
-                "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Consistency of top-feature positions across conditions. Higher is better.",
-                    "label": "Position Parity Thresholds"
-                }
-            },
-            "score_rank_alignment": {
-                "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Alignment between global and conditional rankings. Higher is better.",
-                    "label": "Rank Alignment Thresholds"
-                }
-            },
-            "score_spread_ratio": {
-                "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Evenness of feature-importance distribution. Higher is better.",
-                    "label": "Spread Ratio Thresholds"
-                }
-            },
-            "score_spread_divergence": {
-                "thresholds": {
-                    "value": [0.8, 0.6, 0.4, 0.2],
-                    "description": "Divergence-based spread metric. Lower is better.",
-                    "label": "Spread Divergence Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 15.0,
+                    "higher_is_better": false
                 }
             },
             "score_weighted_average_depth": {
                 "thresholds": {
                     "value": [12, 8, 5, 3],
-                    "description": "Sample-weighted average depth. Lower is better.",
+                    "description": "Sample-weighted average depth of leaves. Lower is better.",
                     "label": "Weighted Average Depth Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 12.0,
+                    "higher_is_better": false
                 }
             },
             "score_weighted_average_explainability": {
                 "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Weighted explainability quality score. Higher is better.",
+                    "value": [12, 8, 5, 3],
+                    "description": "Weighted average number of unique features evaluated per prediction path. Lower is better.",
                     "label": "Weighted Average Explainability Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 12.0,
+                    "higher_is_better": false
                 }
             },
             "score_weighted_tree_gini": {
                 "thresholds": {
-                    "value": [0.8, 0.6, 0.4, 0.2],
-                    "description": "Weighted tree impurity metric. Lower is better.",
+                    "value": [0.4, 0.2, 0.1, 0.05],
+                    "description": "Sample-weighted Gini impurity of leaves. Lower is better (cleaner decisions).",
                     "label": "Weighted Tree Gini Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 0.5,
+                    "higher_is_better": false
                 }
             },
             "score_tree_depth_variance": {
                 "thresholds": {
-                    "value": [8, 4, 2, 1],
-                    "description": "Variance of leaf depths. Lower is better.",
+                    "value": [10.0, 5.0, 2.0, 0.5],
+                    "description": "Variance of leaf depths. Lower is better (indicates a more balanced tree).",
                     "label": "Tree Depth Variance Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 10.0,
+                    "higher_is_better": false
                 }
             },
             "score_tree_number_of_rules": {
                 "thresholds": {
                     "value": [100, 50, 20, 10],
-                    "description": "Number of surrogate rules. Lower is better.",
+                    "description": "Total leaves/rules in the surrogate tree model. Lower is better.",
                     "label": "Tree Number of Rules Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 100.0,
+                    "higher_is_better": false
                 }
             },
             "score_tree_number_of_features": {
                 "thresholds": {
-                    "value": [100, 50, 20, 10],
-                    "description": "Number of actively used features. Lower is better.",
+                    "value": [50, 25, 10, 5],
+                    "description": "Number of unique features actively used for splits in the tree. Lower is better.",
                     "label": "Tree Number of Features Thresholds"
+                },
+                "normalized": {
+                    "min_val": 1.0,
+                    "max_val": 50.0,
+                    "higher_is_better": false
                 }
             },
             "score_xai_consistency": {
                 "thresholds": {
-                    "value": [0.2, 0.4, 0.6, 0.8],
-                    "description": "Agreement across XAI methods (e.g., Jaccard-based). Higher is better.",
+                    "value": [0.3, 0.5, 0.7, 0.9],
+                    "description": "Jaccard similarity of top-K features across different XAI methods. Higher is better.",
                     "label": "XAI Consistency Thresholds"
+                },
+                "normalized": {
+                    "min_val": 0.0,
+                    "max_val": 1.0,
+                    "higher_is_better": true
                 }
             },
             "params": {
@@ -502,7 +610,7 @@
                     "label": "Epsilon-DP Thresholds"
                 },
                 "normalized": {
-                    "min_val" : 1,
+                    "min_val" : 0.1,
                     "max_val" : 10,
                     "higher_is_better": false
                 }

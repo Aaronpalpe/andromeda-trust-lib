@@ -26,7 +26,8 @@ class EnergyConsumptionMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Total energy consumed during training (CPU + GPU + RAM).",
+            "Metric Description": "Total training energy consumed (CPU + GPU + RAM).",
+            "Depends on": "Factsheet Sustainability Fields",
             "Energy Consumed (kWh)": f"{raw['value']:.6f}",
             "CPU Energy (kWh)": f"{raw['cpu_energy']:.6f}",
             "GPU Energy (kWh)": f"{raw['gpu_energy']:.6f}",
@@ -55,7 +56,8 @@ class EmissionsMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Total CO2 emissions during training  (Energy consumed * Carbon Intensity).",
+            "Metric Description": "Total CO2 emissions during training estimated (Energy consumed * Carbon Intensity).",
+            "Depends on": "Factsheet Sustainability Fields",
             "Energy Consumed (kWh)": f"{raw['energy_consumed']:.6f}",
             "Carbon Intensity (kgCO2/kWh)": f"{raw['value'] / raw['energy_consumed']:.6f}" if raw['energy_consumed'] > 0 else "N/A",
             "Emissions (kgCO2)": f"{raw['value']:.6f}",
@@ -84,7 +86,8 @@ class CarbonIntensityMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Carbon intensity (kgCO2 per kWh). Based on the type of energy used and location.",
+            "Metric Description": "Carbon intensity in kgCO2 per kWh based on energy use and location.",
+            "Depends on": "Factsheet Sustainability Fields",
             "Country": raw["country"],
             "Carbon Intensity": f"{raw['value']:.6f}",
         }

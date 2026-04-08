@@ -35,6 +35,7 @@ class TrainTestSplitMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, int]) -> Dict[str, Any]:
         return {
+            "Metric Description": "Ratio between the training and test set sizes.",
             "Depends on": "Training and Testing Data",
             "Train/Test split": f"{raw['train_ratio']}/{raw['test_ratio']}",
         }
@@ -69,6 +70,7 @@ class MissingDataMetric(BaseMetric):
     
     def build_properties(self, raw: Dict[str, int]) -> Dict[str, Any]:
         return {
+            "Metric Description": "Number of missing values across the training and test data.",
             "Depends on": "Training and Test Data",
             "Train missing values": raw.get("missing_train", 0),
             "Test missing values": raw.get("missing_test", 0),
@@ -114,6 +116,7 @@ class NormalizationMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {
+            "Metric Description": "Normalization strategy inferred from training and test data statistics.",
             "Depends on": "Training and Testing Data",
             "Training mean": f"{raw['train_mean']:.4f}",
             "Training std": f"{raw['train_std']:.4f}",
@@ -154,6 +157,7 @@ class RegularizationMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {
+            "Metric Description": "Regularization technique declared in the factsheet.",
             "Depends on": "Factsheet",
             "Regularization technique": (
                 raw["regularization"]
@@ -180,6 +184,7 @@ class FactsheetCompletenessMetric(BaseMetric):
 
     def build_properties(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {
+            "Metric Description": "Completeness of the factsheet based on present versus expected fields.",
             "Depends on": "Factsheet",
             "Fields present": f"{raw['present']}/{raw['total']}",
             "Completeness": f"{raw['ratio']:.2%}",
