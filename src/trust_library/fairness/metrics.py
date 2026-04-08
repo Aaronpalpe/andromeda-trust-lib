@@ -18,7 +18,7 @@ class UnderfittingMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Compares the model's test accuracy against a baseline.",
+            "Metric Description": "Test accuracy as a proxy for underfitting.",
             "Depends on": "Model, Test Data",
             "Test Accuracy": f"{raw['value']:.2%}",
         }
@@ -48,7 +48,7 @@ class OverfittingMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Measures the gap between training and test accuracy to identify potential overfitting.",
+            "Metric Description": "Train-test accuracy gap as a proxy for overfitting.",
             "Depends on": "Model, Training Data, Test Data",
             "Training Accuracy": f"{raw['train_accuracy']:.2%}",
             "Test Accuracy": f"{raw['test_accuracy']:.2%}",
@@ -77,7 +77,7 @@ class StatisticalParityMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Difference in favorable prediction rates between protected and unprotected groups.",
-            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
             "Formula": "Statistical Parity Difference = Favored Ratio Protected - Favored Ratio Unprotected",
             "Number Protected": raw["n_protected"],
             "Number Protected Favored": raw["n_protected_favored"],
@@ -108,7 +108,7 @@ class ClassBalanceMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Measures how well the training data is balanced or unbalanced",
+            "Metric Description": "Chi-square test for class balance in label distribution.",
             "Depends on": "Training Data",
             "P-Value": f"{raw['p_value']:.4f}",
             "Balanced": f"{raw['balanced']}",
@@ -218,7 +218,7 @@ class AccuracyParityMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Measures whether prediction accuracy is equal across groups.",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
             "Formula": "Accuracy Parity = Accuracy Protected - Accuracy Unprotected",
             "Accuracy Unprotected Group": f"{raw['accuracy_unprotected']:.2%}",
             "Accuracy Protected Group": f"{raw['accuracy_protected']:.2%}",
@@ -243,7 +243,7 @@ class PredictiveParityMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Checks equality of PPV and NPV between protected and unprotected groups.",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
             "Formula": "0.5*(PPV Protected - PPV Unprotected) + 0.5*(NPV Protected - NPV Unprotected)",
             "PPV Unprotected": f"{raw['ppv_unprotected']:.2%}",
             "PPV Protected": f"{raw['ppv_protected']:.2%}",
@@ -270,7 +270,7 @@ class TreatmentEqualityMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Measures equality of the false negative / false positive ratio across groups.",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
             "Formula": "(FN/FP)_Protected - (FN/FP)_Unprotected",
             "FN Unprotected": raw["fn_unprotected"],
             "FP Unprotected": raw["fp_unprotected"],
@@ -305,7 +305,7 @@ class CalibrationGapMetric(BaseMetric):
                 "Checks whether individuals with the same predicted score have the same "
                 "empirical outcome probability in both groups."
             ),
-            "Depends on": "Model, Test Data, Probabilistic Scores",
+            "Depends on": "Model, Test Data, Probabilistic Scores, Factsheet (Definition of Protected Group)",
             "Mean Calibration Gap": f"{raw['value']:.4f}",
             "Bins Used": f"{raw['n_bins']}",
             "Calibration by Bin": raw.get("bins", {}),
@@ -447,8 +447,8 @@ class ClassImbalanceMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Measures imbalance in size between protected and unprotected groups. 0 indicates perfect balance",
-            "Depends on": "Dataset",
+            "Metric Description": "Measures imbalance in size between protected and unprotected groups. 0 indicates perfect balance.",
+            "Depends on": "Dataset, Factsheet (Definition of Protected Group)",
             "CI (manual)": f"{raw['value']:.4f}",
             "N Protected": f"{raw['n_protected']}",
             "N Unprotected": f"{raw['n_unprotected']}",
@@ -470,7 +470,7 @@ class KLDivergenceMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Divergence between label distributions across groups.",
-            "Depends on": "Dataset",
+            "Depends on": "Dataset, Factsheet (Definition of Protected Group)",
             "KL Divergence": f"{raw['value']:.6f}",
         }
 
@@ -494,8 +494,8 @@ class ConditionalDemographicDisparityMetric(BaseMetric):
 
     def build_properties(self, raw):
         props = {
-            "Metric Description": "Disparidad demográfica condicionada (Wachter et al., 2021).",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Metric Description": "Conditional Demographic Disparity (Wachter et al., 2021).",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
             "Conditional Demographic Disparity": f"{raw['value']:.4f}",
         }
         
@@ -532,8 +532,8 @@ class SmoothedEDFMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Smoothed Equality of Distributions Fairness.",
-            "Depends on": "Model, Probabilistic Scores",
+            "Metric Description": "Smoothed Empirical Differential Fairness (EDF).",
+            "Depends on": "Model, Test Data, Probabilistic Scores, Factsheet (Definition of Protected Group)",
             "Alpha": f"{raw['alpha']:.6f}",
             "Group Smoothed Selection Rates": f"{raw['group_smoothed_selection_rates']}",
             "EDF Log-Ratio": f"{raw['value']:.4f}",
@@ -557,7 +557,7 @@ class BiasAmplificationMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Measures whether the model amplifies the bias present in the dataset.",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
             "Bias Dataset": f"{raw['bias_in_labels']:.4f}",
             "Bias Predictions": f"{raw['bias_in_predictions']:.4f}",
             "Bias Amplification": f"{raw['value']:.4f}",
@@ -587,7 +587,7 @@ class BetweenGroupGeneralizedEntropyMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Between-Group Generalized Entropy Error (Speicher et al., 2018).",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
             "Alpha": f"{raw['alpha']:.6f}",
             "Between-Group GEI Error": f"{raw['value']:.6f}",
             "Mean Benefit": f"{raw['mean_benefit']:.6f}",
@@ -608,7 +608,7 @@ class CohensDMetric(BaseMetric):
     def build_properties(self, raw):
         return {
             "Metric Description": "Standardised effect size between group predictions.",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
             "Formula": "(mu1 - mu2) / sigma_pooled",
             "Mean Unprotected": f"{raw['mean_unprotected']:.4f}",
             "Mean Protected": f"{raw['mean_protected']:.4f}",
@@ -631,8 +631,8 @@ class ZTestDiffMetric(BaseMetric):
 
     def build_properties(self, raw):
         return {
-            "Metric Description": "Estadístico Z para la diferencia en tasas de éxito (Regla de las 2 Desviaciones Estándar). Equitativo si el valor está entre -2 y 2.",
-            "Depends on": "Model, Test Data, Factsheet",
+            "Metric Description": "Z test (difference) / 2-SD statistic for success rates. Fair if the value stays between -2 and 2.",
+            "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
             "Success Rate Protected": f"{raw['sr_protected']:.2%}",
             "Success Rate Unprotected": f"{raw['sr_unprotected']:.2%}",
             "Total Success Rate": f"{raw['total_success_rate']:.2%}",
