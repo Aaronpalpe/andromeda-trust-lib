@@ -18,21 +18,6 @@ from sklearn.metrics import accuracy_score
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 
-# # ─────────────────────────────────────────────────────────────────────────────
-# # Helpers
-# # ─────────────────────────────────────────────────────────────────────────────
-
-# def _validate_metric_value(value: float, metric_name: str) -> float:
-#     """Validate that metric value is not NaN or Inf."""
-#     if value is None:
-#         raise ValueError(f"Metric '{metric_name}' returned None value.")
-#     try:
-#         float_val = float(value)
-#         if np.isnan(float_val) or np.isinf(float_val):
-#             raise ValueError(f"Metric '{metric_name}' returned invalid value (NaN or Inf).")
-#     except (TypeError, ValueError) as e:
-#         raise ValueError(f"Metric '{metric_name}' returned non-numeric value: {e}")
-#     return value
 
 
 def _safe_div(numerator: float, denominator: float, default: float = np.inf) -> float:
@@ -88,9 +73,23 @@ def _favored_ratio(y_pred: np.ndarray, mask: np.ndarray) -> float:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def underfitting(y_test: np.ndarray, y_pred_test: np.ndarray) -> dict:
-    """Test accuracy as a proxy for underfitting."""
+    """
+    Test accuracy as a proxy for underfitting.
+    
+    Parameters
+    ----------
+    y_test : np.ndarray
+        Ground-truth labels for the test set.
+    y_pred_test : np.ndarray
+        Predicted labels for the test set.
+
+    Returns
+    -------
+    dict
+        Dictionary containing the test accuracy.
+    """
     acc = float(accuracy_score(y_test, y_pred_test))
-    return {"value": acc, "test_accuracy": acc}
+    return {"value": acc}
 
 
 def overfitting(
@@ -100,10 +99,26 @@ def overfitting(
     y_pred_test: np.ndarray,
 ) -> dict:
     """
-    Train–Test accuracy gap as a proxy for overfitting.
+    Train-Test accuracy gap as a proxy for overfitting.
 
-    Difference = Train Acc - Test Acc
-    Ideal value: 0  (> 0.05 indicates overfitting)
+    Difference = Train Acc - Test Acc. Ideal value: 0 
+
+    Parameters
+    ----------
+    y_train : np.ndarray
+        Ground-truth labels for the training set.
+    y_pred_train : np.ndarray
+        Predicted labels for the training set.
+    y_test : np.ndarray
+        Ground-truth labels for the test set.
+    y_pred_test : np.ndarray
+        Predicted labels for the test set.
+    
+    Returns
+    -------
+    dict       
+        Dictionary containing the accuracy gap, train accuracy and test accuracy.
+
     """
     train_acc = float(accuracy_score(y_train, y_pred_train))
     test_acc  = float(accuracy_score(y_test, y_pred_test))
@@ -112,7 +127,6 @@ def overfitting(
         "value": diff,
         "train_accuracy": train_acc,
         "test_accuracy": test_acc,
-        "overfitting": bool(diff > 0.05),
     }
 
 
@@ -130,6 +144,25 @@ def statistical_parity_difference(
     SPD = P(ŷ=1 | protected) - P(ŷ=1 | unprotected)
 
     Ideal value: 0  (negative -> protected group is disadvantaged)
+
+    Parameters
+    ----------
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The statistical parity difference.
+        - favored_ratio_protected: P(ŷ=1 | protected)
+        - favored_ratio_unprotected: P(ŷ=1 | unprotected)
+        - n_protected: Number of samples in the protected group.
+        - n_unprotected: Number of samples in the unprotected group.
+        - n_protected_favored: Number of samples in the protected group predicted as 1.
+        - n_unprotected_favored: Number of samples in the unprotected group predicted as 1.
     """
     prot  = _favored_ratio(y_pred, group_mask)
     unprot = _favored_ratio(y_pred, ~group_mask)
@@ -156,7 +189,27 @@ def disparate_impact(
     DI = P(ŷ=1 | protected) / P(ŷ=1 | unprotected)
 
     Ideal value: 1  (< 0.8 is the common legal threshold)
+
+    Parameters
+    ----------
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The disparate impact.
+        - favored_ratio_protected: P(ŷ=1 | protected)
+        - favored_ratio_unprotected: P(ŷ=1 | unprotected)
+        - n_protected: Number of samples in the protected group.
+        - n_unprotected: Number of samples in the unprotected group.
+        - n_protected_favored: Number of samples in the protected group predicted as 1.
+        - n_unprotected_favored: Number of samples in the unprotected group predicted as 1.
     """
+
     prot  = _favored_ratio(y_pred, group_mask)
     unprot = _favored_ratio(y_pred, ~group_mask)
     val = _safe_div(prot, unprot, default=np.inf)
@@ -182,6 +235,24 @@ def equal_opportunity_difference(
     EOD = TPR(protected) - TPR(unprotected)
 
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The equal opportunity difference.
+        - tpr_protected: TPR for the protected group.
+        - tpr_unprotected: TPR for the unprotected group.
+
     """
     tpr_prot   = _tpr(y_true, y_pred, group_mask)
     tpr_unprot = _tpr(y_true, y_pred, ~group_mask)
@@ -201,9 +272,29 @@ def average_odds_difference(
     """
     Average Odds Difference (AOD).
 
-    AOD = 0.5 × [(TPR_prot - TPR_unprot) + (FPR_prot - FPR_unprot)]
+    AOD = 0.5 x [(TPR_prot - TPR_unprot) + (FPR_prot - FPR_unprot)]
 
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The average odds difference.
+        - tpr_protected: TPR for the protected group.
+        - tpr_unprotected: TPR for the unprotected group.
+        - fpr_protected: FPR for the protected group.
+        - fpr_unprotected: FPR for the unprotected group.
+
     """
     tpr_prot   = _tpr(y_true, y_pred, group_mask)
     tpr_unprot = _tpr(y_true, y_pred, ~group_mask)
@@ -230,6 +321,23 @@ def accuracy_parity(
     AP = Accuracy(protected) - Accuracy(unprotected)
 
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The accuracy parity difference.
+        - accuracy_protected: Accuracy for the protected group.
+        - accuracy_unprotected: Accuracy for the unprotected group.
     """
     acc_prot   = _accuracy(y_true, y_pred, group_mask)
     acc_unprot = _accuracy(y_true, y_pred, ~group_mask)
@@ -248,9 +356,29 @@ def predictive_parity(
     """
     Predictive Parity (average of PPV and NPV gap).
 
-    PP = 0.5 × [(PPV_prot - PPV_unprot) + (NPV_prot - NPV_unprot)]
+    PP = 0.5 x [(PPV_prot - PPV_unprot) + (NPV_prot - NPV_unprot)]
 
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The predictive parity difference.
+        - ppv_protected: PPV for the protected group.
+        - ppv_unprotected: PPV for the unprotected group.
+        - npv_protected: NPV for the protected group.
+        - npv_unprotected: NPV for the unprotected group.
+
     """
     ppv_prot   = _ppv(y_true, y_pred, group_mask)
     ppv_unprot = _ppv(y_true, y_pred, ~group_mask)
@@ -277,6 +405,28 @@ def treatment_equality(
     TE = (FN/FP)_protected - (FN/FP)_unprotected
 
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The treatment equality difference.
+        - fn_protected: False negatives for the protected group.
+        - fp_protected: False positives for the protected group.
+        - fn_fp_ratio_protected: Ratio of false negatives to false positives for the protected group.
+        - fn_unprotected: False negatives for the unprotected group.
+        - fp_unprotected: False positives for the unprotected group.
+        - fn_fp_ratio_unprotected: Ratio of false negatives to false positives for the unprotected group.
+
     """
     def _fn_fp_ratio(mask):
         fn = int(((y_true[mask] == 1) & (y_pred[mask] == 0)).sum())
@@ -317,6 +467,25 @@ def calibration_gap(
     groups within the same bin.
 
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_prob : np.ndarray
+        Predicted probabilities (float between 0 and 1).
+    group_mask : np.ndarray
+        Boolean array indicating protected group membership (True for protected).
+    n_bins : int, optional
+        Number of bins for calibration, by default 10.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The calibration gap.
+        - n_bins: The number of bins used.
+        - bins: A dictionary with bin information.
     """
 
     df = pd.DataFrame({
@@ -324,19 +493,21 @@ def calibration_gap(
         "score": y_prob,
         "group": group_mask.astype(int),
     })
-    df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop")
+    df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop") # binning by predicted score
 
     cal = (
         df.groupby(["group", "bin"])["y"]
         .mean()
-        .unstack(level=0)
+        .unstack(level=0) # group on columns, bin on rows
     )
-    gap = (cal.iloc[:, 0] - cal.iloc[:, 1]).abs().mean()
+    gap = (cal.iloc[:, 0] - cal.iloc[:, 1]).abs().mean() # average absolute difference across bins
     if np.isnan(gap):
         raise ValueError("Calibration Gap is NaN. Check if your data has enough samples in each bin and group.")
+    cal.index = cal.index.astype(str)
     return {
         "value": float(gap),
         "n_bins": n_bins,
+        "bins": cal.to_dict(),
     }
 
 
@@ -352,18 +523,38 @@ def well_calibration_error(
     observed event frequency within each bin.
 
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_prob : np.ndarray
+        Predicted probabilities (float between 0 and 1).
+    n_bins : int, optional
+        Number of bins for calibration, by default 10.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The well-calibration error.
+        - n_bins: The number of bins used.
+        - bins: A dictionary with bin information.
     """
 
     df = pd.DataFrame({"y": y_true, "score": y_prob})
-    df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop")
-    err = df.groupby("bin").apply(
-        lambda g: abs(g["y"].mean() - g["score"].mean())
-    ).mean()
+    df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop") # binning by predicted score
+    well_cal = df.groupby("bin").apply(
+        lambda g: abs(g["y"].mean() - g["score"].mean()) # absolute difference between observed frequency and average predicted probability in the bin
+    )
+    err = float(well_cal.mean()) # average across bins
     if np.isnan(err):
         raise ValueError("Well-Calibration Error is NaN. Check if your data has enough samples in each bin.")
+    well_cal.index = well_cal.index.astype(str)
     return {
         "value": float(err),
         "n_bins": n_bins,
+        "bins-scores": well_cal.to_dict(),
     }
 
 
@@ -377,23 +568,55 @@ def generalized_entropy_index(
     alpha: float = 2,
 ) -> dict:
     """
-    Generalized Entropy Index (GEI).
+Generalized Entropy Index (GEI).
 
-    Measures inequality in benefit distribution (b_i = 1 if correctly
-    predicted, 0 otherwise).
+    Measures algorithmic unfairness by quantifying the inequality in the 
+    benefit distribution, based on Speicher et al. (2018).
 
+    Benefit definition (b_i):
+    - 1: Correctly predicted (TP or TN) -> Fair treatment.
+    - 0: False Negative -> Unfairly disadvantaged.
+    - 2: False Positive -> Unfairly advantaged.
+
+    alpha=0 -> Mean Log Deviation
     alpha=1 -> Theil T Index
     alpha=2 -> Half squared coefficient of variation
-    Ideal value: 0  (perfect equality)
+    Ideal value: 0 (perfect equality / absolute fairness)
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    alpha : float, optional
+        Parameter for the generalized entropy index, by default 2.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - value: The generalized entropy index.
+        - alpha: The alpha parameter used.
+        - mean_benefit: The mean benefit.
+
+    References:
+    .. [3] T. Speicher, H. Heidari, N. Grgic-Hlaca, K. P. Gummadi, A. Singla, A. Weller, and M. B. Zafar,
+        "A Unified Approach to Quantifying Algorithmic Unfairness: Measuring Individual and Group Unfairness via Inequality Indices,"
+        ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, 2018.
+
     """
     # b = (y_true == y_pred).astype(float)
-    b = (y_pred - y_true + 1).astype(float)
+    b = (y_pred - y_true + 1).astype(float) # 1 for correct, 0 for false negative, 2 for false positive
     mu = b.mean()
-    n = len(b)
 
-    if mu == 0:
-        return {"value": 0.0, "alpha": alpha}
+    if mu == 0 or (mu == 1.0 and np.all(b == 1.0)):
+        return {"value": 0.0, "alpha": alpha, "mean_benefit": float(mu)}
 
+    if alpha == 0:
+        # Mean log deviation: -(1/N) * sum(ln(b_i / mu))
+        ratio = b / mu
+        val = float(np.mean(np.where(ratio > 0, -np.log(ratio), np.inf))) # log(0) treated as infinite inequality
     if alpha == 1:
         # Theil index: avoid log(0)
         ratio = b / mu
@@ -407,7 +630,21 @@ def generalized_entropy_index(
 
 
 def theil_index(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    """Convenience wrapper for GEI with alpha=1."""
+    """Convenience wrapper for GEI with alpha=1.
+    
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+
+    Returns
+    -------
+    dict
+        Dictionary containing the Theil index and related information.
+
+    """
     result = generalized_entropy_index(y_true, y_pred, alpha=1)
     result["name"] = "Theil Index"
     return result
@@ -419,6 +656,18 @@ def coefficient_of_variation(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
     Measures relative spread of prediction benefits.
     Ideal value: 0
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    y_pred : np.ndarray
+        Predicted labels (binary).
+
+    Returns
+    -------
+    dict
+        Dictionary containing the coefficient of variation and related information.
     """
     gei = generalized_entropy_index(y_true, y_pred, alpha=2)["value"]
     val = float(np.sqrt(2 * gei))
@@ -454,22 +703,39 @@ def coefficient_of_variation(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
 def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dict:
     """
-    Individual Consistency manual.
-    Replica AIF360: Utiliza ball_tree e incluye al propio individuo 
-    dentro de sus k vecinos para calcular la media de predicciones.
+    Individual Consistency Score. It measures how consistent the model's predictions are 
+    for similar individuals.
+
+    Consistency = 1 - mean(|ŷ_i - mean(ŷ_neighbours)|)
+
+    A score of 1 means every individual gets the same prediction as
+    their k nearest neighbours.  Ideal value: 1
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input features.
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    k : int, optional
+        Number of nearest neighbors to consider, by default 5
+
+    Returns
+    -------
+    dict
+        Dictionary containing the individual consistency score and related information.
+
     """
-    # Filtro de seguridad: Imputar NaNs por 0.0 para que las distancias no devuelvan error
     X_safe = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
     
-    # AIF360 fuerza el algoritmo 'ball_tree' y busca exactamente `k` vecinos.
-    # Al buscar k vecinos en el mismo dataset, el vecino #0 es el punto mismo.
+    # AIF360 force the algorithm to use 'ball_tree' to avoid warnings about sparse data
     nn = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(X_safe)
     _, idx = nn.kneighbors(X_safe)
     
-    # Obtenemos las predicciones de los k vecinos de cada punto (shape: N x k)
+    # We obtain the predictions of the neighbors (including itself). Shape: (n_samples, k)
     neighbor_preds = y_pred[idx]
     
-    # Promedio de la predicción de los vecinos (incluyéndose a sí mismo)
+    # Average prediction of the neighbors (excluding itself). Shape: (n_samples,)
     mean_neighbor_preds = np.mean(neighbor_preds, axis=1)
     
     # Consistency = 1 - mean( | y_pred - mean_neighbors_pred | )
@@ -491,6 +757,17 @@ def class_balance(y_true: np.ndarray) -> dict:
 
     p >= 0.05  -> classes are balanced
     Ideal p-value: 1.0  (uniform distribution)
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+
+    Returns
+    -------
+    dict
+        Dictionary containing the p-value and related information.
+
     """
     values, counts = np.unique(y_true, return_counts=True)
     stat, p_val = chisquare(counts)
@@ -510,6 +787,16 @@ def class_imbalance(group_mask: np.ndarray) -> dict:
 
     Ideal value: 0  (equal group sizes)
     |CI| < 0.1 is considered balanced
+
+    Parameters
+    ----------
+    group_mask : np.ndarray
+        Boolean mask indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing the class imbalance score and related information.
     """
     n_prot   = int(group_mask.sum())
     n_unprot = int((~group_mask).sum())
@@ -534,13 +821,25 @@ def kl_divergence(
 
     KL(P_privileged || P_protected)
     Ideal value: 0  (identical distributions)
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels (binary).
+    group_mask : np.ndarray
+        Boolean mask indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing the KL divergence and related information.
     """
 
-    Pp = pd.Series(y_true[~group_mask]).value_counts(normalize=True).sort_index()
-    Pu = pd.Series(y_true[group_mask]).value_counts(normalize=True).sort_index()
-    Pp, Pu = Pp.align(Pu, fill_value=1e-9)
+    Pp = pd.Series(y_true[~group_mask]).value_counts(normalize=True).sort_index() # label distribution for unprotected group
+    Pu = pd.Series(y_true[group_mask]).value_counts(normalize=True).sort_index() # label distribution for protected group
+    Pp, Pu = Pp.align(Pu, fill_value=1e-9) # align distributions and avoid log(0) by filling missing classes with a small value
 
-    val = float(scipy_entropy(Pp.values, Pu.values))
+    val = float(scipy_entropy(Pp.values, Pu.values)) # KL divergence from unprotected to protected group
     return {"value": val}
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -548,7 +847,6 @@ def kl_divergence(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def conditional_demographic_disparity(
-    y_true: np.ndarray,
     y_pred: np.ndarray,
     group_mask: np.ndarray,
 ) -> dict:
@@ -564,13 +862,17 @@ def conditional_demographic_disparity(
     :math:`i` that have favorable labels while :math:`N_{i, -}` signifies those
     that have negative labels 
 
-    Args:
-        y_pred (array-like): Estimated targets as returned by a classifier.
-        y_true (array-like): True labels.
-        group_mask (array-like): Boolean mask indicating protected group membership (True for protected).
+    Parameters
+    ----------
+    y_pred : np.ndarray
+        Predicted labels (binary).
+    group_mask : np.ndarray
+        Boolean mask indicating protected group membership (True for protected).
 
-    Returns:
-        float: Conditional demographic disparity.
+    Returns
+    -------
+    dict
+        Dictionary containing the conditional demographic disparity and related information.
     """
     n_prot = int(group_mask.sum())
     n_unprot = int((~group_mask).sum())
@@ -599,10 +901,12 @@ def conditional_demographic_disparity(
 
     return {
         "value": float(cdd),
+        "n_protected": n_prot,
+        "n_unprotected": n_unprot,
+        "total_positive": total_pos,
+        "total_negative": total_neg,
         "dd_protected": dd_prot,
         "dd_unprotected": dd_unprot,
-        "n_protected": n_prot,
-        "n_unprotected": n_unprot
     }
 
 # def smoothed_edf(
@@ -627,16 +931,28 @@ def conditional_demographic_disparity(
 #         "alpha": alpha,
 #     }
 
-def smoothed_edf(y_prob: np.ndarray, group_values: np.ndarray, alpha: float = 1.0) -> dict: # NO IGUAL QUE AIF---------------
+def smoothed_edf(y_prob: np.ndarray, group_values: np.ndarray, alpha: float = 1.0) -> dict: # NO IGUAL QUE AIF
     """
     Smoothed Empirical Differential Fairness (EDF) manual.
-    Replica matemáticamente la lógica de AIF360:
-    1. Binariza probabilidades.
-    2. Aplica Suavizado de Dirichlet a las tasas base.
-    3. Evalúa el peor escenario logarítmico entre clases positivas y negativas.
+    AIF360 replic: EDF = max_{i,j} max( |log((p_i + alpha) / (p_j + alpha))|, |log((1-p_i + alpha) / (1-p_j + alpha))| )
+    Ideal value: 0
+
+    Parameters
+    ----------
+    y_prob : np.ndarray
+        Predicted probabilities (binary).
+    group_values : np.ndarray
+        Group membership labels.
+    alpha : float, optional
+        Smoothing parameter (default: 1.0).
+
+    Returns
+    -------
+    dict
+        Dictionary containing the smoothed EDF and related information.
+
     """
-    # 1. Binarizar predicciones (como requiere AIF360 internamente)
-    y_pred_bin = (np.array(y_prob) >= 0.5).astype(float)
+    y_pred_bin = (np.array(y_prob) >= 0.5).astype(float) # binarice predictions
     
     unique_groups = np.unique(group_values)
     ssr = [] # smoothed_selection_rates
@@ -646,22 +962,21 @@ def smoothed_edf(y_prob: np.ndarray, group_values: np.ndarray, alpha: float = 1.
         n_g = np.sum(mask_g)
         p_g = np.sum(y_pred_bin[mask_g] == 1.0)
         
-        # 2. Suavizado de Dirichlet: (conteo_positivos + alpha) / (conteo_total + 2*alpha)
-        rate = (p_g + alpha) / (n_g + 2.0 * alpha)
+        rate = (p_g + alpha) / (n_g + 2.0 * alpha) # smoothed selection rate for group g
         ssr.append(rate)
     
-    # 3. Encontrar el log-ratio máximo (comparando tanto tasas positivas como negativas)
     max_edf = 0.0
     for i in range(len(ssr)):
         for j in range(len(ssr)):
             if i != j:
-                pos_ratio = abs(np.log(ssr[i]) - np.log(ssr[j]))
-                neg_ratio = abs(np.log(1.0 - ssr[i]) - np.log(1.0 - ssr[j]))
-                max_edf = max(max_edf, pos_ratio, neg_ratio)
-                
+                pos_ratio = abs(np.log(ssr[i]) - np.log(ssr[j])) # log-ratio of smoothed selection rates
+                neg_ratio = abs(np.log(1.0 - ssr[i]) - np.log(1.0 - ssr[j])) # log-ratio of smoothed non-selection rates
+                max_edf = max(max_edf, pos_ratio, neg_ratio) # maximum of the two ratios across all pairs of groups
+
     return {
         "value": float(max_edf),
-        "alpha": alpha
+        "alpha": alpha,
+        "group_smoothed_selection_rates": {str(g): ssr[i] for i, g in enumerate(unique_groups)}
     }
 
 # def bias_amplification(
@@ -690,33 +1005,29 @@ def smoothed_edf(y_prob: np.ndarray, group_values: np.ndarray, alpha: float = 1.
 #     }
 
 
-def bias_amplification(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarray) -> dict: # NO IGUAL QUE AIF---------------
+def bias_amplification(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarray) -> dict: # NO IGUAL QUE AIF
     """
     Bias Amplification manual (Differential Fairness).
-    Replica AIF360: Bias Amplification = EDF(Predicciones) - EDF(Etiquetas Reales).
-    """
-    # Helper interno para calcular el EDF base con alpha=1.0 (default de AIF360 para esta métrica)
-    def _get_edf(y_arr, g_arr, alpha=1.0):
-        groups = np.unique(g_arr)
-        ssr = []
-        for g in groups:
-            mask_g = (g_arr == g)
-            n_g = np.sum(mask_g)
-            p_g = np.sum(y_arr[mask_g] == 1.0)
-            ssr.append((p_g + alpha) / (n_g + 2.0 * alpha))
-            
-        max_edf = 0.0
-        for i in range(len(ssr)):
-            for j in range(len(ssr)):
-                if i != j:
-                    pos = abs(np.log(ssr[i]) - np.log(ssr[j]))
-                    neg = abs(np.log(1.0 - ssr[i]) - np.log(1.0 - ssr[j]))
-                    max_edf = max(max_edf, pos, neg)
-        return max_edf
+    AIF360 replic: BA = EDF(y_pred) - EDF(y_true)
+    Ideal value: 0 or negative (model should not amplify bias)
 
-    # Calculamos el sesgo en el Ground Truth y en las Predicciones
-    bias_labels = _get_edf(y_true, group_mask, alpha=1.0)
-    bias_preds = _get_edf(y_pred, group_mask, alpha=1.0)
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground truth (correct) target values.
+    y_pred : np.ndarray
+        Estimated targets as returned by a classifier.
+    group_mask : np.ndarray
+        Boolean mask indicating protected group membership (True for protected).
+
+    Returns
+    -------
+    dict
+        Dictionary containing the bias amplification and related information.
+    """
+    # Compute smoothed EDF for both labels and predictions
+    bias_labels = smoothed_edf(y_true, group_mask, alpha=0.5)["value"]
+    bias_preds = smoothed_edf(y_pred, group_mask, alpha=0.5)["value"]
     
     val = bias_preds - bias_labels
     
@@ -764,7 +1075,9 @@ def between_group_generalized_entropy_error(
     Between-group generalized entropy index is proposed as a group
     fairness measure and is one of two terms that the
     generalized entropy index decomposes to.
-    Args:
+    
+    Parameters
+    ----------
         y_true (array-like): Ground truth (correct) target values.
         y_pred (array-like): Estimated targets as returned by a classifier.
         group_mask (array-like): Boolean mask indicating protected group membership (True for protected).
@@ -772,11 +1085,16 @@ def between_group_generalized_entropy_error(
             distances between values at different parts of the distribution. A
             value of 0 is equivalent to the mean log deviation, 1 is the Theil
             index, and 2 is half the squared coefficient of variation.
+
+    Returns
+    -------
+        dict: A dictionary containing the between-group generalized entropy error and related information.
     """
     b = np.empty_like(y_true, dtype=float)
     
-    # Beneficio = 1 + I(y_pred == 1) - I(y_true == 1)
-    # Asignamos la media del grupo a todos sus miembros
+    # Benefit = 1 + I(y_pred == 1) - I(y_true == 1)
+    # Correct prediction (TP or TN) -> b = 1 (fair treatment)
+    # False Negative -> b = 0 (unfairly disadvantaged)
     mask_u = ~group_mask
     if mask_u.sum() > 0:
         b[mask_u] = (1.0 + (y_pred[mask_u] == 1) - (y_true[mask_u] == 1)).mean()
@@ -799,7 +1117,8 @@ def between_group_generalized_entropy_error(
 
     return {
         "value": val,
-        "alpha": alpha
+        "alpha": alpha,
+        "mean_benefit": mu,
     }
 
 def cohens_d(
@@ -809,9 +1128,22 @@ def cohens_d(
     """
     Cohen's D effect size between protected and unprotected groups.
 
-    d = (μ_prot - μ_unprot) / σ_pooled
+    d = (μ_prot - μ_unprot) / sigma_pooled
 
-    |d| < 0.2 -> negligible, 0.2–0.5 -> small, 0.5–0.8 -> medium, > 0.8 -> large
+    |d| < 0.2 -> negligible, 0.2-0.5 -> small, 0.5-0.8 -> medium, > 0.8 -> large
+
+    Parameters
+    ----------
+    y_pred : array-like
+        Predictions vector (binary)
+    group_mask : array-like
+        Boolean mask indicating protected group membership (True for protected)
+
+    Returns
+    -------
+    dict
+        A dictionary containing the Cohen's D effect size and related information.
+
     """
     g1 = y_pred[group_mask].astype(float)
     g2 = y_pred[~group_mask].astype(float)
@@ -882,6 +1214,9 @@ def z_test_diff(
         "value": float(val),
         "sr_protected": sr_prot,
         "sr_unprotected": sr_unprot,
+        "total_success_rate": sr_tot,
+        "n_protected": n_prot,
+        "n_unprotected": n_unprot,
     }
 
 

@@ -9,30 +9,30 @@
     },
     "weights": {
         "fairness": {
-            "underfitting": 0.1,
-            "overfitting": 0.1,
-            "class_balance": 0.03,
-            "statistical_parity_difference": 0.15,
-            "disparate_impact": 0.15,
-            "equal_opportunity_difference": 0.1,
-            "average_odds_difference": 0.05,
+            "underfitting": 0.05,
+            "overfitting": 0.05,
+            "class_balance": 0.05,
+            "statistical_parity_difference": 0.075,
+            "disparate_impact": 0.075,
+            "equal_opportunity_difference": 0.075,
+            "average_odds_difference": 0.075,
             "accuracy_parity": 0.05,
             "predictive_parity": 0.05,
             "treatment_equality": 0.05,
-            "calibration_gap": 0.02,
-            "well_calibration_error": 0.02,
-            "generalized_entropy_index": 0.01,
-            "theil_index": 0.01,
-            "coefficient_of_variation": 0.01,
-            "individual_consistency": 0.01,
-            "class_imbalance": 0.02,
-            "kl_divergence": 0.01,
-            "conditional_demographic_disparity": 0.01,
-            "smoothed_edf": 0.01,
-            "bias_amplification": 0.01,
-            "between_group_generalized_entropy_error": 0.01,
-            "cohens_d": 0.01,
-            "z_test_diff": 0.01
+            "calibration_gap": 0.025,
+            "well_calibration_error": 0.025,
+            "generalized_entropy_index": 0.02,
+            "theil_index": 0.02,
+            "coefficient_of_variation": 0.02,
+            "individual_consistency": 0.1,
+            "class_imbalance": 0.05,
+            "kl_divergence": 0.02,
+            "conditional_demographic_disparity": 0.02,
+            "smoothed_edf": 0.02,
+            "bias_amplification": 0.02,
+            "between_group_generalized_entropy_error": 0.02,
+            "cohens_d": 0.02,
+            "z_test_diff": 0.02
         },
         
         "explainability": {
@@ -102,175 +102,295 @@
     },
     "mappings": {
         "fairness": {
-            "score_underfitting": {
-                "thresholds": {
-                    "value": [0.8, 0.85, 0.9, 0.95],
-                    "description": "Test accuracy thresholds. Higher is better.",
-                    "label": "Underfitting Thresholds"
-                }
+        "score_underfitting": {
+            "thresholds": {
+                "value": [0.7, 0.8, 0.9, 0.95],
+                "description": "Test accuracy thresholds. Higher is better (indicates sufficient model capacity).",
+                "label": "Underfitting Thresholds"
             },
-            "score_overfitting": {
-                "thresholds": {
-                    "value": [0.04, 0.03, 0.02, 0.01],
-                    "description": "Train-test accuracy gap thresholds. Lower is better.",
-                    "label": "Overfitting Gap Thresholds"
-                }
-            },
-            "score_class_balance": {
-                "thresholds": {
-                    "value": [0.1, 0.25, 0.5, 0.8],
-                    "description": "Class distribution balance ratio thresholds. Higher is better.",
-                    "label": "Class Balance Thresholds"
-                }
-            },
-            "score_statistical_parity_difference": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.03],
-                    "description": "Absolute statistical parity difference thresholds. Lower is better.",
-                    "label": "Statistical Parity Difference Thresholds"
-                }
-            },
-            "score_disparate_impact": {
-                "thresholds": {
-                    "value": [0.6, 0.75, 0.85, 0.95],
-                    "description": "Disparate impact ratio thresholds (closer to 1 is better).",
-                    "label": "Disparate Impact Thresholds"
-                }
-            },
-            "score_equal_opportunity_difference": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.03],
-                    "description": "Absolute equal opportunity difference thresholds. Lower is better.",
-                    "label": "Equal Opportunity Difference Thresholds"
-                }
-            },
-            "score_average_odds_difference": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.03],
-                    "description": "Absolute average odds difference thresholds. Lower is better.",
-                    "label": "Average Odds Difference Thresholds"
-                }
-            },
-            "score_accuracy_parity": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.03],
-                    "description": "Absolute accuracy parity gap thresholds. Lower is better.",
-                    "label": "Accuracy Parity Thresholds"
-                }
-            },
-            "score_predictive_parity": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.02],
-                    "description": "Absolute predictive parity gap thresholds. Lower is better.",
-                    "label": "Predictive Parity Thresholds"
-                }
-            },
-            "score_treatment_equality": {
-                "thresholds": {
-                    "value": [0.2, 0.1, 0.05, 0.02],
-                    "description": "Absolute treatment equality difference thresholds. Lower is better.",
-                    "label": "Treatment Equality Thresholds"
-                }
-            },
-            "score_calibration_gap": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.02],
-                    "description": "Calibration gap thresholds. Lower is better.",
-                    "label": "Calibration Gap Thresholds"
-                }
-            },
-            "score_well_calibration_error": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.02],
-                    "description": "Expected calibration error thresholds. Lower is better.",
-                    "label": "Well Calibration Error Thresholds"
-                }
-            },
-            "score_generalized_entropy_index": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.02],
-                    "description": "Generalized entropy index thresholds. Lower is better.",
-                    "label": "Generalized Entropy Index Thresholds"
-                }
-            },
-            "score_theil_index": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.02],
-                    "description": "Theil index thresholds. Lower is better.",
-                    "label": "Theil Index Thresholds"
-                }
-            },
-            "score_coefficient_of_variation": {
-                "thresholds": {
-                    "value": [0.2, 0.15, 0.1, 0.05],
-                    "description": "Coefficient of variation thresholds. Lower is better.",
-                    "label": "Coefficient of Variation Thresholds"
-                }
-            },
-            "score_individual_consistency": {
-                "thresholds": {
-                    "value": [0.6, 0.75, 0.85, 0.95],
-                    "description": "Individual consistency thresholds. Higher is better.",
-                    "label": "Individual Consistency Thresholds"
-                }
-            },
-            "score_kl_divergence": {
-                "thresholds": {
-                    "value": [0.5, 0.2, 0.1, 0.05],
-                    "description": "KL divergence thresholds between group label distributions. Lower is better.",
-                    "label": "KL Divergence Thresholds"
-                }
-            },
-            "score_conditional_demographic_disparity": {
-                "thresholds": {
-                    "value": [0.2, 0.1, 0.05, 0.02],
-                    "description": "Conditional demographic disparity thresholds. Lower is better.",
-                    "label": "Conditional Demographic Disparity Thresholds"
-                }
-            },
-            "score_smoothed_edf": {
-                "thresholds": {
-                    "value": [0.2, 0.1, 0.05, 0.02],
-                    "description": "Smoothed EDF log-ratio thresholds. Lower is better.",
-                    "label": "Smoothed EDF Thresholds"
-                }
-            },
-            "score_bias_amplification": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.01],
-                    "description": "Bias amplification thresholds. Lower is better.",
-                    "label": "Bias Amplification Thresholds"
-                }
-            },
-            "score_between_group_generalized_entropy_error": {
-                "thresholds": {
-                    "value": [0.15, 0.1, 0.05, 0.02],
-                    "description": "Between-group generalized entropy error thresholds. Lower is better.",
-                    "label": "Between-Group GEI Error Thresholds"
-                }
-            },
-            "score_cohens_d": {
-                "thresholds": {
-                    "value": [0.8, 0.5, 0.2, 0.05],
-                    "description": "Absolute Cohen's d thresholds (large to negligible effect). Lower is better.",
-                    "label": "Cohen's D Thresholds"
-                }
-            },
-            "score_z_test_diff": {
-                "thresholds": {
-                    "value": [3.0, 2.58, 1.96, 1.0],
-                    "description": "Absolute z-statistic thresholds. Lower is better.",
-                    "label": "Z-Test Difference Thresholds"
-                }
-            },
-            "score_class_imbalance": {
-                "thresholds": {
-                    "value": [0.4, 0.3, 0.2, 0.1],
-                    "description": "Protected vs. unprotected group size imbalance thresholds. Lower is better.",
-                    "label": "Class Imbalance Thresholds"
-                }
+            "normalized": {
+                "min_val": 0.7,
+                "max_val": 1.0,
+                "higher_is_better": true
             }
         },
+        "score_overfitting": {
+            "thresholds": {
+                "value": [0.1, 0.05, 0.02, 0.01],
+                "description": "Train-test accuracy gap. Lower is better (indicates good generalization).",
+                "label": "Overfitting Gap Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.1,
+                "higher_is_better": false
+            }
+        },
+        "score_class_balance": {
+            "thresholds": {
+                "value": [0.2, 0.4, 0.6, 0.8],
+                "description": "Ratio of the minority class size to the majority class size. Closer to 1.0 is better.",
+                "label": "Class Balance Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.2,
+                "max_val": 1.0,
+                "higher_is_better": true
+            }
+        },
+        "score_statistical_parity_difference": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Absolute difference in selection rates between groups. Lower is better (ideal is 0).",
+                "label": "Statistical Parity Difference Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2,
+                "higher_is_better": false
+            }
+        },
+        "score_disparate_impact": {
+            "thresholds": {
+                "value": [0.6, 0.8, 0.9, 0.95],
+                "description": "Ratio of favorable outcome rates (unprivileged/privileged). Higher (closer to 1) is better. 0.8 is the EEOC 80% rule standard.",
+                "label": "Disparate Impact Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.6,
+                "max_val": 1.0,
+                "higher_is_better": true
+            }
+        },
+        "score_equal_opportunity_difference": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Absolute difference in True Positive Rates (TPR) between groups. Lower is better.",
+                "label": "Equal Opportunity Difference Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2,
+                "higher_is_better": false
+            }
+        },
+        "score_average_odds_difference": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Average of absolute difference in FPR and TPR between groups. Lower is better.",
+                "label": "Average Odds Difference Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2,
+                "higher_is_better": false
+            }
+        },
+        "score_accuracy_parity": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Absolute difference in overall accuracy between groups. Lower is better.",
+                "label": "Accuracy Parity Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2,
+                "higher_is_better": false
+            }
+        },
+        "score_predictive_parity": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Absolute difference in Positive Predictive Value (PPV/Precision) between groups. Lower is better.",
+                "label": "Predictive Parity Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2  ,
+                "higher_is_better": false
+            }
+        },
+        "score_treatment_equality": {
+            "thresholds": {
+                "value": [0.4, 0.2, 0.1, 0.05],
+                "description": "Absolute difference in the ratio of false negatives to false positives between groups. Lower is better.",
+                "label": "Treatment Equality Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.4,
+                "higher_is_better": false
+            }
+        },
+        "score_calibration_gap": {
+            "thresholds": {
+                "value": [0.15, 0.1, 0.05, 0.02],
+                "description": "Maximum difference in expected calibration error across protected groups. Lower is better.",
+                "label": "Calibration Gap Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.15,
+                "higher_is_better": false
+            }
+        },
+        "score_well_calibration_error": {
+            "thresholds": {
+                "value": [0.15, 0.1, 0.05, 0.02],
+                "description": "Expected Calibration Error (ECE). Lower is better.",
+                "label": "Well Calibration Error Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.15,
+                "higher_is_better": false
+            }
+        },
+        "score_generalized_entropy_index": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Generalized Entropy Index (GEI) for algorithmic fairness. Lower is better (ideal is 0).",
+                "label": "Generalized Entropy Index Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.20,
+                "higher_is_better": false
+            }
+        },
+        "score_theil_index": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Theil Index (GEI with alpha=1), measuring inequality in benefit allocation. Lower is better.",
+                "label": "Theil Index Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2,
+                "higher_is_better": false
+            }
+        },
+        "score_coefficient_of_variation": {
+            "thresholds": {
+                "value": [0.4, 0.2, 0.1, 0.05],
+                "description": "Coefficient of Variation (GEI with alpha=2). Lower is better.",
+                "label": "Coefficient of Variation Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.4,
+                "higher_is_better": false
+            }
+        },
+        "score_individual_consistency": {
+            "thresholds": {
+                "value": [0.6, 0.8, 0.9, 0.95],
+                "description": "Consistency of predictions for similar individuals (k-NN based). Higher is better.",
+                "label": "Individual Consistency Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.6,
+                "higher_is_better": true
+            }
+        },
+        "score_kl_divergence": {
+            "thresholds": {
+                "value": [0.5, 0.2, 0.1, 0.05],
+                "description": "Kullback-Leibler divergence between predicted distributions of different groups. Lower is better.",
+                "label": "KL Divergence Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.5,
+                "higher_is_better": false
+            }
+        },
+        "score_conditional_demographic_disparity": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.02],
+                "description": "Demographic disparity conditioned on legitimate factors. Lower is better.",
+                "label": "Conditional Demographic Disparity Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2,
+                "higher_is_better": false
+            }
+        },
+        "score_smoothed_edf": {
+            "thresholds": {
+                "value": [1.0, 0.5, 0.2, 0.1],
+                "description": "Smoothed Empirical Differential Fairness log-ratio limit. Lower is better.",
+                "label": "Smoothed EDF Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 1.0,
+                "higher_is_better": false
+            }
+        },
+        "score_bias_amplification": {
+            "thresholds": {
+                "value": [0.2, 0.1, 0.05, 0.01],
+                "description": "Degree to which the model amplifies existing bias in the training data. Lower is better.",
+                "label": "Bias Amplification Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.2,
+                "higher_is_better": false
+            }
+        },
+        "score_between_group_generalized_entropy_error": {
+            "thresholds": {
+                "value": [0.15, 0.1, 0.05, 0.01],
+                "description": "Between-group component of the Generalized Entropy Error. Lower is better.",
+                "label": "Between-Group GEI Error Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.15,
+                "higher_is_better": false
+            }
+        },
+        "score_cohens_d": {
+            "thresholds": {
+                "value": [0.8, 0.5, 0.2, 0.05],
+                "description": "Absolute Cohen's d statistic measuring effect size of disparity (0.2=small, 0.5=medium, 0.8=large). Lower is better.",
+                "label": "Cohen's D Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 1.0,
+                "higher_is_better": false
+            }
+        },
+        "score_z_test_diff": {
+            "thresholds": {
+                "value": [3.0, 2.58, 1.96, 1.0],
+                "description": "Absolute Z-statistic for proportional differences (1.96 = 95% confidence). Lower is better.",
+                "label": "Z-Test Difference Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 3.0,
+                "higher_is_better": false
+            }
+        },
+        "score_class_imbalance": {
+            "thresholds": {
+                "value": [0.6, 0.4, 0.2, 0.05],
+                "description": "Absolute difference in proportion between protected and unprotected group sizes in the dataset. Lower is better.",
+                "label": "Class Imbalance Thresholds"
+            },
+            "normalized": {
+                "min_val": 0.0,
+                "max_val": 0.6,
+                "higher_is_better": false
+            }
+        }
+    },
         "explainability": {
             "score_sparsity": {
                 "thresholds": {
@@ -303,7 +423,7 @@
                     "label": "Top-K Concentration Thresholds"
                 },
                 "normalized": {
-                    "min_val": 0.0,
+                    "min_val": 0.4,
                     "max_val": 1.0,
                     "higher_is_better": true
                 }

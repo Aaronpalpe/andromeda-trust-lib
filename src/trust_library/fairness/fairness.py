@@ -89,7 +89,7 @@ class FairnessPillar(Pillar):
             ClassImbalanceMetric(),
             KLDivergenceMetric(),
             ConditionalDemographicDisparityMetric(),
-            SmoothedEDFMetric(alpha=1.0),
+            SmoothedEDFMetric(alpha=0.5),
             BiasAmplificationMetric(),
             BetweenGroupGeneralizedEntropyMetric(),
             CohensDMetric(),
