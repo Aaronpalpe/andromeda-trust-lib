@@ -20,6 +20,7 @@ class UnderfittingMetric(BaseMetric):
         return {
             "Metric Description": "Test accuracy as a proxy for underfitting.",
             "Depends on": "Model, Test Data",
+            "Formula": "Underfitting = Accuracy(y_test, y_pred_test)",
             "Test Accuracy": f"{raw['value']:.2%}",
         }
 
@@ -50,6 +51,7 @@ class OverfittingMetric(BaseMetric):
         return {
             "Metric Description": "Train-test accuracy gap as a proxy for overfitting.",
             "Depends on": "Model, Training Data, Test Data",
+            "Formula": "Overfitting Gap = Accuracy(y_train, y_pred_train) - Accuracy(y_test, y_pred_test)",
             "Training Accuracy": f"{raw['train_accuracy']:.2%}",
             "Test Accuracy": f"{raw['test_accuracy']:.2%}",
             "Train-Test Gap": f"{raw['value']:.2%}",
@@ -306,9 +308,10 @@ class CalibrationGapMetric(BaseMetric):
                 "empirical outcome probability in both groups."
             ),
             "Depends on": "Model, Test Data, Probabilistic Scores, Factsheet (Definition of Protected Group)",
-            "Mean Calibration Gap": f"{raw['value']:.4f}",
+            "Formula": "Calibration Gap = Mean_b(|P(y=1|score bin b, protected) - P(y=1|score bin b, unprotected)|)",
             "Bins Used": f"{raw['n_bins']}",
             "Calibration by Bin": raw.get("bins", {}),
+            "Mean Calibration Gap": f"{raw['value']:.4f}",
         }
 
 
@@ -333,9 +336,10 @@ class WellCalibrationMetric(BaseMetric):
         return {
             "Metric Description": "Checks whether predicted probabilities match empirical outcome frequencies.",
             "Depends on": "Model, Test Data, Probabilistic Scores",
-            "Mean Calibration Error": f"{raw['value']:.4f}",
+            "Formula": "Well Calibration Error = Mean_b(|Mean(y in b) - Mean(score in b)|)",
             "Bins Used": f"{raw['n_bins']}",
             "Difference by Bin": raw.get("bins-scores", {}),
+            "Mean Calibration Error": f"{raw['value']:.4f}",
         }
 
 
@@ -361,10 +365,10 @@ class GeneralizedEntropyMetric(BaseMetric):
         return {
             "Metric Description": "Measures inequality in the distribution of correct predictions.",
             "Depends on": "Model, Test Data",
+            "Formula": "GEI(alpha) = Mean(((b/mu)^alpha - 1) / (alpha * (alpha - 1))), where b is individual benefit",
             "Alpha": f"{raw['alpha']:.6f}",
-            "Generalized Entropy Index": f"{raw['value']:.6f}",
             "Mean Benefit": f"{raw['mean_benefit']:.6f}",
-
+            "Generalized Entropy Index": f"{raw['value']:.6f}",
         }
 
 
@@ -376,9 +380,8 @@ class TheilIndexMetric(GeneralizedEntropyMetric):
 
     def __init__(self):
         super().__init__(alpha=1)
-        # Override the config / score keys to match the original naming
         self.metric_key = "theil_index"
-        self.score_config_key  = "score_theil_index" # ERRATA: ANTES score_key
+        self.score_config_key = "score_theil_index"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -401,8 +404,8 @@ class CoefficientVariationMetric(BaseMetric):
             "Metric Description": "Measures the relative dispersion of prediction benefits.",
             "Depends on": "Model, Test Data",
             "Formula": "CV = sqrt(2 * GEI(alpha=2))",
-            "Alpha": f"{raw['alpha']:.6f}",
-            "GEI (alpha=2)": f"{raw['gini_alpha_2']:.6f}",
+            "Alpha": "2",
+            "GEI (alpha=2)": f"{raw['gei_alpha2']:.6f}",
             "Coefficient of Variation": f"{raw['value']:.6f}",
         }
 
@@ -449,9 +452,10 @@ class ClassImbalanceMetric(BaseMetric):
         return {
             "Metric Description": "Measures imbalance in size between protected and unprotected groups. 0 indicates perfect balance.",
             "Depends on": "Dataset, Factsheet (Definition of Protected Group)",
-            "CI (manual)": f"{raw['value']:.4f}",
+            "Formula": "Class Imbalance = (N_unprotected - N_protected) / (N_unprotected + N_protected)",
             "N Protected": f"{raw['n_protected']}",
             "N Unprotected": f"{raw['n_unprotected']}",
+            "Class Imbalance": f"{raw['value']:.4f}",
         }
 
 
@@ -471,6 +475,7 @@ class KLDivergenceMetric(BaseMetric):
         return {
             "Metric Description": "Divergence between label distributions across groups.",
             "Depends on": "Dataset, Factsheet (Definition of Protected Group)",
+            "Formula": "KL(P_unprotected || P_protected)",
             "KL Divergence": f"{raw['value']:.6f}",
         }
 
@@ -496,7 +501,7 @@ class ConditionalDemographicDisparityMetric(BaseMetric):
         props = {
             "Metric Description": "Conditional Demographic Disparity (Wachter et al., 2021).",
             "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
-            "Conditional Demographic Disparity": f"{raw['value']:.4f}",
+            "Formula": "CDD = (1/N) * sum_i(N_i * DD_i), DD_i = (N_i,negative/N_negative) - (N_i,positive/N_positive)",
         }
         
         if "dd_protected" in raw and "dd_unprotected" in raw:
@@ -511,6 +516,8 @@ class ConditionalDemographicDisparityMetric(BaseMetric):
         if "total_positive" in raw and "total_negative" in raw:
             props["Total Positive"] = f"{raw['total_positive']}"
             props["Total Negative"] = f"{raw['total_negative']}"
+
+        props["Conditional Demographic Disparity"] = f"{raw['value']:.4f}"
             
         return props
 
@@ -534,6 +541,7 @@ class SmoothedEDFMetric(BaseMetric):
         return {
             "Metric Description": "Smoothed Empirical Differential Fairness (EDF).",
             "Depends on": "Model, Test Data, Probabilistic Scores, Factsheet (Definition of Protected Group)",
+            "Formula": "EDF = max_i,j max(|log((p_i+alpha)/(p_j+alpha))|, |log((1-p_i+alpha)/(1-p_j+alpha))|)",
             "Alpha": f"{raw['alpha']:.6f}",
             "Group Smoothed Selection Rates": f"{raw['group_smoothed_selection_rates']}",
             "EDF Log-Ratio": f"{raw['value']:.4f}",
@@ -558,6 +566,7 @@ class BiasAmplificationMetric(BaseMetric):
         return {
             "Metric Description": "Measures whether the model amplifies the bias present in the dataset.",
             "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+            "Formula": "Bias Amplification = EDF(predictions) - EDF(labels)",
             "Bias Dataset": f"{raw['bias_in_labels']:.4f}",
             "Bias Predictions": f"{raw['bias_in_predictions']:.4f}",
             "Bias Amplification": f"{raw['value']:.4f}",
@@ -588,9 +597,10 @@ class BetweenGroupGeneralizedEntropyMetric(BaseMetric):
         return {
             "Metric Description": "Between-Group Generalized Entropy Error (Speicher et al., 2018).",
             "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+            "Formula": "Between-group GEI computes GEI over group-level mean benefits.",
             "Alpha": f"{raw['alpha']:.6f}",
-            "Between-Group GEI Error": f"{raw['value']:.6f}",
             "Mean Benefit": f"{raw['mean_benefit']:.6f}",
+            "Between-Group GEI Error": f"{raw['value']:.6f}",
         }
 
 # ─────────────────────────────────────────────────────────────
@@ -633,6 +643,7 @@ class ZTestDiffMetric(BaseMetric):
         return {
             "Metric Description": "Z test (difference) / 2-SD statistic for success rates. Fair if the value stays between -2 and 2.",
             "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+            "Formula": "Z = (SR_protected - SR_unprotected) / sqrt((SR_total * (1 - SR_total)) / (N_total * P_protected * (1 - P_protected)))",
             "Success Rate Protected": f"{raw['sr_protected']:.2%}",
             "Success Rate Unprotected": f"{raw['sr_unprotected']:.2%}",
             "Total Success Rate": f"{raw['total_success_rate']:.2%}",

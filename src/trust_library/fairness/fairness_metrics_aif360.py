@@ -151,7 +151,7 @@ def average_odds_difference(y_true: np.ndarray, y_pred: np.ndarray, group_mask: 
 
 
 # def accuracy_parity(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
-#     """Accuracy Parity calculada mediante los primitivos de AIF360."""
+#     """Accuracy Parity computed using AIF360 primitives."""
 #     dataset_true, dataset_pred, priv, unpriv = _get_aif360_datasets(y_true, y_pred, group_mask)
 #     metric = ClassificationMetric(dataset_true, dataset_pred, unprivileged_groups=unpriv, privileged_groups=priv)
     
@@ -166,7 +166,7 @@ def average_odds_difference(y_true: np.ndarray, y_pred: np.ndarray, group_mask: 
 
 
 # def predictive_parity(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarray) -> dict:
-#     """Predictive Parity calculada mediante los primitivos de AIF360."""
+#     """Predictive Parity computed using AIF360 primitives."""
 #     dataset_true, dataset_pred, priv, unpriv = _get_aif360_datasets(y_true, y_pred, group_mask)
 #     metric = ClassificationMetric(dataset_true, dataset_pred, unprivileged_groups=unpriv, privileged_groups=priv)
     
@@ -276,7 +276,7 @@ def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dic
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Individual Fairness / Advanced Metrics (Corregidas)
+# Individual Fairness / Advanced Metrics (Corrected)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def class_imbalance(group_mask: np.ndarray) -> dict:
@@ -349,10 +349,10 @@ def bias_amplification(y_true: np.ndarray,
 
     metric = ClassificationMetric(dataset_true, dataset_pred, unprivileged_groups=unpriv, privileged_groups=priv)
 
-    # El método solo necesita la concentración (por defecto 1.0)
+    # The method only needs the concentration parameter (default 1.0)
     value = metric.differential_fairness_bias_amplification(concentration=1.0)
 
-    # Para el bias individual en labels y preds, usamos BinaryLabelDatasetMetric
+    # For label and prediction bias terms, use BinaryLabelDatasetMetric
     metric_true = BinaryLabelDatasetMetric(dataset_true, privileged_groups=priv, unprivileged_groups=unpriv)
     metric_pred = BinaryLabelDatasetMetric(dataset_pred, privileged_groups=priv, unprivileged_groups=unpriv)
     
@@ -367,7 +367,7 @@ def bias_amplification(y_true: np.ndarray,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Conditional Demographic Disparity (Vía AIF360)
+# Conditional Demographic Disparity (via AIF360)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def conditional_demographic_disparity(
@@ -376,8 +376,8 @@ def conditional_demographic_disparity(
     group_mask: np.ndarray
 ) -> dict:
     """
-    Conditional Demographic Disparity (CDD) usando AIF360 metrics.
-    Pasamos explícitamente y_true e y_pred respetando la firma de la API.
+    Conditional Demographic Disparity (CDD) using AIF360 metrics.
+    y_true and y_pred are passed explicitly to match the API signature.
     """
     value = conditional_demographic_disparity_aif(
         y_true=y_true, 
@@ -395,7 +395,7 @@ def conditional_demographic_disparity(
     }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Between-Group Generalized Entropy Error (Vía AIF360)
+# Between-Group Generalized Entropy Error (via AIF360)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def between_group_generalized_entropy_error(
@@ -405,13 +405,13 @@ def between_group_generalized_entropy_error(
     alpha: float = 2
 ) -> dict:
     """
-    Between-Group Generalized Entropy Error usando AIF360 metrics.
+    Between-Group Generalized Entropy Error using AIF360 metrics.
     """
     value = between_group_generalized_entropy_error_aif(
         y_true=y_true, 
         y_pred=y_pred, 
         prot_attr=group_mask, 
-        priv_group=0,  # 0 (False) representa el grupo privilegiado en tu mask
+        priv_group=0,  # 0 (False) represents the privileged group in the mask
         alpha=alpha
     )
 

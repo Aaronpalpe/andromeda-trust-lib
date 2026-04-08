@@ -58,6 +58,8 @@ def _npv(y_true: np.ndarray, y_pred: np.ndarray, mask: np.ndarray) -> float:
 
 
 def _accuracy(y_true: np.ndarray, y_pred: np.ndarray, mask: np.ndarray) -> float:
+    if mask.sum() == 0:
+        return 0.0
     return float(accuracy_score(y_true[mask], y_pred[mask]))
 
 
@@ -500,7 +502,10 @@ def calibration_gap(
         .mean()
         .unstack(level=0) # group on columns, bin on rows
     )
-    gap = (cal.iloc[:, 0] - cal.iloc[:, 1]).abs().mean() # average absolute difference across bins
+
+    # Ensure both groups exist even when one group has no samples in one or more bins.
+    cal = cal.reindex(columns=[0, 1])
+    gap = (cal[0] - cal[1]).abs().mean() # average absolute difference across bins
     if np.isnan(gap):
         raise ValueError("Calibration Gap is NaN. Check if your data has enough samples in each bin and group.")
     cal.index = cal.index.astype(str)
@@ -617,7 +622,7 @@ Generalized Entropy Index (GEI).
         # Mean log deviation: -(1/N) * sum(ln(b_i / mu))
         ratio = b / mu
         val = float(np.mean(np.where(ratio > 0, -np.log(ratio), np.inf))) # log(0) treated as infinite inequality
-    if alpha == 1:
+    elif alpha == 1:
         # Theil index: avoid log(0)
         ratio = b / mu
         val = float(np.mean(np.where(ratio > 0, ratio * np.log(ratio), 0)))
@@ -737,7 +742,7 @@ def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dic
     
     # Average prediction of the neighbors (excluding itself). Shape: (n_samples,)
     mean_neighbor_preds = np.mean(neighbor_preds, axis=1)
-    
+
     # Consistency = 1 - mean( | y_pred - mean_neighbors_pred | )
     diffs = np.abs(y_pred - mean_neighbor_preds)
     val = 1.0 - float(np.mean(diffs))
@@ -1042,7 +1047,7 @@ def bias_amplification(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.nd
 #     Bias Amplification replicando AIF360:
 #     BA = EDF(y_pred) - EDF(y_true)
 #     """
-#     # Binarizar si no lo está
+#     # Binarize if input is not binary yet
 #     y_true_bin = (y_true >= 0.5).astype(int)
 #     y_pred_bin = (y_pred >= 0.5).astype(int)
     
@@ -1147,6 +1152,8 @@ def cohens_d(
     """
     g1 = y_pred[group_mask].astype(float)
     g2 = y_pred[~group_mask].astype(float)
+    if len(g1) == 0 or len(g2) == 0:
+        raise ValueError("Cohen's D requires samples in both protected and unprotected groups.")
     sigma = float(np.sqrt((g1.var() + g2.var()) / 2))
     val = float((g1.mean() - g2.mean()) / sigma) if sigma > 0 else 0.0
     return {
@@ -1220,5 +1227,5 @@ def z_test_diff(
     }
 
 
-# Para regresión: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_regression.py#L56
-# Para multiclase: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_multiclass.py
+# For regression: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_regression.py#L56
+# For multiclass: https://github.com/holistic-ai/holisticai/blob/main/src/holisticai/bias/metrics/_multiclass.py

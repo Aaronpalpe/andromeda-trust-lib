@@ -13,7 +13,7 @@ Functions maintain the original interface based on raw numpy arrays:
 import numpy as np
 import pandas as pd
 
-# Importamos las métricas individuales de HolisticAI
+# Import individual metrics from HolisticAI
 from holisticai.bias.metrics import (
     statistical_parity,
     disparate_impact as hai_disparate_impact,
@@ -133,7 +133,7 @@ def accuracy_parity(y_true: np.ndarray, y_pred: np.ndarray, group_mask: np.ndarr
     
     val = accuracy_diff(group_a, group_b, y_pred, y_true)
     
-    # Extraemos la accuracy de los grupos para el wrapper
+    # Extract per-group accuracy for wrapper compatibility.
     acc_prot = float((y_true[group_mask] == y_pred[group_mask]).mean()) if group_mask.sum() > 0 else 0.0
     acc_unprot = float((y_true[~group_mask] == y_pred[~group_mask]).mean()) if (~group_mask).sum() > 0 else 0.0
     
@@ -223,7 +223,7 @@ def theil_index(
         "value": float(val)
     }
 
-def coefficient_of_variation( # NO IGUAL QUE AIF---------------
+def coefficient_of_variation(
     y_true: np.ndarray,
     y_pred: np.ndarray
 ) -> dict:
