@@ -872,7 +872,7 @@
             "score_adversarial_accuracy_correct_only": {
                 "thresholds": {
                     "value": [20, 40, 60, 80],
-                    "description": "Worst-case adversarial accuracy percentage. Higher is better.",
+                    "description": "Worst-case adversarial accuracy percentage restricted to samples that were originally classified correctly. Higher is better.",
                     "label": "Adversarial Accuracy (Correct Only) Thresholds"
                 },
                 "normalized": {
@@ -956,7 +956,7 @@
             "score_confidence_score": {
                 "thresholds": {
                     "value": [20, 40, 60, 80],
-                    "description": "Average model confidence on predictions. Higher is better.",
+                    "description": "Average Jaccard score across multiple probability thresholds: TP / (TP + FP + FN). Higher is better.",
                     "label": "Confidence Score Thresholds"
                 },
                 "normalized": {

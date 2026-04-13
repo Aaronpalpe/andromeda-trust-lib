@@ -1,0 +1,1111 @@
+Building evaluation context...
+Computing Fairness metrics...
+Metric 'underfitting' computed in 0.00 seconds.
+Metric 'overfitting' computed in 0.00 seconds.
+Metric 'class_balance' computed in 0.00 seconds.
+Metric 'statistical_parity_difference' computed in 0.00 seconds.
+Metric 'disparate_impact' computed in 0.00 seconds.
+Metric 'equal_opportunity_difference' computed in 0.00 seconds.
+Metric 'average_odds_difference' computed in 0.00 seconds.
+Metric 'accuracy_parity' computed in 0.00 seconds.
+Metric 'predictive_parity' computed in 0.00 seconds.
+Metric 'treatment_equality' computed in 0.00 seconds.
+Metric 'calibration_gap' computed in 0.01 seconds.
+Metric 'well_calibration_error' computed in 0.00 seconds.
+Metric 'generalized_entropy_index' computed in 0.00 seconds.
+Metric 'theil_index' computed in 0.00 seconds.
+Metric 'coefficient_of_variation' computed in 0.00 seconds.
+Metric 'individual_consistency' computed in 0.01 seconds.
+Metric 'class_imbalance' computed in 0.00 seconds.
+Metric 'kl_divergence' computed in 0.00 seconds.
+Metric 'conditional_demographic_disparity' computed in 0.00 seconds.
+Metric 'smoothed_edf' computed in 0.00 seconds.
+Metric 'bias_amplification' computed in 0.00 seconds.
+Metric 'between_group_generalized_entropy_error' computed in 0.00 seconds.
+Metric 'cohens_d' computed in 0.00 seconds.
+Metric 'z_test_diff' computed in 0.00 seconds.
+Computing Accountability metrics...
+Metric 'train_test_split' computed in 0.00 seconds.
+Metric 'missing_data' computed in 0.00 seconds.
+Metric 'normalization' computed in 0.00 seconds.
+Metric 'regularization' computed in 0.00 seconds.
+Metric 'factsheet_completeness' computed in 0.00 seconds.
+Computing Privacy metrics...
+Metric 'epsilon_dp' computed in 0.00 seconds.
+Metric 'epsilon_star' computed in 0.06 seconds.
+Metric 'shapr' computed in 3.08 seconds.
+Metric 'attribute_inference' computed in 0.01 seconds.
+Metric 'accuracy_ratio' computed in 0.05 seconds.
+Metric 'privacy_risk' computed in 0.08 seconds.
+Metric 'k_anonymity' computed in 0.00 seconds.
+Metric 'l_diversity' computed in 0.00 seconds.
+Metric 't_closeness' computed in 0.00 seconds.
+Computing Sustainability metrics...
+Metric 'energy_consumed' computed in 0.00 seconds.
+Metric 'emissions' computed in 0.00 seconds.
+Metric 'carbon_intensity' computed in 0.00 seconds.
+Computing Explainability metrics...
+Explainability preparation took 5.17 seconds
+Additional explainability computations took 0.21 seconds
+Metric 'sparsity' computed in 0.00 seconds.
+Metric 'feature_entropy' computed in 0.00 seconds.
+Metric 'topk_concentration' computed in 0.00 seconds.
+Metric 'algorithm_class' computed in 0.00 seconds.
+Metric 'correlated_features' computed in 0.00 seconds.
+Metric 'model_size' computed in 0.00 seconds.
+Metric 'feature_relevance' computed in 0.01 seconds.
+Metric 'alpha_score' computed in 0.00 seconds.
+Metric 'xai_ease_score' computed in 0.00 seconds.
+Metric 'position_parity' computed in 0.00 seconds.
+Metric 'rank_alignment' computed in 0.00 seconds.
+Metric 'spread_ratio' computed in 0.00 seconds.
+Metric 'spread_divergence' computed in 0.00 seconds.
+Metric 'faithfulness' computed in 0.30 seconds.
+Metric 'monotonicity' computed in 0.31 seconds.
+Metric 'infidelity' computed in 0.34 seconds.
+Metric 'number_of_rules' computed in 0.00 seconds.
+Metric 'average_rule_length' computed in 0.11 seconds.
+Metric 'tree_depth' computed in 0.00 seconds.
+Metric 'weighted_average_depth' computed in 0.53 seconds.
+Metric 'weighted_average_explainability_score' computed in 0.57 seconds.
+Metric 'weighted_tree_gini' computed in 0.73 seconds.
+Metric 'tree_depth_variance' computed in 0.47 seconds.
+Metric 'tree_number_of_features' computed in 0.00 seconds.
+Metric 'xai_consistency_score' computed in 0.34 seconds.
+Computing Robustness metrics...
+Metric 'accuracy_drop' computed in 68.60 seconds.
+Metric 'asr' computed in 0.00 seconds.
+Metric 'adversarial_accuracy' computed in 0.00 seconds.
+Metric 'adversarial_accuracy_correct_only' computed in 0.00 seconds.
+Metric 'robustness_ratio' computed in 0.00 seconds.
+Metric 'empirical_robustness_l2' computed in 0.00 seconds.
+Metric 'empirical_robustness_linf' computed in 0.00 seconds.
+Metric 'clique_method' computed in 0.00 seconds.
+Metric 'clever_score' computed in 0.00 seconds.
+Metric 'loss_sensitivity' computed in 0.08 seconds.
+Metric 'confidence_score' computed in 0.09 seconds.
+Metric 'expected_calibration_error' computed in 0.08 seconds.
+{
+    "trust_score": 3.68,
+    "pillar_score": {
+        "fairness": 3.86,
+        "accountability": 3.28,
+        "privacy": 3.36,
+        "sustainability": 4.89,
+        "explainability": 3.97,
+        "robustness": 2.87
+    },
+    "details": {
+        "fairness": {
+            "underfitting": 4.53,
+            "overfitting": 3.62,
+            "class_balance": 1,
+            "statistical_parity_difference": 1.0,
+            "disparate_impact": 5.0,
+            "equal_opportunity_difference": 3.69,
+            "average_odds_difference": 4.19,
+            "accuracy_parity": 4.9,
+            "predictive_parity": 4.57,
+            "treatment_equality": 5.0,
+            "calibration_gap": 3.98,
+            "well_calibration_error": 4.55,
+            "generalized_entropy_index": 4.65,
+            "theil_index": 4.51,
+            "coefficient_of_variation": 3.13,
+            "individual_consistency": 5.0,
+            "class_imbalance": 5,
+            "kl_divergence": 2.77,
+            "conditional_demographic_disparity": 5.0,
+            "smoothed_edf": 1.0,
+            "bias_amplification": 4.81,
+            "between_group_generalized_entropy_error": 5.0,
+            "cohens_d": 1.75,
+            "z_test_diff": 1.0
+        },
+        "accountability": {
+            "train_test_split": 5.0,
+            "missing_data": 5,
+            "normalization": 1,
+            "regularization": 4,
+            "factsheet_completeness": 2.57
+        },
+        "privacy": {
+            "epsilon_dp": 4.64,
+            "epsilon_star": 1.0,
+            "shapr": 5.0,
+            "attribute_inference": 1.0,
+            "accuracy_ratio": 5.0,
+            "privacy_risk": 2.52,
+            "k_anonymity": 5.0,
+            "l_diversity": 1.0,
+            "t_closeness": 4.53
+        },
+        "sustainability": {
+            "energy_consumed": 5.0,
+            "emissions": 5.0,
+            "carbon_intensity": 4.57
+        },
+        "explainability": {
+            "sparsity": 3.85,
+            "feature_entropy": 3.37,
+            "topk_concentration": 5.0,
+            "algorithm_class": 5,
+            "correlated_features": 5.0,
+            "model_size": 4.84,
+            "feature_relevance": 4.2,
+            "alpha_score": 4.2,
+            "xai_ease_score": 4.6,
+            "position_parity": 5.0,
+            "rank_alignment": 3.67,
+            "spread_ratio": 3.37,
+            "spread_divergence": 3.29,
+            "faithfulness": 3.18,
+            "monotonicity": 4.2,
+            "infidelity": 5.0,
+            "number_of_rules": 1.0,
+            "average_rule_length": 1.0,
+            "tree_depth": 1.0,
+            "weighted_average_depth": 2.81,
+            "weighted_average_explainability_score": 3.72,
+            "weighted_tree_gini": 1.0,
+            "tree_depth_variance": 1.0,
+            "tree_number_of_features": 4.67,
+            "xai_consistency_score": 5.0
+        },
+        "robustness": {
+            "accuracy_drop": 1.08,
+            "asr": 1.0,
+            "adversarial_accuracy": 1.0,
+            "adversarial_accuracy_correct_only": 1.0,
+            "robustness_ratio": 1.0,
+            "empirical_robustness_l2": 5.0,
+            "empirical_robustness_linf": 5.0,
+            "clique_method": NaN,
+            "clever_score": NaN,
+            "loss_sensitivity": NaN,
+            "confidence_score": 4.65,
+            "expected_calibration_error": 5.0
+        }
+    },
+    "properties": {
+        "fairness": {
+            "underfitting": {
+                "Metric Description": "Test accuracy as a proxy for underfitting.",
+                "Depends on": "Model, Test Data",
+                "Formula": "Underfitting = Accuracy(y_test, y_pred_test)",
+                "Test Accuracy": "96.50%"
+            },
+            "overfitting": {
+                "Metric Description": "Train-test accuracy gap as a proxy for overfitting.",
+                "Depends on": "Model, Training Data, Test Data",
+                "Formula": "Overfitting Gap = Accuracy(y_train, y_pred_train) - Accuracy(y_test, y_pred_test)",
+                "Training Accuracy": "99.96%",
+                "Test Accuracy": "96.50%",
+                "Train-Test Gap": "3.46%"
+            },
+            "class_balance": {
+                "Metric Description": "Chi-square test for class balance in label distribution.",
+                "Depends on": "Training Data",
+                "P-Value": "0.0000",
+                "Balanced": "False",
+                "Class Counts": {
+                    "0": 29494,
+                    "1": 18506
+                }
+            },
+            "statistical_parity_difference": {
+                "Metric Description": "Difference in favorable prediction rates between protected and unprotected groups.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "Formula": "Statistical Parity Difference = Favored Ratio Protected - Favored Ratio Unprotected",
+                "Number Protected": 6021,
+                "Number Protected Favored": 3472,
+                "Favored Protected Ratio": "57.66%",
+                "Number Unprotected": 5979,
+                "Number Unprotected Favored": 1251,
+                "Favored Unprotected Ratio": "20.92%",
+                "Statistical Parity Difference": "0.3674"
+            },
+            "disparate_impact": {
+                "Metric Description": "Ratio of favorable prediction rates between protected and unprotected groups.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "Formula": "Protected Favored Ratio / Unprotected Favored Ratio",
+                "Number Protected": 6021,
+                "Number Protected Favored": 3472,
+                "Protected Favored Ratio": "P(y_hat=favorable|protected=True) = 57.66%",
+                "Number Unprotected": 5979,
+                "Number Unprotected Favored": 1251,
+                "Unprotected Favored Ratio": "P(y_hat=favorable|protected=False) = 20.92%",
+                "Disparate Impact": "2.7560"
+            },
+            "equal_opportunity_difference": {
+                "Metric Description": "Difference in true positive rates between protected and unprotected groups.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "Formula": "Equal Opportunity Difference = TPR Protected - TPR Unprotected",
+                "TPR Unprotected Group": "90.59%",
+                "TPR Protected Group": "97.15%",
+                "Equal Opportunity Difference": "6.57%"
+            },
+            "average_odds_difference": {
+                "Metric Description": "Average of the TPR and FPR differences between groups.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "Formula": "0.5*(TPR Protected - TPR Unprotected) + 0.5*(FPR Protected - FPR Unprotected)",
+                "FPR Unprotected Group": "2.25%",
+                "FPR Protected Group": "3.77%",
+                "TPR Unprotected Group": "90.59%",
+                "TPR Protected Group": "97.15%",
+                "Average Odds Difference": "4.04%"
+            },
+            "accuracy_parity": {
+                "Metric Description": "Measures whether prediction accuracy is equal across groups.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+                "Formula": "Accuracy Parity = Accuracy Protected - Accuracy Unprotected",
+                "Accuracy Unprotected Group": "96.24%",
+                "Accuracy Protected Group": "96.76%",
+                "Accuracy Parity Difference": "0.52%"
+            },
+            "predictive_parity": {
+                "Metric Description": "Checks equality of PPV and NPV between protected and unprotected groups.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
+                "Formula": "0.5*(PPV Protected - PPV Unprotected) + 0.5*(NPV Protected - NPV Unprotected)",
+                "PPV Unprotected": "91.53%",
+                "PPV Protected": "97.24%",
+                "NPV Unprotected": "97.48%",
+                "NPV Protected": "96.12%",
+                "Predictive Parity Difference": "2.17%"
+            },
+            "treatment_equality": {
+                "Metric Description": "Measures equality of the false negative / false positive ratio across groups.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+                "Formula": "(FN/FP)_Protected - (FN/FP)_Unprotected",
+                "FN Unprotected": 119,
+                "FP Unprotected": 106,
+                "FN Protected": 99,
+                "FP Protected": 96,
+                "FN/FP Unprotected": "1.1226",
+                "FN/FP Protected": "1.0312",
+                "Treatment Equality Difference": "-0.0914"
+            },
+            "calibration_gap": {
+                "Metric Description": "Checks whether individuals with the same predicted score have the same empirical outcome probability in both groups.",
+                "Depends on": "Model, Test Data, Probabilistic Scores, Factsheet (Definition of Protected Group)",
+                "Formula": "Calibration Gap = Mean_b(|P(y=1|score bin b, protected) - P(y=1|score bin b, unprotected)|)",
+                "Bins Used": "10",
+                "Calibration by Bin": {
+                    "0": {
+                        "(-0.001, 0.36]": 0.019632949210414,
+                        "(0.36, 1.0]": 0.9064191802010828
+                    },
+                    "1": {
+                        "(-0.001, 0.36]": 0.03289734443123266,
+                        "(0.36, 1.0]": 0.9696969696969697
+                    }
+                },
+                "Mean Calibration Gap": "0.0383"
+            },
+            "well_calibration_error": {
+                "Metric Description": "Checks whether predicted probabilities match empirical outcome frequencies.",
+                "Depends on": "Model, Test Data, Probabilistic Scores",
+                "Formula": "Well Calibration Error = Mean_b(|Mean(y in b) - Mean(score in b)|)",
+                "Bins Used": "10",
+                "Difference by Bin": {
+                    "(-0.001, 0.36]": 0.014094488371017708,
+                    "(0.36, 1.0]": 0.01989700678852202
+                },
+                "Mean Calibration Error": "0.0170"
+            },
+            "generalized_entropy_index": {
+                "Metric Description": "Measures inequality in the distribution of correct predictions.",
+                "Depends on": "Model, Test Data",
+                "Formula": "GEI(alpha) = Mean(((b/mu)^alpha - 1) / (alpha * (alpha - 1))), where b is individual benefit",
+                "Alpha": "2.000000",
+                "Mean Benefit": "0.998667",
+                "Generalized Entropy Index": "0.017546"
+            },
+            "theil_index": {
+                "Metric Description": "Measures inequality in the distribution of correct predictions.",
+                "Depends on": "Model, Test Data",
+                "Formula": "GEI(alpha) = Mean(((b/mu)^alpha - 1) / (alpha * (alpha - 1))), where b is individual benefit",
+                "Alpha": "1.000000",
+                "Mean Benefit": "0.998667",
+                "Generalized Entropy Index": "0.024701"
+            },
+            "coefficient_of_variation": {
+                "Metric Description": "Measures the relative dispersion of prediction benefits.",
+                "Depends on": "Model, Test Data",
+                "Formula": "CV = sqrt(2 * GEI(alpha=2))",
+                "Alpha": "2",
+                "GEI (alpha=2)": "0.017546",
+                "Coefficient of Variation": "0.187328"
+            },
+            "individual_consistency": {
+                "Metric Description": "Measures whether similar individuals receive similar predictions.",
+                "Depends on": "Model, Test Data",
+                "Formula": "Consistency = 1 - average(|y_hat_i - mean(y_hat_neighbors)|)",
+                "k Neighbors": "5",
+                "Consistency Score": "0.9073"
+            },
+            "class_imbalance": {
+                "Metric Description": "Measures imbalance in size between protected and unprotected groups. 0 indicates perfect balance.",
+                "Depends on": "Dataset, Factsheet (Definition of Protected Group)",
+                "Formula": "Class Imbalance = (N_unprotected - N_protected) / (N_unprotected + N_protected)",
+                "N Protected": "6021",
+                "N Unprotected": "5979",
+                "Class Imbalance": "-0.0035"
+            },
+            "kl_divergence": {
+                "Metric Description": "Divergence between label distributions across groups.",
+                "Depends on": "Dataset, Factsheet (Definition of Protected Group)",
+                "Formula": "KL(P_unprotected || P_protected)",
+                "KL Divergence": "0.279153"
+            },
+            "conditional_demographic_disparity": {
+                "Metric Description": "Conditional Demographic Disparity (Wachter et al., 2021).",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+                "Formula": "CDD = (1/N) * sum_i(N_i * DD_i), DD_i = (N_i,negative/N_negative) - (N_i,positive/N_positive)",
+                "DD Protected Group": "-0.3848",
+                "DD Unprotected Group": "0.3848",
+                "N Protected": "6021",
+                "N Unprotected": "5979",
+                "Total Positive": "4723",
+                "Total Negative": "7277",
+                "Conditional Demographic Disparity": "-0.0013"
+            },
+            "smoothed_edf": {
+                "Metric Description": "Smoothed Empirical Differential Fairness (EDF).",
+                "Depends on": "Model, Test Data, Probabilistic Scores, Factsheet (Definition of Protected Group)",
+                "Formula": "EDF = max_i,j max(|log((p_i+alpha)/(p_j+alpha))|, |log((1-p_i+alpha)/(1-p_j+alpha))|)",
+                "Alpha": "0.500000",
+                "Group Smoothed Selection Rates": "{'0': np.float64(0.20944816053511706), '1': np.float64(0.5771338425772169)}",
+                "EDF Log-Ratio": "1.0136"
+            },
+            "bias_amplification": {
+                "Metric Description": "Measures whether the model amplifies the bias present in the dataset.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+                "Formula": "Bias Amplification = EDF(predictions) - EDF(labels)",
+                "Bias Dataset": "1.0041",
+                "Bias Predictions": "1.0135",
+                "Bias Amplification": "0.0095"
+            },
+            "between_group_generalized_entropy_error": {
+                "Metric Description": "Between-Group Generalized Entropy Error (Speicher et al., 2018).",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+                "Formula": "Between-group GEI computes GEI over group-level mean benefits.",
+                "Alpha": "2.000000",
+                "Mean Benefit": "0.998667",
+                "Between-Group GEI Error": "0.000000"
+            },
+            "cohens_d": {
+                "Metric Description": "Standardised effect size between group predictions.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+                "Formula": "(mu1 - mu2) / sigma_pooled",
+                "Mean Unprotected": "0.2092",
+                "Mean Protected": "0.5766",
+                "Pooled Std Dev": "0.4525",
+                "Cohen's D": "0.8119"
+            },
+            "z_test_diff": {
+                "Metric Description": "Z test (difference) / 2-SD statistic for success rates. Fair if the value stays between -2 and 2.",
+                "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group)",
+                "Formula": "Z = (SR_protected - SR_unprotected) / sqrt((SR_total * (1 - SR_total)) / (N_total * P_protected * (1 - P_protected)))",
+                "Success Rate Protected": "57.66%",
+                "Success Rate Unprotected": "20.92%",
+                "Total Success Rate": "39.36%",
+                "N Protected": "6021",
+                "N Unprotected": "5979",
+                "Z-Test Score": "41.1919"
+            }
+        },
+        "accountability": {
+            "train_test_split": {
+                "Metric Description": "Ratio between the training and test set sizes.",
+                "Depends on": "Training and Testing Data",
+                "Formula": "Train Ratio = round(100 * N_train / (N_train + N_test)); Test Ratio = 100 - Train Ratio",
+                "Train/Test split": "80/20"
+            },
+            "missing_data": {
+                "Metric Description": "Number of missing values across the training and test data.",
+                "Depends on": "Training and Test Data",
+                "Formula": "Missing Data = Missing(train) + Missing(test)",
+                "Train missing values": 0,
+                "Test missing values": 0,
+                "Null values count": 0
+            },
+            "normalization": {
+                "Metric Description": "Normalization strategy inferred from training and test data statistics.",
+                "Depends on": "Training and Testing Data",
+                "Formula": "Heuristic classification based on train/test mean-std closeness to (0,1) and value ranges in [0,1]",
+                "Training mean": "14485.7636",
+                "Training std": "30729.5990",
+                "Test mean": "14544.3915",
+                "Test std": "30826.7757",
+                "Detected Strategy": "None"
+            },
+            "regularization": {
+                "Metric Description": "Regularization technique declared in the factsheet.",
+                "Depends on": "Factsheet",
+                "Regularization technique": "ridge_regression"
+            },
+            "factsheet_completeness": {
+                "Metric Description": "Completeness of the factsheet based on present versus expected fields.",
+                "Depends on": "Factsheet",
+                "Formula": "Completeness Ratio = Present Fields / Total Expected Fields",
+                "Fields present": "19/37",
+                "Missing fields": [
+                    "general.model_name",
+                    "general.purpose_description",
+                    "general.domain_description",
+                    "general.authors",
+                    "general.contact_information",
+                    "governance.roles_and_responsibilities",
+                    "governance.risk_tolerance",
+                    "governance.ai_governance_committee",
+                    "governance.rai_competence",
+                    "auditability.data_provenance",
+                    "auditability.model_provenance",
+                    "auditability.logging",
+                    "auditability.auditing",
+                    "auditability.forum",
+                    "redressability.incident_reporting",
+                    "redressability.process",
+                    "redressability.built_in_redundancy",
+                    "redressability.implications"
+                ],
+                "Completeness": "51.35%"
+            }
+        },
+        "privacy": {
+            "epsilon_dp": {
+                "Metric Description": "Theoretical epsilon value from the factsheet's differential privacy analysis. Lower epsilon implies stronger privacy guarantees (less theoretical leakage).",
+                "Depends on": "Training Mechanism",
+                "Formula": "Epsilon-DP = epsilon (as declared in factsheet privacy analysis)",
+                "Epsilon": "1.000000"
+            },
+            "epsilon_star": {
+                "Metric Description": "Empirical epsilon* estimated from the loss distribution. Lower is better (less membership leakage).",
+                "Depends on": "Model and Train/Test Data",
+                "Formula": "epsilon* = log(max over threshold-based membership ratios)",
+                "Delta Used": "2.00e-04",
+                "Epsilon*": "19.626651"
+            },
+            "shapr": {
+                "Metric Description": "Approximate membership inference risk estimated with SHAPr. Lower values indicate lower risk.",
+                "Depends on": "Model and Train/Test Data",
+                "Formula": "SHAPr Risk = mean marginal contribution in prediction-space nearest-neighbor analysis",
+                "Average Marginal Contribution": "0.000193",
+                "Sample Size": 5000,
+                "k Neighbors": 500.0
+            },
+            "attribute_inference": {
+                "Metric Description": "Attribute inference risk for the declared sensitive attribute.",
+                "Depends on": "Model, Train/Test Data, and Sensitive Attribute",
+                "Formula": "Attribute Inference = attack score predicting sensitive attribute from non-sensitive features and labels",
+                "Sensitive Attribute": "Group",
+                "Risk Score": "0.832312"
+            },
+            "accuracy_ratio": {
+                "Metric Description": "Accuracy ratio between the original model and the data-minimized variant (original/noisy). Values close to 1 indicate minimal performance loss; larger values indicate greater utility loss.",
+                "Depends on": "Model and Test Data",
+                "Formula": "Accuracy Ratio = Accuracy(original test) / Accuracy(noisy test)",
+                "selector_type": "Noisy",
+                "modifier_type": "GaussianNoise",
+                "n_features": 5,
+                "Accuracy Ratio": "1.000086"
+            },
+            "privacy_risk": {
+                "Metric Description": "Membership inference privacy risk derived from predicted probabilities.",
+                "Depends on": "Model and Predicted Probabilities",
+                "Formula": "Privacy Risk = mean posterior membership risk score",
+                "Mean Privacy Risk": "0.509999"
+            },
+            "k_anonymity": {
+                "Metric Description": "Minimum k value achieved for the quasi-identifier groups. Higher values indicate better privacy protection.",
+                "Depends on": "Quasi Identifiers and Data",
+                "Formula": "k-Anonymity = min over equivalence classes of group size",
+                "Quasi Identifiers": [
+                    "Own_Housing",
+                    "Own_Car"
+                ],
+                "Minimum k": 6538.0
+            },
+            "l_diversity": {
+                "Metric Description": "Minimum l value achieved for the quasi-identifier groups and sensitive attributes.",
+                "Depends on": "Quasi Identifiers, Sensitive Attributes, and Data",
+                "Formula": "l-Diversity = min over quasi-identifier groups of distinct sensitive values",
+                "Quasi Identifiers": [
+                    "Own_Housing",
+                    "Own_Car"
+                ],
+                "Sensitive Attributes": [
+                    "Group"
+                ],
+                "Minimum l": 2.0
+            },
+            "t_closeness": {
+                "Metric Description": "Maximum t value measuring distribution closeness within quasi-identifier groups.",
+                "Depends on": "Quasi Identifiers, Sensitive Attributes, and Data",
+                "Formula": "t-Closeness = max distance between group-sensitive distribution and global-sensitive distribution",
+                "Quasi Identifiers": [
+                    "Own_Housing",
+                    "Own_Car"
+                ],
+                "Sensitive Attributes": [
+                    "Group"
+                ],
+                "Maximum t": 0.2351404198551617
+            }
+        },
+        "sustainability": {
+            "energy_consumed": {
+                "Metric Description": "Total training energy consumed (CPU + GPU + RAM).",
+                "Depends on": "Factsheet Sustainability Fields",
+                "Formula": "Energy Consumed = CPU Energy + GPU Energy + RAM Energy",
+                "CPU Energy (kWh)": "0.000017",
+                "GPU Energy (kWh)": "0.000009",
+                "RAM Energy (kWh)": "0.000004",
+                "Energy Consumed (kWh)": "0.000030"
+            },
+            "emissions": {
+                "Metric Description": "Total CO2 emissions during training estimated (Energy consumed * Carbon Intensity).",
+                "Depends on": "Factsheet Sustainability Fields",
+                "Formula": "Emissions = Energy Consumed * Carbon Intensity",
+                "Energy Consumed (kWh)": "0.000030",
+                "Carbon Intensity (kgCO2/kWh)": "0.174050",
+                "Training Duration (s)": "1.41",
+                "PUE": 1.0,
+                "WUE": 0.0,
+                "Emissions (kgCO2)": "0.000005"
+            },
+            "carbon_intensity": {
+                "Metric Description": "Carbon intensity in kgCO2 per kWh based on energy use and location.",
+                "Depends on": "Factsheet Sustainability Fields",
+                "Country": "Spain",
+                "Carbon Intensity": "0.174050"
+            }
+        },
+        "explainability": {
+            "sparsity": {
+                "Metric Description": "Fraction of features whose SHAP importance is above the configured threshold.",
+                "Depends on": "Model and Test Data",
+                "Formula": "Sparsity = (# features with |importance| > threshold) / (# features)",
+                "N Features": 5,
+                "Sample Size": 25,
+                "SHAP Threshold": 0.05,
+                "Explainer": "PermutationExplainer",
+                "Sparsity": 0.288
+            },
+            "feature_entropy": {
+                "Metric Description": "Normalized entropy of the global SHAP importance distribution across features. Lower values indicate that importance is concentrated in fewer features, while higher values suggest a more even distribution of importance.",
+                "Depends on": "Model and Test Data",
+                "Formula": "Feature Entropy = -sum_i p_i log(p_i) / log(n_features)",
+                "N Features": 5,
+                "Sample Size": 25,
+                "Explainer": "PermutationExplainer",
+                "Global Feature Importances": [
+                    0.010684857142857137,
+                    0.03692671428571432,
+                    0.4619731428571429,
+                    0.015374857142857143,
+                    0.02780600000000001
+                ],
+                "Feature Entropy": 0.4082369827668806
+            },
+            "topk_concentration": {
+                "Metric Description": "Fraction of total global SHAP importance captured by the top-k most important features. Higher values indicate that a small subset of features accounts for most of the importance.",
+                "Depends on": "Model and Test Data",
+                "Formula": "Top-K Concentration = sum(top-k global importances) / sum(all global importances)",
+                "Top K": 5,
+                "N Features": 5,
+                "Sample Size": 25,
+                "Explainer": "PermutationExplainer",
+                "Global Feature Importances": [
+                    0.010684857142857137,
+                    0.03692671428571432,
+                    0.4619731428571429,
+                    0.015374857142857143,
+                    0.02780600000000001
+                ],
+                "Top-K Concentration": 1.0
+            },
+            "algorithm_class": {
+                "Metric Description": "Identifies the model class using the provided model type or inferred model class name.",
+                "Depends on": "Model Metadata",
+                "Formula": "Algorithm Class Score is assigned via mapping by model_type",
+                "Model Type": "DecisionTreeClassifier"
+            },
+            "correlated_features": {
+                "Metric Description": "Percentage of features highly correlated with at least one other feature in combined train and test data.",
+                "Depends on": "Training and Test Data",
+                "Formula": "Correlated Features = (# features with any |corr| >= threshold) / (# features)",
+                "Highly correlated features": [],
+                "High correlation threshold": "0.95",
+                "Percentage of highly correlated features": "0.000000"
+            },
+            "model_size": {
+                "Metric Description": "Number of input features in the training data.",
+                "Depends on": "Training Data",
+                "Formula": "Model Size = Number of input features",
+                "Number of Features": "5.000000"
+            },
+            "feature_relevance": {
+                "Metric Description": "Percentage of features considered irrelevant because their importance is below the configured threshold.",
+                "Depends on": "Model or Global Feature Importances",
+                "Formula": "Feature Relevance = (# features with importance > threshold) / (# features)",
+                "Threshold for irrelevance": "0.05",
+                "Number of irrelevant features": 4,
+                "Importances": [
+                    0.010684857142857137,
+                    0.03692671428571432,
+                    0.4619731428571429,
+                    0.015374857142857143,
+                    0.02780600000000001
+                ],
+                "Percentage of features whose importance contributes is greater than threshold": "0.800000"
+            },
+            "alpha_score": {
+                "Metric Description": "Fraction of top features needed to reach the alpha share of total feature importance.",
+                "Depends on": "Global Feature Importances",
+                "Formula": "Alpha Score = (# top features needed to reach alpha cumulative importance) / (# features)",
+                "Feature Importances": [
+                    0.010684857142857137,
+                    0.03692671428571432,
+                    0.4619731428571429,
+                    0.015374857142857143,
+                    0.02780600000000001
+                ],
+                "Alpha": "0.80",
+                "Total Features": 5,
+                "Top Features for Alpha": 1,
+                "Alpha Score": "0.2000"
+            },
+            "xai_ease_score": {
+                "Metric Description": "Ease of interpreting top features based on similarity of PDP curve tangents across sections.",
+                "Depends on": "PDP Averages and Global Ranked Features",
+                "Formula": "XAI Ease Score = mean pairwise similarity of PDP tangent profiles over top-ranked features",
+                "PDP Averages": {
+                    "Num_Children": [
+                        0.45097499999999996,
+                        0.46220000000000006,
+                        0.4585,
+                        0.4477,
+                        0.45539999999999997,
+                        0.4548,
+                        0.4531
+                    ],
+                    "Group": [
+                        0.39039999999999997,
+                        0.5034000000000001
+                    ],
+                    "Income": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.14279999999999998,
+                        0.4132,
+                        0.7804000000000001,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Own_Car": [
+                        0.4398,
+                        0.4640000000000001
+                    ],
+                    "Own_Housing": [
+                        0.43479999999999996,
+                        0.49099999999999994
+                    ]
+                },
+                "Global Ranked Features": [
+                    "Income",
+                    "Group",
+                    "Own_Housing",
+                    "Own_Car",
+                    "Num_Children"
+                ],
+                "XAI Ease Score": "0.9000"
+            },
+            "position_parity": {
+                "Metric Description": "Average cumulative alignment between conditional feature rankings and the global feature ranking.",
+                "Depends on": "Global and Conditional Feature Rankings",
+                "Formula": "Position Parity = mean over groups of cumulative positional overlap with global ranking",
+                "Conditional Rankings": {
+                    "0": [
+                        "Income",
+                        "Group",
+                        "Own_Housing",
+                        "Own_Car",
+                        "Num_Children"
+                    ],
+                    "1": [
+                        "Income",
+                        "Group",
+                        "Own_Housing",
+                        "Own_Car",
+                        "Num_Children"
+                    ]
+                },
+                "Global Ranking": [
+                    "Income",
+                    "Group",
+                    "Own_Housing",
+                    "Own_Car",
+                    "Num_Children"
+                ],
+                "Conditional Position Parity": {
+                    "0": 1.0,
+                    "1": 1.0
+                },
+                "Position Parity": "1.0000"
+            },
+            "rank_alignment": {
+                "Metric Description": "Jaccard similarity between top-alpha features from conditional and global importance distributions.",
+                "Depends on": "Global and Conditional Feature Importances",
+                "Formula": "Rank Alignment = mean_g Jaccard(Top(global), Top(group g))",
+                "Conditional Importances": {
+                    "0": {
+                        "Num_Children": 0.005813627819548867,
+                        "Group": 0.025300939849624088,
+                        "Income": 0.48842453007518793,
+                        "Own_Car": 0.008240601503759402,
+                        "Own_Housing": 0.02106315789473685
+                    },
+                    "1": {
+                        "Num_Children": 0.02611041666666665,
+                        "Group": 0.0737416666666667,
+                        "Income": 0.3782104166666666,
+                        "Own_Car": 0.03796666666666665,
+                        "Own_Housing": 0.04915833333333333
+                    }
+                },
+                "Global Importances": {
+                    "Num_Children": 0.010684857142857137,
+                    "Group": 0.03692671428571432,
+                    "Income": 0.4619731428571429,
+                    "Own_Car": 0.015374857142857143,
+                    "Own_Housing": 0.02780600000000001
+                },
+                "Top Global Features": [
+                    "Income"
+                ],
+                "Top Conditional Features": {
+                    "0": [
+                        "Income"
+                    ],
+                    "1": [
+                        "Income",
+                        "Group",
+                        "Own_Housing"
+                    ]
+                },
+                "Rank Alignment": "0.6667"
+            },
+            "spread_ratio": {
+                "Metric Description": "Evenness of the feature importance distribution compared against a uniform distribution.",
+                "Depends on": "Global Feature Importances",
+                "Formula": "Spread Ratio = min(normalized importances) / max(normalized importances)",
+                "Feature Importances": [
+                    0.010684857142857137,
+                    0.03692671428571432,
+                    0.4619731428571429,
+                    0.015374857142857143,
+                    0.02780600000000001
+                ],
+                "Spread Ratio": "0.4082"
+            },
+            "spread_divergence": {
+                "Metric Description": "Jensen-Shannon divergence between the feature importance distribution and an even distribution.",
+                "Depends on": "Global Feature Importances",
+                "Formula": "Spread Divergence = JSD(importance_distribution, uniform_distribution)",
+                "Feature Importances": [
+                    0.010684857142857137,
+                    0.03692671428571432,
+                    0.4619731428571429,
+                    0.015374857142857143,
+                    0.02780600000000001
+                ],
+                "Spread Divergence": "0.5713"
+            },
+            "faithfulness": {
+                "Metric Description": "Correlation between feature importance weights and the prediction change when each feature is replaced by a baseline value.",
+                "Depends on": "Model, Test Data, Local Feature Weights, and Base Values",
+                "Formula": "Faithfulness = corr(feature importance, prediction change after feature removal)",
+                "Faithfulness": "0.090190"
+            },
+            "monotonicity": {
+                "Metric Description": "Proportion of instances where prediction confidence increases monotonically as features are added by importance.",
+                "Depends on": "Model, Test Data, Local Feature Weights, and Base Values",
+                "Formula": "Monotonicity = (# instances with monotonic confidence progression) / (# instances)",
+                "Monotonicity": "0.8000"
+            },
+            "infidelity": {
+                "Metric Description": "Measures whether perturbations on important features produce proportional changes in model output.",
+                "Depends on": "Model, Test Data, and Local Feature Weights",
+                "Formula": "Infidelity = expected discrepancy between attribution-weighted perturbation and model output change",
+                "Infidelity Score": "0.000000"
+            },
+            "number_of_rules": {
+                "Metric Description": "Number of rules in a tree or rule-based model (mean across trees for ensembles).",
+                "Depends on": "Tree or Rule-Based Model",
+                "Value": "1257"
+            },
+            "average_rule_length": {
+                "Metric Description": "Average rule length or path depth in a tree or rule-based model.",
+                "Depends on": "Tree or Rule-Based Model",
+                "Value": "14.3791"
+            },
+            "tree_depth": {
+                "Metric Description": "Maximum tree depth (mean depth for tree ensembles).",
+                "Depends on": "Tree-Based Model",
+                "Value": "27"
+            },
+            "weighted_average_depth": {
+                "Metric Description": "Sample-weighted average depth of tree leaf paths.",
+                "Depends on": "Tree-Based Model",
+                "Value": "7.015627",
+                "Depth*Weight List": "Only with decision trees for legibility"
+            },
+            "weighted_average_explainability_score": {
+                "Metric Description": "Sample-weighted average explainability score based on the number of unique cuts per path.",
+                "Depends on": "Tree-Based Model",
+                "Value": "4.514727",
+                "Explainability*Weight List": "Only with decision trees for legibility"
+            },
+            "weighted_tree_gini": {
+                "Metric Description": "Weighted impurity score of leaf nodes across the tree.",
+                "Depends on": "Tree-Based Model",
+                "Value": "0.972815"
+            },
+            "tree_depth_variance": {
+                "Metric Description": "Variance of leaf depths in the tree structure.",
+                "Depends on": "Tree-Based Model",
+                "Value": "14.437490",
+                "Leaf Depths": "Only with decision trees for legibility"
+            },
+            "tree_number_of_features": {
+                "Metric Description": "Number of distinct features actively used by the tree.",
+                "Depends on": "Tree-Based Model",
+                "Value": "5"
+            },
+            "xai_consistency_score": {
+                "Metric Description": "Average pairwise Jaccard similarity of top-k features across LIME, SHAP, and PDP importance rankings.",
+                "Depends on": "Model, Test Data, SHAP Global Importances, and PDP Importances",
+                "Formula": "XAI Consistency = mean pairwise Jaccard similarity among top-k feature sets from multiple XAI methods",
+                "Top-K Rankings Details": "Top-5 features LIME: Income, Group, Own_Housing, Own_Car, Num_Children, with importances: 0.487, 0.143, 0.099, 0.036, 0.022\nTop-5 features SHAP: Income, Group, Own_Housing, Own_Car, Num_Children, with importances: 0.462, 0.037, 0.028, 0.015, 0.011\nTop-5 features PDP: Income, Group, Own_Housing, Own_Car, Num_Children, with importances: 0.438, 0.057, 0.028, 0.012, 0.004",
+                "Consistency Matrix": {
+                    "LIME": {
+                        "LIME": 1.0,
+                        "SHAP": 1.0,
+                        "PDP": 1.0
+                    },
+                    "SHAP": {
+                        "LIME": 1.0,
+                        "SHAP": 1.0,
+                        "PDP": 1.0
+                    },
+                    "PDP": {
+                        "LIME": 1.0,
+                        "SHAP": 1.0,
+                        "PDP": 1.0
+                    }
+                },
+                "XAI Consistency Score": "1.0000"
+            }
+        },
+        "robustness": {
+            "accuracy_drop": {
+                "Metric Description": "Worst-case accuracy drop across the available attack suite.",
+                "Depends on": "Model, Test Data, and Attack Results",
+                "Formula": "Accuracy Drop = Clean Accuracy - Adversarial Accuracy",
+                "Average Drop (%)": 98.0,
+                "Results from Individual Attacks": {
+                    "HSJ": {
+                        "description": "HopSkipJump (black-box, decision-based)",
+                        "clean_accuracy": 0.98,
+                        "adv_accuracy": 0.0,
+                        "accuracy_drop_pct (effective_robustness)": 98.0,
+                        "robustness_ratio (adv/clean)": 0.0,
+                        "adv_accuracy_correct_only": 0.0,
+                        "attack_success_rate_pct (correct_only)": 100.0,
+                        "mean_l2": 12137.6005859375,
+                        "mean_linf": 12137.5380859375,
+                        "er_l2_success": 12137.6005859375,
+                        "er_linf_success": 12137.5380859375,
+                        "sample_size (n_eval)": 50,
+                        "n_attacked": 49,
+                        "params": {
+                            "max_iter": 10,
+                            "max_eval": 1000,
+                            "init_eval": 10,
+                            "init_size": 10,
+                            "norm": 2,
+                            "seed": 42
+                        },
+                        "note": "HSJ attack metrics on correctly classified subset. Full subset adv accuracy also reported."
+                    }
+                },
+                "Most Effective Attack": "HSJ",
+                "Accuracy Drop (%)": 98.0
+            },
+            "asr": {
+                "Metric Description": "Worst-case attack success rate across the available attack suite.",
+                "Depends on": "Model, Test Data, and Attack Results",
+                "Formula": "ASR = Successful Attacks / Attacks Attempted",
+                "Average ASR (%)": 100.0,
+                "Most Effective Attack": "HSJ",
+                "Attack Success Rate (%)": 100.0
+            },
+            "adversarial_accuracy": {
+                "Metric Description": "Worst-case adversarial accuracy across the available attack suite.",
+                "Depends on": "Model, Test Data, and Attack Results",
+                "Formula": "Adversarial Accuracy = Accuracy(model(x_adv), y_true)",
+                "Average Adv Accuracy (%)": 0.0,
+                "Most Effective Attack": "HSJ",
+                "Adversarial Accuracy (%)": 0.0
+            },
+            "adversarial_accuracy_correct_only": {
+                "Metric Description": "Worst-case adversarial accuracy restricted to originally correctly classified samples.",
+                "Depends on": "Model, Test Data, and Attack Results",
+                "Formula": "Adversarial Accuracy (Correct-Only) = Accuracy on adversarial examples generated from originally correct samples",
+                "Average Adv Accuracy (Correct Only) (%)": 0.0,
+                "Most Effective Attack": "HSJ",
+                "Adversarial Accuracy (Correct Only) (%)": 0.0
+            },
+            "robustness_ratio": {
+                "Metric Description": "Worst-case robustness ratio (Adversarial Accuracy / Clean Accuracy) across the available attack suite.",
+                "Depends on": "Model, Test Data, and Attack Results",
+                "Formula": "Robustness Ratio = Adversarial Accuracy / Clean Accuracy",
+                "Average Robustness Ratio": 0.0,
+                "Most Effective Attack": "HSJ",
+                "Robustness Ratio": 0.0
+            },
+            "empirical_robustness_l2": {
+                "Metric Description": "Worst-case empirical robustness measured with L2 distance for successful attacks.",
+                "Depends on": "Model, Test Data, and Attack Results",
+                "Formula": "ER-L2 = mean(||x_adv - x||_2) over successful attacks",
+                "Average ER L2": 12137.6005859375,
+                "Most Effective Attack": "HSJ",
+                "Empirical Robustness L2": 12137.6005859375
+            },
+            "empirical_robustness_linf": {
+                "Metric Description": "Worst-case empirical robustness measured with Linf distance for successful attacks.",
+                "Depends on": "Model, Test Data, and Attack Results",
+                "Formula": "ER-Linf = mean(||x_adv - x||_inf) over successful attacks",
+                "Average ER Linf": 12137.5380859375,
+                "Most Effective Attack": "HSJ",
+                "Empirical Robustness Linf": 12137.5380859375
+            },
+            "clique_method": {
+                "Error": "Clique Method requires input features to be normalized to [0, 1]."
+            },
+            "clever_score": {
+                "Error": "CLEVER requires an ART classifier with class_gradient and loss_gradient (e.g., PyTorchClassifier / TensorFlowV2Classifier)."
+            },
+            "loss_sensitivity": {
+                "Error": "Loss Sensitivity metric requires an ART classifier with predict method (e.g., PyTorchClassifier / TensorFlowV2Classifier). Error: 'RandomForestClassifier' object has no attribute 'loss_gradient'"
+            },
+            "confidence_score": {
+                "Metric Description": "Confidence score computed from thresholded prediction consistency. Average Jaccard index (TP / (TP + FP + FN)) over multiple probability thresholds, where predictions are binarized at each threshold. Higher indicates more confident predictions.",
+                "Depends on": "Model and Test Data",
+                "Formula": "Confidence Score = mean_t Jaccard(y_true_bin(t), y_pred_bin(t))",
+                "Metric": "ConfidenceScore",
+                "Thresholds": [
+                    0.5,
+                    0.6,
+                    0.7,
+                    0.8,
+                    0.9
+                ],
+                "Confidence Score (%)": 91.35327283651075
+            },
+            "expected_calibration_error": {
+                "Metric Description": "Expected Calibration Error computed as the weighted gap between confidence and accuracy across bins.",
+                "Depends on": "Model and Test Data",
+                "Formula": "ECE = sum_b (n_b / n) * |acc(b) - conf(b)|",
+                "Number of Bins": 10,
+                "Bins stats": [
+                    {
+                        "bin": 4,
+                        "lower": 0.4,
+                        "upper": 0.5,
+                        "count": 4,
+                        "accuracy": 0.25,
+                        "confidence": 0.5
+                    },
+                    {
+                        "bin": 5,
+                        "lower": 0.5,
+                        "upper": 0.6000000000000001,
+                        "count": 92,
+                        "accuracy": 0.391304347826087,
+                        "confidence": 0.5587644927536232
+                    },
+                    {
+                        "bin": 6,
+                        "lower": 0.6000000000000001,
+                        "upper": 0.7000000000000001,
+                        "count": 168,
+                        "accuracy": 0.4880952380952381,
+                        "confidence": 0.6609092970521543
+                    },
+                    {
+                        "bin": 7,
+                        "lower": 0.7000000000000001,
+                        "upper": 0.8,
+                        "count": 185,
+                        "accuracy": 0.6108108108108108,
+                        "confidence": 0.7529620120120118
+                    },
+                    {
+                        "bin": 8,
+                        "lower": 0.8,
+                        "upper": 0.9,
+                        "count": 230,
+                        "accuracy": 0.6608695652173913,
+                        "confidence": 0.8587576949620429
+                    },
+                    {
+                        "bin": 9,
+                        "lower": 0.9,
+                        "upper": 1.0,
+                        "count": 11321,
+                        "accuracy": 0.9889585725642611,
+                        "confidence": 0.9984943958621638
+                    }
+                ],
+                "Metric": "ECE",
+                "Expected Calibration Error": 0.018767199404761983
+            }
+        }
+    },
+    "explanation": {
+        "fairness": {
+            "formula": "0.05*underfitting(4.53) + 0.05*overfitting(3.62) + 0.05*class_balance(1) + 0.075*statistical_parity_difference(1.0) + 0.075*disparate_impact(5.0) + 0.075*equal_opportunity_difference(3.69) + 0.075*average_odds_difference(4.19) + 0.05*accuracy_parity(4.9) + 0.05*predictive_parity(4.57) + 0.05*treatment_equality(5.0) + 0.025*calibration_gap(3.98) + 0.025*well_calibration_error(4.55) + 0.02*generalized_entropy_index(4.65) + 0.02*theil_index(4.51) + 0.02*coefficient_of_variation(3.13) + 0.1*individual_consistency(5.0) + 0.05*class_imbalance(5) + 0.02*kl_divergence(2.77) + 0.02*conditional_demographic_disparity(5.0) + 0.02*smoothed_edf(1.0) + 0.02*bias_amplification(4.81) + 0.02*between_group_generalized_entropy_error(5.0) + 0.02*cohens_d(1.75) + 0.02*z_test_diff(1.0)",
+            "score": 3.86
+        },
+        "accountability": {
+            "formula": "0.15*train_test_split(5.0) + 0.15*missing_data(5) + 0.15*normalization(1) + 0.15*regularization(4) + 0.4*factsheet_completeness(2.57)",
+            "score": 3.28
+        },
+        "privacy": {
+            "formula": "0.14*epsilon_dp(4.64) + 0.06*epsilon_star(1.0) + 0.1*shapr(5.0) + 0.12*attribute_inference(1.0) + 0.06*accuracy_ratio(5.0) + 0.1*privacy_risk(2.52) + 0.14*k_anonymity(5.0) + 0.14*l_diversity(1.0) + 0.14*t_closeness(4.53)",
+            "score": 3.36
+        },
+        "sustainability": {
+            "formula": "0.25*energy_consumed(5.0) + 0.5*emissions(5.0) + 0.25*carbon_intensity(4.57)",
+            "score": 4.89
+        },
+        "explainability": {
+            "formula": "0.04*sparsity(3.85) + 0.04*feature_entropy(3.37) + 0.04*topk_concentration(5.0) + 0.12*algorithm_class(5) + 0.06*correlated_features(5.0) + 0.02*model_size(4.84) + 0.06*feature_relevance(4.2) + 0.04*alpha_score(4.2) + 0.04*xai_ease_score(4.6) + 0.04*position_parity(5.0) + 0.04*rank_alignment(3.67) + 0.04*spread_ratio(3.37) + 0.04*spread_divergence(3.29) + 0.06*faithfulness(3.18) + 0.06*monotonicity(4.2) + 0.04*infidelity(5.0) + 0.02*number_of_rules(1.0) + 0.02*average_rule_length(1.0) + 0.02*tree_depth(1.0) + 0.02*weighted_average_depth(2.81) + 0.02*weighted_average_explainability_score(3.72) + 0.02*weighted_tree_gini(1.0) + 0.02*tree_depth_variance(1.0) + 0.02*tree_number_of_features(4.67) + 0.06*xai_consistency_score(5.0)",
+            "score": 3.97
+        },
+        "robustness": {
+            "formula": "0.08*accuracy_drop(1.08) + 0.08*asr(1.0) + 0.08*adversarial_accuracy(1.0) + 0.08*adversarial_accuracy_correct_only(1.0) + 0.08*robustness_ratio(1.0) + 0.1*empirical_robustness_l2(5.0) + 0.1*empirical_robustness_linf(5.0) + 0.08*clique_method(nan) + 0.08*clever_score(nan) + 0.08*loss_sensitivity(nan) + 0.08*confidence_score(4.65) + 0.08*expected_calibration_error(5.0)",
+            "score": 2.87
+        },
+        "trust_score": {
+            "formula": "0.17*Fairness(3.86) + 0.17*Accountability(3.28) + 0.17*Privacy(3.36) + 0.15*Sustainability(4.89) + 0.17*Explainability(3.97) + 0.17*Robustness(2.87)",
+            "final_score": 3.6813000000000002
+        }
+    }
+}

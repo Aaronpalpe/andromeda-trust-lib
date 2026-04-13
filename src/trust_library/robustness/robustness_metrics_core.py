@@ -843,7 +843,7 @@ def confidence_score_metrics(*, model, X_test, y_test, thresholds=None):
     y_test: pd.Series or np.ndarray
         Test labels.
     thresholds: list of float, optional
-        List of confidence thresholds to evaluate (default: [0.5, 0.6, 0.7, 0.8, 0.9]).  
+        List of confidence thresholds to evaluate.  
     
     Returns
     -------

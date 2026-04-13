@@ -49,13 +49,13 @@
             "value": null
         },
         "rai_competence": {
-            "description": "Level of competence in responsible AI",
+            "description": "Level of competence in responsible AI (certifications, training, experience...)",
             "value": null
         }
     },
     "auditability": {
         "data_provenance": {
-            "description": "Data provenance, description and lifecycle",
+            "description": "Data provenance, description,  transformations and lifecycle",
             "value": null
         },
         "model_provenance": {
@@ -67,29 +67,29 @@
             "value": null
         },
         "auditing": {
-            "description": "Internal or external audits",
+            "description": "Internal or external audits (frequency, scope, results...)",
             "value": null
         },
         "forum": {
-            "description": "Entity that can request explanations",
+            "description": "Entity that can request explanations (users, auditors, regulators...)",
             "value": null
         }
     },
     "redressability": {
         "incident_reporting": {
-            "description": "Incident reporting channels and metrics",
+            "description": "Incident reporting channels (buttons, forms...) and metrics (number of incidents, resolution time, outcomes...)",
             "value": null
         },
         "process": {
-            "description": "Accountability process",
+            "description": "Accountability process (steps, responsible parties, timelines)",
             "value": null
         },
         "built_in_redundancy": {
-            "description": "Redundancy and safeguards of the system",
+            "description": "Redundancy and safeguards of the system (human-in-the-loop, fallback mechanisms...)",
             "value": null
         },
         "implications": {
-            "description": "Consequences of negative evaluations",
+            "description": "Consequences of negative evaluations (legal, financial, reputational... and corrective actions taken)",
             "value": null
         }
     },
