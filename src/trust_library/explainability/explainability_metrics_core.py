@@ -139,6 +139,10 @@ def shap_based_metrics(
 
     shap_values = np.asarray(shap_output.values)
 
+    # Ensure 2D shape (n_samples, n_features)
+    if shap_values.ndim == 1:
+        shap_values = shap_values.reshape(-1, 1)
+
     # If classifier returns probabilities, SHAP may be (n, d, n_outputs).
     # For binary proba (n, 2), SHAP often becomes (n, d, 2). Use positive class.
     if shap_values.ndim == 3:
@@ -147,11 +151,15 @@ def shap_based_metrics(
         shap_values = shap_values[:, :, cls_idx]
 
     abs_vals = np.abs(shap_values)
-    n_features = int(abs_vals.shape[1]) if abs_vals.ndim == 2 else int(X_eval.shape[1])
+    #n_features = int(abs_vals.shape[1]) if abs_vals.ndim == 2 else int(X_eval.shape[1])
+    n_features = int(abs_vals.shape[1])
 
     # 1) Sparsity (fraction of features above threshold)
     active = abs_vals > float(shap_threshold) # boolean mask of shape (n_samples, n_features)
     sparsity = float(active.sum(axis=1).mean() / max(n_features, 1)) # sum over features, then average over samples, then divide by total features
+
+    if abs_vals.ndim != 2:
+        raise ValueError(f"Unexpected SHAP shape: {abs_vals.shape}")
 
     # 2) Global feature entropy (normalized)
     global_importance = abs_vals.mean(axis=0)
@@ -461,11 +469,14 @@ def alpha_score(feature_importances: list, alpha: float = 0.8) -> float:
     - n_features: the total number of features.
     - n_top_features: the number of top features needed to reach the threshold.
     ''' 
+    if not feature_importances or feature_importances is None:
+        raise ValueError("Feature importances list is empty, cannot compute alpha score.")
+    
     vals = np.abs(np.array(feature_importances, dtype=float))
     n_total_features = len(feature_importances) # BEFORE was set to len(vals), but we want the original number of features, not the length of the array after filtering out zeros.
     
     if n_total_features == 0 or np.sum(vals) == 0.0:
-        return {"value": 0.0, "feature_importances": feature_importances, "alpha": float(alpha), "n_features": n_total_features, "n_top_features": 0}
+        raise ValueError("Feature importances array is empty or all values are zero, cannot compute alpha score.")
 
     vals_sorted = np.sort(vals)[::-1]  # Sort in descending order
     cum_sum = np.cumsum(vals_sorted)  # Cumulative sum of sorted importances
@@ -500,13 +511,15 @@ def _spread_base(feature_importances: list, divergence: bool = True) -> float:
     - feature_importances: the input list of feature importance values.
 
     '''
+    if not feature_importances or feature_importances is None:
+        raise ValueError("Feature importances list is empty, cannot compute spread metric.")
     tol = 1e-8
     vals = np.abs(np.array(feature_importances, dtype=float)) # BEFORE without abs
     
     if len(vals) == 0 or np.sum(vals) < tol:
-        return {"value": 1.0, "feature_importances": feature_importances} if divergence else {"value": 0.0, "feature_importances": feature_importances}
+        raise ValueError("Feature importances array is empty or all values are zero, cannot compute spread metric.")
     if len(vals) == 1:
-        return {"value": 1.0, "feature_importances": feature_importances}
+        raise ValueError("Feature importances array has only one feature, cannot compute spread metric.")
 
     weights = vals / np.sum(vals)
     equal_weights = np.ones(len(vals)) / len(vals)
@@ -579,6 +592,9 @@ def position_parity(conditional_rankings: dict, global_ranking: list) -> float:
     - global_ranking: the input list of global ranking.
     - conditional_position_parity: a dictionary with the average cumulative match for each group.
     '''
+    if not global_ranking or global_ranking is None:
+        raise ValueError("Global ranking list is empty, cannot compute position parity.")
+    
     conditional_position_parity = {}
     for group_name, cond_features in conditional_rankings.items():
         match_order = [c == r for c, r in zip(cond_features, global_ranking)] # boolean list indicating if the conditional feature at each position matches the global feature at that position
@@ -586,8 +602,8 @@ def position_parity(conditional_rankings: dict, global_ranking: list) -> float:
         m_order_cum = np.cumsum(match_order) / np.arange(1, len(match_order) + 1) # cumulative average of matches up to each position
         conditional_position_parity[group_name] = np.mean(m_order_cum) # average cumulative match across all positions for this group
         
-    if not conditional_position_parity:
-        return {"value": 1.0, "conditional_rankings": conditional_rankings, "global_ranking": global_ranking, "conditional_position_parity": conditional_position_parity}
+    if not conditional_position_parity or len(conditional_position_parity) == 0:
+        raise ValueError("No valid conditional rankings provided to compute position parity.")
     
     value = np.mean(list(conditional_position_parity.values()))
 
@@ -648,7 +664,13 @@ def rank_alignment(conditional_importances: dict, global_importances: dict, alph
         - conditional_importances: the input dictionary of conditional importances.
         - global_importances: the input dictionary of global importances.
     '''
+    if not global_importances or global_importances is None:
+        raise ValueError("Global importances dictionary is empty, cannot compute rank alignment.")
+    
     top_global = _get_top_alpha_features(global_importances, alpha)
+    if not top_global:
+        raise ValueError("No features with non-zero importance found in global importances.")
+
     top_global_list = list(top_global)
     
     similarities = []
@@ -656,6 +678,8 @@ def rank_alignment(conditional_importances: dict, global_importances: dict, alph
     detailed_results = [] # List for storing detailed results for each group when aggregation is False
     
     for group, cond_imps in conditional_importances.items():
+        if not cond_imps or cond_imps is None:
+            raise ValueError(f"Conditional importances for group '{group}' is empty or None, cannot compute rank alignment.")
         top_cond = _get_top_alpha_features(cond_imps, alpha)
         top_conditionals[group] = list(top_cond)
         
@@ -738,6 +762,9 @@ def xai_ease_score(pdp_averages: dict, global_ranked_features: list) -> float:
     -------
     float: the XAI Ease Score, where higher values indicate that the relationships between features and predictions are easier to understand based on the shape of the PDPs.
     '''
+    if not global_ranked_features or global_ranked_features is None:
+        raise ValueError("Global ranked features list is empty, cannot compute XAI Ease Score.")
+    
     threshold = 0.0
     levels = ["Hard", "Medium", "Easy"]
     scores_list = []
@@ -748,7 +775,7 @@ def xai_ease_score(pdp_averages: dict, global_ranked_features: list) -> float:
         score_val = sum([1 for rr in r if rr > threshold])
         scores_list.append({"feature": feat, "scores": levels[score_val]})
 
-    if not scores_list: return 1.0
+    if not scores_list: raise ValueError("No features with PDP averages found in global ranked features.")
 
     df = pd.DataFrame(scores_list)
     counts = df.groupby("scores")["feature"].count()
@@ -792,6 +819,9 @@ def faithfulness_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
         Advances in Neural Information Processing Systems 31, pages 7775-7784. 2018.
         <https://papers.nips.cc/paper/8003-towards-robust-interpretability-with-self-explaining-neural-networks.pdf>`_
     """
+    if coefs is None or base is None:
+        raise ValueError("Coefficients and base values cannot be None.")
+    
     # Ensure that all have the same length
     assert len(x) == len(coefs) == len(base)
 
@@ -844,6 +874,9 @@ def monotonicity_metric(model, x: np.ndarray, coefs: np.ndarray, base: np.ndarra
            Chun-Chen Tu. Generating Contrastive Explanations with Monotonic Attribute Functions. CoRR abs/1905.13565. 2019.
            <https://arxiv.org/pdf/1905.12698.pdf>`_
     """
+    if coefs is None or base is None:
+        raise ValueError("Coefficients and base values cannot be None.")
+    
     #find predicted class
     pred_class = np.argmax(model.predict_proba(x.reshape(1,-1)), axis=1)[0]
 
@@ -887,6 +920,9 @@ def infidelity(model, X_test: np.ndarray, feature_weights: np.ndarray) -> Dict[s
     - value: the computed infidelity score, where lower values indicate better fidelity of the feature importance weights to the model's behavior.
 
     """
+    if feature_weights is None:
+        raise ValueError("Feature weights cannot be None.")
+    
     X_np = np.asarray(X_test, dtype=float)
     num_datapoints, num_features = X_np.shape
     infids = []
@@ -1173,7 +1209,7 @@ def weighted_average_depth(tree_model) -> Dict[str, float]:
     # If it's a Random Forest, calculate the mean across all trees
     if hasattr(tree_model, "estimators_"):
         vals = [weighted_average_depth(est)["value"] for est in tree_model.estimators_]
-        return {"value": float(np.mean(vals))}
+        return {"value": float(np.mean(vals)), "list": "Only with decision trees for legibility"}
 
     tree_obj = getattr(tree_model, "tree_", tree_model)
     if tree_obj is None or not hasattr(tree_obj, 'children_left'): 
@@ -1209,7 +1245,7 @@ def weighted_average_explainability_score(tree_model) -> Dict[str, float]:
     # If it's a Random Forest, calculate the mean across all trees
     if hasattr(tree_model, "estimators_"):
         vals = [weighted_average_explainability_score(est)["value"] for est in tree_model.estimators_]
-        return {"value": float(np.mean(vals))}
+        return {"value": float(np.mean(vals)), "list": "Only with decision trees for legibility"}
 
     tree_obj = getattr(tree_model, "tree_", tree_model)
     if tree_obj is None or not hasattr(tree_obj, 'children_left'): 
@@ -1286,7 +1322,7 @@ def tree_depth_variance(tree_model) -> Dict[str, float]:
     # If it's a Random Forest, calculate the mean across all trees
     if hasattr(tree_model, "estimators_"):
         vals = [tree_depth_variance(est)["value"] for est in tree_model.estimators_]
-        return {"value": float(np.mean(vals))}
+        return {"value": float(np.mean(vals)), "leaf_depths": "Only with decision trees for legibility"}
 
     tree_obj = getattr(tree_model, "tree_", tree_model)
     if tree_obj is None or not hasattr(tree_obj, 'children_left'): 

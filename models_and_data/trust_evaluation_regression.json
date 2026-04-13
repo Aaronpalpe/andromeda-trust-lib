@@ -1,11 +1,11 @@
 {
-    "trust_score": 3.53,
+    "trust_score": 3.45,
     "pillar_score": {
         "fairness": 3.6,
         "accountability": 3.55,
         "privacy": 2.01,
         "sustainability": 4.75,
-        "explainability": 4.81,
+        "explainability": 4.35,
         "robustness": 2.6
     },
     "details": {
@@ -66,12 +66,12 @@
             "correlated_features": 4.27,
             "model_size": 4.6,
             "feature_relevance": null,
-            "alpha_score": 5.0,
+            "alpha_score": null,
             "xai_ease_score": null,
-            "position_parity": 5.0,
-            "rank_alignment": 5.0,
-            "spread_ratio": 5.0,
-            "spread_divergence": 5.0,
+            "position_parity": null,
+            "rank_alignment": null,
+            "spread_ratio": null,
+            "spread_divergence": null,
             "faithfulness": null,
             "monotonicity": null,
             "infidelity": null,
@@ -4005,10 +4005,10 @@
                 "Epsilon": "1.000000"
             },
             "epsilon_star": {
-                "Error": "'NoneType' object is not subscriptable"
+                "Error": "Not suitable for regression models or continuous targets. Epsilon* is designed for classification tasks with discrete labels. It uses roc_curve which requires binary labels."
             },
             "shapr": {
-                "Error": "eq got incompatible shapes for broadcasting: (200, 412, 2170), (200, 412, 6)."
+                "Error": "Not suitable for regression models or continuous targets. SHAPr is designed for classification tasks with discrete labels. It uses a kNN approach that relies on class labels to evaluate the similarity of test samples to training samples in the prediction space."
             },
             "attribute_inference": {
                 "Metric Description": "Attribute inference risk for the declared sensitive attribute.",
@@ -4024,10 +4024,10 @@
                 "selector_type": "Noisy",
                 "modifier_type": "GaussianNoise",
                 "n_features": 11,
-                "Accuracy Ratio": "0.983630"
+                "Accuracy Ratio": "0.968011"
             },
             "privacy_risk": {
-                "Error": "'>=' not supported between instances of 'NoneType' and 'float'"
+                "Error": "Predicted probabilities for both training and test sets are required to compute privacy risk."
             },
             "k_anonymity": {
                 "Metric Description": "Minimum k value achieved for the quasi-identifier groups. Higher values indicate better privacy protection.",
@@ -4127,50 +4127,22 @@
                 "Error": "Model does not provide feature importances and SHAP importances are not available."
             },
             "alpha_score": {
-                "Metric Description": "Fraction of top features needed to reach the alpha share of total feature importance.",
-                "Depends on": "Global Feature Importances",
-                "Formula": "Alpha Score = (# top features needed to reach alpha cumulative importance) / (# features)",
-                "Feature Importances": [],
-                "Alpha": "0.80",
-                "Total Features": 0,
-                "Top Features for Alpha": 0,
-                "Alpha Score": "0.0000"
+                "Error": "'NoneType' object has no attribute 'values'"
             },
             "xai_ease_score": {
-                "Error": "'float' object has no attribute 'get'"
+                "Error": "'NoneType' object has no attribute 'keys'"
             },
             "position_parity": {
-                "Metric Description": "Average cumulative alignment between conditional feature rankings and the global feature ranking.",
-                "Depends on": "Global and Conditional Feature Rankings",
-                "Formula": "Position Parity = mean over groups of cumulative positional overlap with global ranking",
-                "Conditional Rankings": {},
-                "Global Ranking": [],
-                "Conditional Position Parity": {},
-                "Position Parity": "1.0000"
+                "Error": "'NoneType' object has no attribute 'keys'"
             },
             "rank_alignment": {
-                "Metric Description": "Jaccard similarity between top-alpha features from conditional and global importance distributions.",
-                "Depends on": "Global and Conditional Feature Importances",
-                "Formula": "Rank Alignment = mean_g Jaccard(Top(global), Top(group g))",
-                "Conditional Importances": {},
-                "Global Importances": {},
-                "Top Global Features": [],
-                "Top Conditional Features": {},
-                "Rank Alignment": "1.0000"
+                "Error": "'NoneType' object has no attribute 'items'"
             },
             "spread_ratio": {
-                "Metric Description": "Evenness of the feature importance distribution compared against a uniform distribution.",
-                "Depends on": "Global Feature Importances",
-                "Formula": "Spread Ratio = min(normalized importances) / max(normalized importances)",
-                "Feature Importances": [],
-                "Spread Ratio": "0.0000"
+                "Error": "'NoneType' object has no attribute 'values'"
             },
             "spread_divergence": {
-                "Metric Description": "Jensen-Shannon divergence between the feature importance distribution and an even distribution.",
-                "Depends on": "Global Feature Importances",
-                "Formula": "Spread Divergence = JSD(importance_distribution, uniform_distribution)",
-                "Feature Importances": [],
-                "Spread Divergence": "1.0000"
+                "Error": "'NoneType' object has no attribute 'values'"
             },
             "faithfulness": {
                 "Error": "Missing 'feature_weights' in ctx.extras for FaithfulnessMetric."
@@ -4303,7 +4275,7 @@
                 "Error": "Loss Sensitivity metric requires an ART classifier with predict method (e.g., PyTorchClassifier / TensorFlowV2Classifier). Error: 'ScaledRegressorWrapper' object has no attribute 'loss_gradient'"
             },
             "confidence_score": {
-                "Error": "'NoneType' object has no attribute 'shape'"
+                "Error": "Model's predict_proba() returned None. Cannot compute confidence scores."
             },
             "expected_calibration_error": {
                 "Error": "axis 1 is out of bounds for array of dimension 0"
@@ -4328,16 +4300,16 @@
             "score": 4.75
         },
         "explainability": {
-            "formula": "0.04*sparsity(nan) + 0.04*feature_entropy(nan) + 0.04*topk_concentration(nan) + 0.12*algorithm_class(nan) + 0.06*correlated_features(4.27) + 0.02*model_size(4.6) + 0.06*feature_relevance(nan) + 0.04*alpha_score(5.0) + 0.04*xai_ease_score(nan) + 0.04*position_parity(5.0) + 0.04*rank_alignment(5.0) + 0.04*spread_ratio(5.0) + 0.04*spread_divergence(5.0) + 0.06*faithfulness(nan) + 0.06*monotonicity(nan) + 0.04*infidelity(nan) + 0.02*number_of_rules(nan) + 0.02*average_rule_length(nan) + 0.02*tree_depth(nan) + 0.02*weighted_average_depth(nan) + 0.02*weighted_average_explainability_score(nan) + 0.02*weighted_tree_gini(nan) + 0.02*tree_depth_variance(nan) + 0.02*tree_number_of_features(nan) + 0.06*xai_consistency_score(nan)",
-            "score": 4.81
+            "formula": "0.04*sparsity(nan) + 0.04*feature_entropy(nan) + 0.04*topk_concentration(nan) + 0.12*algorithm_class(nan) + 0.06*correlated_features(4.27) + 0.02*model_size(4.6) + 0.06*feature_relevance(nan) + 0.04*alpha_score(nan) + 0.04*xai_ease_score(nan) + 0.04*position_parity(nan) + 0.04*rank_alignment(nan) + 0.04*spread_ratio(nan) + 0.04*spread_divergence(nan) + 0.06*faithfulness(nan) + 0.06*monotonicity(nan) + 0.04*infidelity(nan) + 0.02*number_of_rules(nan) + 0.02*average_rule_length(nan) + 0.02*tree_depth(nan) + 0.02*weighted_average_depth(nan) + 0.02*weighted_average_explainability_score(nan) + 0.02*weighted_tree_gini(nan) + 0.02*tree_depth_variance(nan) + 0.02*tree_number_of_features(nan) + 0.06*xai_consistency_score(nan)",
+            "score": 4.35
         },
         "robustness": {
             "formula": "0.08*accuracy_drop(5.0) + 0.08*asr(5.0) + 0.08*adversarial_accuracy(1.0) + 0.08*adversarial_accuracy_correct_only(1.0) + 0.08*robustness_ratio(5.0) + 0.1*empirical_robustness_l2(1.0) + 0.1*empirical_robustness_linf(1.0) + 0.08*clique_method(nan) + 0.08*clever_score(nan) + 0.08*loss_sensitivity(nan) + 0.08*confidence_score(nan) + 0.08*expected_calibration_error(nan)",
             "score": 2.6
         },
         "trust_score": {
-            "formula": "0.17*Fairness(3.6) + 0.17*Accountability(3.55) + 0.17*Privacy(2.01) + 0.15*Sustainability(4.75) + 0.17*Explainability(4.81) + 0.17*Robustness(2.6)",
-            "final_score": 3.5294
+            "formula": "0.17*Fairness(3.6) + 0.17*Accountability(3.55) + 0.17*Privacy(2.01) + 0.15*Sustainability(4.75) + 0.17*Explainability(4.35) + 0.17*Robustness(2.6)",
+            "final_score": 3.4512
         }
     }
 }

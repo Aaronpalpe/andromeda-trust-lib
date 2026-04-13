@@ -97,6 +97,9 @@ def epsilon_star(
     -------
     Dict[str, float]: The computed epsilon* value, representing the empirical privacy leakage of the model, where lower values indicate stronger privacy guarantees.
     """
+    if getattr(model, "_is_regressor", False) or (hasattr(y_train, "dtype") and y_train.dtype.kind == 'f'):
+        raise ValueError("Not suitable for regression models or continuous targets. Epsilon* is designed for classification tasks with discrete labels. It uses roc_curve which requires binary labels.")
+    
     idx = np.random.choice(len(X_train), min(5000, len(X_train)), replace=False)
     X_train_small = X_train.iloc[idx]
     y_train_small = y_train.iloc[idx] if hasattr(y_train, "iloc") else y_train[idx]
@@ -186,6 +189,9 @@ def shapr(
     "sample_size": int # The number of samples used from the training and test sets to compute the SHAPr score, which is limited to a maximum of 5000 for efficiency.
     }
     '''
+    if getattr(model, "_is_regressor", False) or (hasattr(y_train, "dtype") and y_train.dtype.kind == 'f'):
+        raise ValueError("Not suitable for regression models or continuous targets. SHAPr is designed for classification tasks with discrete labels. It uses a kNN approach that relies on class labels to evaluate the similarity of test samples to training samples in the prediction space.")
+    
     np.random.seed(random_state)
 
     sample_size = min(5000, len(X_train), len(X_test))
@@ -347,6 +353,8 @@ def privacy_risk(
     .. [1] Song, L., & Mittal, P. (2021). Systematic evaluation of privacy risks of machine learning models. 
        In 30th USENIX Security Symposium (USENIX Security 21) (pp. 2615-2632).
     """
+    if y_prob_train is None or y_prob_test is None:
+        raise ValueError("Predicted probabilities for both training and test sets are required to compute privacy risk.")
     
     shadow_train = (y_prob_train, y_train)
     shadow_test  = (y_prob_test, y_test)

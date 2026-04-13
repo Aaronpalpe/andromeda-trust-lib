@@ -489,7 +489,9 @@ def calibration_gap(
         - n_bins: The number of bins used.
         - bins: A dictionary with bin information.
     """
-
+    if hasattr(y_true, "dtype") and y_true.dtype.kind == 'f':
+            raise ValueError("Not applicable: calibration_gap requires classification probabilities, but a regression problem was detected.")
+    
     df = pd.DataFrame({
         "y": y_true,
         "score": y_prob,
@@ -546,7 +548,9 @@ def well_calibration_error(
         - n_bins: The number of bins used.
         - bins: A dictionary with bin information.
     """
-
+    if hasattr(y_true, "dtype") and y_true.dtype.kind == 'f':
+            raise ValueError("Not applicable: well_calibration_error requires classification probabilities, but a regression problem was detected.")
+    
     df = pd.DataFrame({"y": y_true, "score": y_prob})
     df["bin"] = pd.qcut(df["score"], n_bins, duplicates="drop") # binning by predicted score
     well_cal = df.groupby("bin").apply(
@@ -616,7 +620,7 @@ Generalized Entropy Index (GEI).
     mu = b.mean()
 
     if mu == 0 or (mu == 1.0 and np.all(b == 1.0)):
-        return {"value": 0.0, "alpha": alpha, "mean_benefit": float(mu)}
+        raise ValueError("Generalized Entropy Index is undefined when all benefits are zero or all are one. Check your data and predictions.")
 
     if alpha == 0:
         # Mean log deviation: -(1/N) * sum(ln(b_i / mu))

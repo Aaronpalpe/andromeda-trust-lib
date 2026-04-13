@@ -70,15 +70,15 @@ class ExplainabilityPillar(Pillar):
         - pdp_averages: the average prediction of a subset for each feature (shape: n_features)
         '''
         # Optional parameters (kept under mappings.explainability.params)
-        params = (config or {}).get("params", {})
+        params = (config or {}).get("params")
 
-        n_samples = int(params.get("n_samples", 50))
-        shap_threshold = float(params.get("shap_threshold", 1e-3))
-        top_k = int(params.get("top_k", 5))
-        seed = int(params.get("seed", 42))
-        threshold_outlier = float(params.get("threshold_outlier_feature_relevance", 0.03))
-        penalty_outlier = float(params.get("penalty_outlier_feature_relevance", 0))
-        high_cor = float(params.get("high_cor_correlated_features", 0.95))
+        n_samples = int(params.get("n_samples"))
+        shap_threshold = float(params.get("shap_threshold"))
+        top_k = int(params.get("top_k"))
+        seed = int(params.get("seed"))
+        threshold_outlier = float(params.get("threshold_outlier_feature_relevance"))
+        penalty_outlier = float(params.get("penalty_outlier_feature_relevance"))
+        high_cor = float(params.get("high_cor_correlated_features"))
 
 
         # Store params for lazy computation in metrics (and for reproducibility)

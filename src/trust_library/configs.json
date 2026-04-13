@@ -984,8 +984,29 @@
                 "max_eval": 1000,
                 "init_eval": 10,
                 "init_size": 10,
-                "norm": 2
+                "norm": 2,
+                "hsj_beta": 1.0,
+                "fgm_epsilon": 0.2,
+                "ece_n_bins": 10,
+                "clique": {
+                    "n_samples": 200,
+                    "seed": 42,
+                    "eps_init": 0.1,
+                    "norm": "inf",
+                    "nb_search_steps": 10,
+                    "max_clique": 2,
+                    "max_level": 2
+                },
+                "clever": {
+                    "n_samples": 5,
+                    "seed": 42,
+                    "nb_batches": 10,
+                    "batch_size": 32,
+                    "radius": 0.5,
+                    "norm": 2
+                }
             }
+
         },
         "accountability": {
             "score_train_test_split": {

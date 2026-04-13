@@ -17,10 +17,10 @@ class EnergyConsumptionMetric(BaseMetric):
 
     def compute(self, ctx):
         # run_data = ctx.extras["run_data"]
-        energy_consumed = ctx.factsheet.get("sustainability", {}).get("energy_consumed", {}).get("value", 0.0)
-        cpu_energy = ctx.factsheet.get("sustainability", {}).get("cpu_energy", {}).get("value", 0.0)
-        gpu_energy = ctx.factsheet.get("sustainability", {}).get("gpu_energy", {}).get("value", 0.0)
-        ram_energy = ctx.factsheet.get("sustainability", {}).get("ram_energy", {}).get("value", 0.0)
+        energy_consumed = ctx.factsheet.get("sustainability").get("energy_consumed").get("value")
+        cpu_energy = ctx.factsheet.get("sustainability").get("cpu_energy").get("value")
+        gpu_energy = ctx.factsheet.get("sustainability").get("gpu_energy").get("value")
+        ram_energy = ctx.factsheet.get("sustainability").get("ram_energy").get("value")
 
         return core.energy_consumption(energy_consumed, cpu_energy, gpu_energy, ram_energy)
 
@@ -47,11 +47,11 @@ class EmissionsMetric(BaseMetric):
 
     def compute(self, ctx):
         # run_data = ctx.extras["run_data"]
-        emissions = ctx.factsheet.get("sustainability", {}).get("emissions", {}).get("value", 0.0)
-        energy_consumed = ctx.factsheet.get("sustainability", {}).get("energy_consumed", {}).get("value", 0.0)
-        duration = ctx.factsheet.get("sustainability", {}).get("duration", {}).get("value", 0.0)
-        pue = ctx.factsheet.get("sustainability", {}).get("pue", {}).get("value", 0.0)
-        wue = ctx.factsheet.get("sustainability", {}).get("wue", {}).get("value", 0.0)
+        emissions = ctx.factsheet.get("sustainability").get("emissions").get("value")
+        energy_consumed = ctx.factsheet.get("sustainability").get("energy_consumed").get("value")
+        duration = ctx.factsheet.get("sustainability").get("duration").get("value")
+        pue = ctx.factsheet.get("sustainability").get("pue").get("value")
+        wue = ctx.factsheet.get("sustainability").get("wue").get("value")
 
         return core.emissions(emissions, energy_consumed, duration, pue, wue)
 
@@ -80,9 +80,9 @@ class CarbonIntensityMetric(BaseMetric):
 
     def compute(self, ctx):
         # run_data = ctx.extras["run_data"]
-        energy_consumed = ctx.factsheet.get("sustainability", {}).get("energy_consumed", {}).get("value", 0.0)
-        emissions = ctx.factsheet.get("sustainability", {}).get("emissions", {}).get("value", 0.0)
-        country = ctx.factsheet.get("sustainability", {}).get("country", {}).get("value", "Unknown")
+        energy_consumed = ctx.factsheet.get("sustainability").get("energy_consumed").get("value")
+        emissions = ctx.factsheet.get("sustainability").get("emissions").get("value")
+        country = ctx.factsheet.get("sustainability").get("country").get("value")
 
         return core.carbon_intensity(energy_consumed, emissions, country)
 

@@ -23,9 +23,9 @@ class TrainTestSplitMetric(BaseMetric):
 
     def compute_score(self, raw: Dict[str, int], config: Dict[str, Any]) -> float:
         mappings = (
-            config.get(self.score_config_key, {})
-            .get("mappings", {})
-            .get("value", {})
+            config.get(self.score_config_key)
+            .get("mappings")
+            .get("value")
         )
 
         return core.train_test_split_mapping(
@@ -59,9 +59,9 @@ class MissingDataMetric(BaseMetric):
 
     def compute_score(self, raw: Dict[str, Any], config: Dict[str, Any]) -> float:
         mappings = (
-            config.get(self.score_config_key, {})
-            .get("mappings", {})
-            .get("value", {})
+            config.get(self.score_config_key)
+            .get("mappings")
+            .get("value")
         )
         missing = 'null_values_exist' if raw["value"] > 0 else 'no_null_values'
 
@@ -72,8 +72,8 @@ class MissingDataMetric(BaseMetric):
             "Metric Description": "Number of missing values across the training and test data.",
             "Depends on": "Training and Test Data",
             "Formula": "Missing Data = Missing(train) + Missing(test)",
-            "Train missing values": raw.get("missing_train", 0),
-            "Test missing values": raw.get("missing_test", 0),
+            "Train missing values": raw.get("missing_train"),
+            "Test missing values": raw.get("missing_test"),
             "Null values count": raw["value"],
         }
 
@@ -107,9 +107,9 @@ class NormalizationMetric(BaseMetric):
 
     def compute_score(self, raw: Dict[str, Any], config: Dict[str, Any]) -> float:
         mappings = (
-            config.get(self.score_config_key, {})
-            .get("mappings", {})
-            .get("value", {})
+            config.get(self.score_config_key)
+            .get("mappings")
+            .get("value")
         )
 
         return mappings.get(raw["value"])
@@ -139,16 +139,16 @@ class RegularizationMetric(BaseMetric):
     def compute(self, ctx) -> Dict[str, Any]:
 
         reg = ctx.factsheet.get(
-            "general", {}
-        ).get("regularization", {}).get("value", None)
+            "general"
+        ).get("regularization").get("value")
 
         return {"regularization": reg}
     
     def compute_score(self, raw: Dict[str, int], config: Dict[str, Any]) -> float:
         mappings = (
-            config.get(self.score_config_key, {})
-            .get("mappings", {})
-            .get("value", {})
+            config.get(self.score_config_key)
+            .get("mappings")
+            .get("value")
         )
 
         return core.regularization_mapping(

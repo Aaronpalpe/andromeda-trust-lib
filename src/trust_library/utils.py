@@ -108,7 +108,7 @@ def format_dict(d: dict, decimals: int = 2) -> dict:
 
 
 # =============================================================================
-# SCORING: THRESHOLDS Y NORMALIZACIÓN MIN-MAX
+# SCORING: THRESHOLDS AND MIN-MAX
 # =============================================================================
 
 def calculate_weighted_score(scores: dict[str, float], weights: dict[str, float]) -> float:

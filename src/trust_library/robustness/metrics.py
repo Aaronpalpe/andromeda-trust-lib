@@ -24,10 +24,9 @@ def _get_cache_keys(attack_type: str) -> tuple[str, str, str]:
     return (f"{prefix}_metrics", f"{prefix}_params", f"{prefix}_error")
 
 
-# HSJ-specific cache keys (legacy support used by RobustnessPillar.prepare)
-_HSJ_KEY = "robustness_art_metrics"
-_HSJ_PARAMS_KEY = "robustness_params"
-_HSJ_ERROR_KEY = "robustness_error"
+_GENERAL_KEY = "robustness_art_metrics"
+_GENERAL_PARAMS_KEY = "robustness_params"
+_GENERAL_ERROR_KEY = "robustness_error"
 
 # Attack-specific cache keys
 _FGM_KEY, _FGM_PARAMS_KEY, _FGM_ERROR_KEY = _get_cache_keys("fgm")
@@ -100,85 +99,85 @@ def _get_or_compute_attack(
 
 def _get_or_compute_hsj(ctx: EvaluationContext) -> dict:
     """Compute and cache HopSkipJump attack metrics."""
-    params = ctx.extras.get(_HSJ_PARAMS_KEY, {})
+    params = ctx.extras.get(_GENERAL_PARAMS_KEY) or {}
     if not isinstance(params, dict):
         params = {}
 
     if not hasattr(ctx.model, "predict"):
         error_msg = "Model must implement predict() to run HopSkipJump."
-        ctx.extras[_HSJ_ERROR_KEY] = error_msg
+        ctx.extras[_GENERAL_ERROR_KEY] = error_msg
         raise RuntimeError(error_msg)
 
     return _get_or_compute_attack(
         ctx,
         "hsj",
         core.hopskipjump_metrics,
-        metrics_key=_HSJ_KEY,
-        error_key=_HSJ_ERROR_KEY,
+        metrics_key=_GENERAL_KEY,
+        error_key=_GENERAL_ERROR_KEY,
         model=ctx.model,
         X_test=ctx.X_test,
         y_test=ctx.y_test,
         X_train=getattr(ctx, "X_train", None),
-        n_samples=int(params.get("n_samples", 30)),
-        seed=int(params.get("seed", 42)),
-        max_iter=int(params.get("max_iter", 10)),
-        max_eval=int(params.get("max_eval", 1000)),
-        init_eval=int(params.get("init_eval", 10)),
-        init_size=int(params.get("init_size", 10)),
-        norm=params.get("norm", 2),
-        beta=float(params.get("beta", 1.0)),
+        n_samples=int(params.get("n_samples")),
+        seed=int(params.get("seed")),
+        max_iter=int(params.get("max_iter")),
+        max_eval=int(params.get("max_eval")),
+        init_eval=int(params.get("init_eval")),
+        init_size=int(params.get("init_size")),
+        norm=params.get("norm"),
+        beta=float(params.get("beta")),
     )
 
 
 def _get_or_compute_fgm(ctx: EvaluationContext) -> dict:
     """Compute and cache Fast Gradient Method attack metrics."""
-    params = ctx.extras.get(_FGM_PARAMS_KEY, {}) or {}
-    art_clf = ctx.extras.get("art_classifier", ctx.model)
+    params = ctx.extras.get(_GENERAL_PARAMS_KEY) or {}
+    # art_clf = ctx.extras.get("art_classifier")
 
     return _get_or_compute_attack(
         ctx,
         "fgm",
         core.fgm_attack_metrics,
-        art_clf=art_clf,
+        art_clf=ctx.model,
         X_test=ctx.X_test,
         y_test=ctx.y_test,
-        eps=float(params.get("eps", 0.2)),
-        n_samples=int(params.get("n_samples", 50)),
-        seed=int(params.get("seed", 42)),
+        eps=float(params.get("eps")),
+        n_samples=int(params.get("n_samples")),
+        seed=int(params.get("seed")),
     )
 
 
 def _get_or_compute_cw(ctx: EvaluationContext) -> dict:
     """Compute and cache Carlini-Wagner attack metrics."""
-    params = ctx.extras.get(_CW_PARAMS_KEY, {}) or {}
-    art_clf = ctx.extras.get("art_classifier", ctx.model)
+    params = ctx.extras.get(_GENERAL_PARAMS_KEY) or {}
+    # art_clf = ctx.extras.get("art_classifier")
 
     return _get_or_compute_attack(
         ctx,
         "cw",
         core.carlini_wagner_metrics,
-        art_clf=art_clf,
+        art_clf=ctx.model,
         X_test=ctx.X_test,
         y_test=ctx.y_test,
-        n_samples=int(params.get("n_samples", 10)),
-        seed=int(params.get("seed", 42)),
+        n_samples=int(params.get("n_samples")),
+        seed=int(params.get("seed")),
     )
 
 
 def _get_or_compute_df(ctx: EvaluationContext) -> dict:
     """Compute and cache DeepFool attack metrics."""
-    params = ctx.extras.get(_DF_PARAMS_KEY, {}) or {}
-    art_clf = ctx.extras.get("art_classifier", ctx.model)
+    params = ctx.extras.get(_GENERAL_PARAMS_KEY) or {}
+    # art_clf = ctx.extras.get("art_classifier")
 
     return _get_or_compute_attack(
         ctx,
         "df",
         core.deepfool_metrics,
-        art_clf=art_clf,
+        art_clf=ctx.model,
         X_test=ctx.X_test,
         y_test=ctx.y_test,
-        n_samples=int(params.get("n_samples", 10)),
-        seed=int(params.get("seed", 42)),
+        n_samples=int(params.get("n_samples")),
+        seed=int(params.get("seed")),
     )
 
 
@@ -187,7 +186,7 @@ def _get_or_compute_clique(ctx: EvaluationContext) -> dict:
     if _CLIQUE_ERROR_KEY in ctx.extras:
         raise RuntimeError(str(ctx.extras[_CLIQUE_ERROR_KEY]))
 
-    params = ctx.extras.get(_CLIQUE_PARAMS_KEY, {})
+    params = ctx.extras.get(_CLIQUE_PARAMS_KEY) or {}
     if not isinstance(params, dict):
         params = {}
 
@@ -199,13 +198,13 @@ def _get_or_compute_clique(ctx: EvaluationContext) -> dict:
         X_test=ctx.X_test,
         y_test=ctx.y_test,
         X_train=getattr(ctx, "X_train", None),
-        n_samples=int(params.get("n_samples", 200)),
-        seed=int(params.get("seed", 42)),
-        eps_init=float(params.get("eps_init", 0.1)),
-        norm=float(params.get("norm", float("inf"))),
-        nb_search_steps=int(params.get("nb_search_steps", 10)),
-        max_clique=int(params.get("max_clique", 2)),
-        max_level=int(params.get("max_level", 2)),
+        n_samples=int(params.get("n_samples")),
+        seed=int(params.get("seed")),
+        eps_init=float(params.get("eps_init")),
+        norm=float(params.get("norm")),
+        nb_search_steps=int(params.get("nb_search_steps")),
+        max_clique=int(params.get("max_clique")),
+        max_level=int(params.get("max_level")),
     )
 
 
@@ -214,36 +213,36 @@ def _get_or_compute_clever(ctx: EvaluationContext) -> dict:
     if _CLEVER_ERROR_KEY in ctx.extras:
         raise RuntimeError(str(ctx.extras[_CLEVER_ERROR_KEY]))
 
-    params = ctx.extras.get(_CLEVER_PARAMS_KEY, {})
+    params = ctx.extras.get(_CLEVER_PARAMS_KEY)
     if not isinstance(params, dict):
         params = {}
 
-    classifier = ctx.extras.get("art_classifier", ctx.model)
+    # classifier = ctx.extras.get("art_classifier")
 
     return _get_or_compute_attack(
         ctx,
         "clever",
         core.clever_score_metrics,
-        classifier=classifier,
+        classifier=ctx.model,
         x=ctx.X_test,
-        n_samples=int(params.get("n_samples", 5)),
-        seed=int(params.get("seed", 42)),
-        nb_batches=int(params.get("nb_batches", 10)),
-        batch_size=int(params.get("batch_size", 32)),
-        radius=float(params.get("radius", 0.5)),
-        norm=int(params.get("norm", 2)),
+        n_samples=int(params.get("n_samples")),
+        seed=int(params.get("seed")),
+        nb_batches=int(params.get("nb_batches")),
+        batch_size=int(params.get("batch_size")),
+        radius=float(params.get("radius")),
+        norm=int(params.get("norm")),
     )
 
 
 def _get_or_compute_loss(ctx: EvaluationContext) -> dict:
     """Compute and cache Loss Sensitivity metrics (gradient-capable models only)."""
-    classifier = ctx.extras.get("art_classifier", ctx.model)
+    #classifier = ctx.extras.get("art_classifier")
 
     return _get_or_compute_attack(
         ctx,
         "loss",
         core.loss_sensitivity_metrics,
-        classifier=classifier,
+        classifier=ctx.model,
         X_test=ctx.X_test,
     )
 
@@ -265,7 +264,7 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
     if _ECE_ERROR_KEY in ctx.extras:
         raise RuntimeError(str(ctx.extras[_ECE_ERROR_KEY]))
 
-    params = ctx.extras.get(_ECE_PARAMS_KEY, {}) or {}
+    params = ctx.extras.get(_GENERAL_PARAMS_KEY) or {}
 
     return _get_or_compute_attack(
         ctx,
@@ -274,7 +273,7 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
         model=ctx.model,
         X_test=ctx.X_test,
         y_test=ctx.y_test,
-        n_bins=int(params.get("n_bins", 10)),
+        n_bins=int(params.get("n_bins")),
     )
 
 # # ============================================================
@@ -283,7 +282,7 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
 
 # def _extract_params(raw: dict) -> dict:
 #     """Extract and validate params dictionary from raw metrics."""
-#     return raw.get("params", {}) if isinstance(raw.get("params"), dict) else {}
+#     return raw.get("params") if isinstance(raw.get("params"), dict) else {}
 
 
 # def _to_percentage(value: float) -> float:
@@ -304,13 +303,13 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
 #     params = _extract_params(raw)
     
 #     props = {
-#         "Attack Type": raw.get("attack", "Unknown"),
-#         "Value": float(raw.get("value", 0.0)),
-#         "Clean Accuracy (%)": _to_percentage(raw.get("clean_accuracy", 0.0)),
-#         "Adversarial Accuracy (%)": _to_percentage(raw.get("adv_accuracy", 0.0)),
+#         "Attack Type": raw.get("attack"),
+#         "Value": float(raw.get("value")),
+#         "Clean Accuracy (%)": _to_percentage(raw.get("clean_accuracy")),
+#         "Adversarial Accuracy (%)": _to_percentage(raw.get("adv_accuracy")),
 #         "Accuracy Drop (%)": float(raw.get("accuracy_drop_pct (effective_robustness)", 0.0)),
 #         "Robustness Ratio (adv/clean)": float(raw.get("robustness_ratio (adv/clean)", 0.0)),
-#         "Adversarial Accuracy (correct-only) (%)": float(raw.get("adv_accuracy_correct_only", 0.0)),
+#         "Adversarial Accuracy (correct-only) (%)": float(raw.get("adv_accuracy_correct_only")),
 #     }
     
 #     # Optional: Add ASR if present
@@ -319,19 +318,19 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
     
 #     # Optional: Add perturbation metrics if present
 #     if "mean_l2" in raw:
-#         props["Mean L2 Perturbation"] = float(raw.get("mean_l2", 0.0))
+#         props["Mean L2 Perturbation"] = float(raw.get("mean_l2"))
 #     if "mean_linf" in raw:
-#         props["Mean Linf Perturbation"] = float(raw.get("mean_linf", 0.0))
+#         props["Mean Linf Perturbation"] = float(raw.get("mean_linf"))
 #     if "er_l2_success" in raw:
-#         props["ER L2 (success-only)"] = float(raw.get("er_l2_success", 0.0))
+#         props["ER L2 (success-only)"] = float(raw.get("er_l2_success"))
 #     if "er_linf_success" in raw:
-#         props["ER Linf (success-only)"] = float(raw.get("er_linf_success", 0.0))
+#         props["ER Linf (success-only)"] = float(raw.get("er_linf_success"))
     
 #     # Optional: Add sample info if present
 #     if "sample_size (n_eval)" in raw:
 #         props["Sample Size (n_eval)"] = int(raw.get("sample_size (n_eval)", 0))
 #     if "n_attacked" in raw:
-#         props["N Attacked (correct-only)"] = int(raw.get("n_attacked", 0))
+#         props["N Attacked (correct-only)"] = int(raw.get("n_attacked"))
     
 #     # Add params and note at the end
 #     props["Parameters"] = params
@@ -472,8 +471,8 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
 #                 metrics = compute_fn(ctx)
 #                 results[attack_name] = {
 #                     "description": attack_desc,
-#                     "clean_accuracy": float(metrics.get("clean_accuracy", 0.0)),
-#                     "adv_accuracy": float(metrics.get("adv_accuracy", 0.0)),
+#                     "clean_accuracy": float(metrics.get("clean_accuracy")),
+#                     "adv_accuracy": float(metrics.get("adv_accuracy")),
 #                     "accuracy_drop_pct (effective_robustness)": float(
 #                         metrics.get("accuracy_drop_pct (effective_robustness)", 0.0)
 #                     ),
@@ -481,15 +480,15 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
 #                     "attack_success_rate_pct (correct_only)": float(
 #                         metrics.get("attack_success_rate_pct (correct_only)", 0.0)
 #                     ),
-#                     "adv_accuracy_correct_only": float(metrics.get("adv_accuracy_correct_only", 0.0)),
-#                     "mean_l2": float(metrics.get("mean_l2", 0.0)),
-#                     "mean_linf": float(metrics.get("mean_linf", 0.0)),
-#                     "er_l2_success": float(metrics.get("er_l2_success", 0.0)),
-#                     "er_linf_success": float(metrics.get("er_linf_success", 0.0)),
+#                     "adv_accuracy_correct_only": float(metrics.get("adv_accuracy_correct_only")),
+#                     "mean_l2": float(metrics.get("mean_l2")),
+#                     "mean_linf": float(metrics.get("mean_linf")),
+#                     "er_l2_success": float(metrics.get("er_l2_success")),
+#                     "er_linf_success": float(metrics.get("er_linf_success")),
 #                     "sample_size (n_eval)": int(metrics.get("sample_size (n_eval)", 0)),
-#                     "n_attacked": int(metrics.get("n_attacked", 0)),
-#                     "params": metrics.get("params", {}),
-#                     "note": metrics.get("note", ""),
+#                     "n_attacked": int(metrics.get("n_attacked")),
+#                     "params": metrics.get("params"),
+#                     "note": metrics.get("note"),
 #                 }
 #             except Exception as e:
 #                 # Silently skip attacks that fail (e.g., non-gradient models with FGM)
@@ -553,45 +552,45 @@ def _get_or_compute_ece(ctx: EvaluationContext) -> dict:
     
 #     def build_properties(self, raw: dict) -> dict:
 #         """Build comprehensive properties for ensemble robustness."""
-#         attacks = raw.get("attacks", {})
+#         attacks = raw.get("attacks")
         
 #         props = {
 #             "Metric Description": (
 #                 "Ensemble robustness combining multiple adversarial attack methods. "
 #                 "Reports worst-case scenario across attacks for comprehensive robustness assessment."
 #             ),
-#             "Worst-Case Accuracy Drop (%)": float(raw.get("worst_case_accuracy_drop", 0.0)),
-#             "Worst-Case ASR (%)": float(raw.get("worst_case_asr", 0.0)),
-#             "Worst-Case Adv Accuracy (%)": float(raw.get("worst_case_adv_accuracy", 0.0)),
-#             "Worst-Case Adv Accuracy (Correct Only) (%)": float(raw.get("worst_case_adv_accuracy_correct_only", 0.0)),
-#             "Worst-Case Robustness Ratio": float(raw.get("worst_case_robustness_ratio", 0.0)),
-#             "Worst-Case ER L2 (success-only)": float(raw.get("worst_case_er_l2_success", 0.0)),
-#             "Worst-Case ER Linf (success-only)": float(raw.get("worst_case_er_linf_success", 0.0)),
-#             "Average Accuracy Drop (%)": float(raw.get("average_accuracy_drop", 0.0)),
-#             "Average ASR (%)": float(raw.get("average_asr", 0.0)),
-#             "Average Adv Accuracy (%)": float(raw.get("average_adv_accuracy", 0.0)),
-#             "Average Adv Accuracy (Correct Only) (%)": float(raw.get("average_adv_accuracy_correct_only", 0.0)),
-#             "Average Robustness Ratio": float(raw.get("average_robustness_ratio", 0.0)),
-#             "Average ER L2 (success-only)": float(raw.get("average_er_l2_success", 0.0)),
-#             "Average ER Linf (success-only)": float(raw.get("average_er_linf_success", 0.0)),
-#             "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-#             "Attacks Executed": raw.get("n_attacks_executed", 0),
+#             "Worst-Case Accuracy Drop (%)": float(raw.get("worst_case_accuracy_drop")),
+#             "Worst-Case ASR (%)": float(raw.get("worst_case_asr")),
+#             "Worst-Case Adv Accuracy (%)": float(raw.get("worst_case_adv_accuracy")),
+#             "Worst-Case Adv Accuracy (Correct Only) (%)": float(raw.get("worst_case_adv_accuracy_correct_only")),
+#             "Worst-Case Robustness Ratio": float(raw.get("worst_case_robustness_ratio")),
+#             "Worst-Case ER L2 (success-only)": float(raw.get("worst_case_er_l2_success")),
+#             "Worst-Case ER Linf (success-only)": float(raw.get("worst_case_er_linf_success")),
+#             "Average Accuracy Drop (%)": float(raw.get("average_accuracy_drop")),
+#             "Average ASR (%)": float(raw.get("average_asr")),
+#             "Average Adv Accuracy (%)": float(raw.get("average_adv_accuracy")),
+#             "Average Adv Accuracy (Correct Only) (%)": float(raw.get("average_adv_accuracy_correct_only")),
+#             "Average Robustness Ratio": float(raw.get("average_robustness_ratio")),
+#             "Average ER L2 (success-only)": float(raw.get("average_er_l2_success")),
+#             "Average ER Linf (success-only)": float(raw.get("average_er_linf_success")),
+#             "Most Effective Attack": raw.get("most_effective_attack"),
+#             "Attacks Executed": raw.get("n_attacks_executed"),
 #         }
         
 #         # Add individual attack results
 #         for attack_name, attack_data in attacks.items():
 #             props[f"{attack_name} - Drop (%)"] = float(attack_data.get("accuracy_drop_pct (effective_robustness)", 0.0))
 #             props[f"{attack_name} - ASR (%)"] = float(attack_data.get("attack_success_rate_pct (correct_only)", 0.0))
-#             props[f"{attack_name} - Adv Acc (%)"] = float(attack_data.get("adv_accuracy", 0.0))
-#             props[f"{attack_name} - Adv Acc (Correct Only) (%)"] = float(attack_data.get("adv_accuracy_correct_only", 0.0))
+#             props[f"{attack_name} - Adv Acc (%)"] = float(attack_data.get("adv_accuracy"))
+#             props[f"{attack_name} - Adv Acc (Correct Only) (%)"] = float(attack_data.get("adv_accuracy_correct_only"))
 #             props[f"{attack_name} - Robustness Ratio"] = float(attack_data.get("robustness_ratio (adv/clean)", 0.0))
-#             props[f"{attack_name} - ER L2 (success-only)"] = float(attack_data.get("er_l2_success", 0.0))
-#             props[f"{attack_name} - ER Linf (success-only)"] = float(attack_data.get("er_linf_success", 0.0))
+#             props[f"{attack_name} - ER L2 (success-only)"] = float(attack_data.get("er_l2_success"))
+#             props[f"{attack_name} - ER Linf (success-only)"] = float(attack_data.get("er_linf_success"))
 #             props[f"{attack_name} - Sample Size"] = int(attack_data.get("sample_size (n_eval)", 0))
-#             props[f"{attack_name} - N Attacked"] = int(attack_data.get("n_attacked", 0))
-#             props[f"{attack_name} - Note"] = attack_data.get("note", "")
+#             props[f"{attack_name} - N Attacked"] = int(attack_data.get("n_attacked"))
+#             props[f"{attack_name} - Note"] = attack_data.get("note")
 #         # Add failed attacks information if any
-#         failed = raw.get("failed_attacks", {})
+#         failed = raw.get("failed_attacks")
 #         if failed:
 #             props["Failed Attacks"] = ", ".join(failed.keys())
         
@@ -633,24 +632,24 @@ def _get_or_compute_ensemble(ctx: EvaluationContext) -> dict:
             metrics = compute_fn(ctx)
             results[attack_name] = {
                 "description": attack_desc,
-                "clean_accuracy": float(metrics.get("clean_accuracy", 0.0)),
-                "adv_accuracy": float(metrics.get("adv_accuracy", 0.0)),
+                "clean_accuracy": float(metrics.get("clean_accuracy")),
+                "adv_accuracy": float(metrics.get("adv_accuracy")),
                 "accuracy_drop_pct (effective_robustness)": float(
-                    metrics.get("accuracy_drop_pct (effective_robustness)", 0.0)
+                    metrics.get("accuracy_drop_pct (effective_robustness)")
                 ),
-                "robustness_ratio (adv/clean)": float(metrics.get("robustness_ratio (adv/clean)", 0.0)),
-                "adv_accuracy_correct_only": float(metrics.get("adv_accuracy_correct_only", 0.0)),
+                "robustness_ratio (adv/clean)": float(metrics.get("robustness_ratio (adv/clean)")),
+                "adv_accuracy_correct_only": float(metrics.get("adv_accuracy_correct_only")),
                 "attack_success_rate_pct (correct_only)": float(
-                    metrics.get("attack_success_rate_pct (correct_only)", 0.0)
+                    metrics.get("attack_success_rate_pct (correct_only)")
                 ),
-                "mean_l2": float(metrics.get("mean_l2", 0.0)),
-                "mean_linf": float(metrics.get("mean_linf", 0.0)),
-                "er_l2_success": float(metrics.get("er_l2_success", 0.0)),
-                "er_linf_success": float(metrics.get("er_linf_success", 0.0)),
-                "sample_size (n_eval)": int(metrics.get("sample_size (n_eval)", 0)),
-                "n_attacked": int(metrics.get("n_attacked", 0)),
-                "params": metrics.get("params", {}),
-                "note": metrics.get("note", ""),
+                "mean_l2": float(metrics.get("mean_l2")),
+                "mean_linf": float(metrics.get("mean_linf")),
+                "er_l2_success": float(metrics.get("er_l2_success")),
+                "er_linf_success": float(metrics.get("er_linf_success")),
+                "sample_size (n_eval)": int(metrics.get("sample_size (n_eval)")),
+                "n_attacked": int(metrics.get("n_attacked")),
+                "params": metrics.get("params"),
+                "note": metrics.get("note"),
             }
         except Exception as e:
             # Silently skip attacks that fail (e.g., non-gradient models with FGM)
@@ -728,16 +727,16 @@ class AdversarialAccuracyMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
-        return {"value": float(m.get("worst_case_adv_accuracy", 0.0)), **m}
+        return {"value": float(m.get("worst_case_adv_accuracy")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Worst-case adversarial accuracy across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "Adversarial Accuracy = Accuracy(model(x_adv), y_true)",
-            "Average Adv Accuracy (%)": float(raw.get("average_adv_accuracy", 0.0)),
-            "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-            "Adversarial Accuracy (%)": float(raw.get("value", 0.0)),
+            "Average Adv Accuracy (%)": float(raw.get("average_adv_accuracy")),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+            "Adversarial Accuracy (%)": float(raw.get("value")),
         }
     
 class AccuracyDropMetric(BaseMetric):
@@ -748,17 +747,17 @@ class AccuracyDropMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
-        return {"value": float(m.get("worst_case_accuracy_drop", 0.0)), **m}
+        return {"value": float(m.get("worst_case_accuracy_drop")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Worst-case accuracy drop across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "Accuracy Drop = Clean Accuracy - Adversarial Accuracy",
-            "Average Drop (%)": float(raw.get("average_accuracy_drop", 0.0)),
-            "Results from Individual Attacks": raw.get("attacks", {}),
-            "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-            "Accuracy Drop (%)": float(raw.get("value", 0.0)),
+            "Average Drop (%)": float(raw.get("average_accuracy_drop")),
+            "Results from Individual Attacks": raw.get("attacks"),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+            "Accuracy Drop (%)": float(raw.get("value")),
         }
 
 class RobustnessRatioMetric(BaseMetric):
@@ -769,16 +768,16 @@ class RobustnessRatioMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
-        return {"value": float(m.get("worst_case_robustness_ratio", 0.0)), **m}
+        return {"value": float(m.get("worst_case_robustness_ratio")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Worst-case robustness ratio (Adversarial Accuracy / Clean Accuracy) across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "Robustness Ratio = Adversarial Accuracy / Clean Accuracy",
-            "Average Robustness Ratio": float(raw.get("average_robustness_ratio", 0.0)),
-            "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-            "Robustness Ratio": float(raw.get("value", 0.0)),
+            "Average Robustness Ratio": float(raw.get("average_robustness_ratio")),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+            "Robustness Ratio": float(raw.get("value")),
         }
 
 
@@ -790,16 +789,16 @@ class AdversarialAccuracyCorrectOnlyMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
-        return {"value": float(m.get("worst_case_adv_accuracy_correct_only", 0.0)), **m}
+        return {"value": float(m.get("worst_case_adv_accuracy_correct_only")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Worst-case adversarial accuracy restricted to originally correctly classified samples.",
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "Adversarial Accuracy (Correct-Only) = Accuracy on adversarial examples generated from originally correct samples",
-            "Average Adv Accuracy (Correct Only) (%)": float(raw.get("average_adv_accuracy_correct_only", 0.0)),
-            "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-            "Adversarial Accuracy (Correct Only) (%)": float(raw.get("value", 0.0)),
+            "Average Adv Accuracy (Correct Only) (%)": float(raw.get("average_adv_accuracy_correct_only")),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+            "Adversarial Accuracy (Correct Only) (%)": float(raw.get("value")),
         }
     
 
@@ -811,16 +810,16 @@ class ASRMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
-        return {"value": float(m.get("worst_case_asr", 0.0)), **m}
+        return {"value": float(m.get("worst_case_asr")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Worst-case attack success rate across the available attack suite.",
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "ASR = Successful Attacks / Attacks Attempted",
-            "Average ASR (%)": float(raw.get("average_asr", 0.0)),
-            "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-            "Attack Success Rate (%)": float(raw.get("value", 0.0)),
+            "Average ASR (%)": float(raw.get("average_asr")),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+            "Attack Success Rate (%)": float(raw.get("value")),
         }
 
 
@@ -832,16 +831,16 @@ class EmpiricalRobustnessL2Metric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
-        return {"value": float(m.get("worst_case_er_l2_success", 0.0)), **m}
+        return {"value": float(m.get("worst_case_er_l2_success")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Worst-case empirical robustness measured with L2 distance for successful attacks.",
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "ER-L2 = mean(||x_adv - x||_2) over successful attacks",
-            "Average ER L2": float(raw.get("average_er_l2_success", 0.0)),
-            "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-            "Empirical Robustness L2": float(raw.get("value", 0.0)),
+            "Average ER L2": float(raw.get("average_er_l2_success")),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+            "Empirical Robustness L2": float(raw.get("value")),
         }
 
 
@@ -853,16 +852,16 @@ class EmpiricalRobustnessLinfMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
-        return {"value": float(m.get("worst_case_er_linf_success", 0.0)), **m}
+        return {"value": float(m.get("worst_case_er_linf_success")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
             "Metric Description": "Worst-case empirical robustness measured with Linf distance for successful attacks.",
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "ER-Linf = mean(||x_adv - x||_inf) over successful attacks",
-            "Average ER Linf": float(raw.get("average_er_linf_success", 0.0)),
-            "Most Effective Attack": raw.get("most_effective_attack", "Unknown"),
-            "Empirical Robustness Linf": float(raw.get("value", 0.0)),
+            "Average ER Linf": float(raw.get("average_er_linf_success")),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+            "Empirical Robustness Linf": float(raw.get("value")),
         }
     
 # ============================================================
@@ -877,20 +876,20 @@ class CliqueMethodMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_clique(ctx)
-        return {"value": float(m.get("verification_error", 0.0)), **m}
+        return {"value": float(m.get("verification_error")), **m}
 
     def build_properties(self, raw: dict) -> dict:
-        params = raw.get("params", {}) if isinstance(raw.get("params"), dict) else {}
+        params = raw.get("params") if isinstance(raw.get("params"), dict) else {}
         return {
             "Metric Description": "Clique Method verification error for tree-based models. Lower indicates stronger verified robustness.",
             "Depends on": "Tree-Based Model and Test Data",
             "Formula": "Clique Method Score = verification error from ART tree robustness verification",
-            "Robustness Bound": float(raw.get("robustness_bound", 0.0)),
-            "Verification Error": float(raw.get("verification_error", 0.0)),
-            "Sample Size": int(raw.get("sample_size", 0.0)),
+            "Robustness Bound": float(raw.get("robustness_bound")),
+            "Verification Error": float(raw.get("verification_error")),
+            "Sample Size": int(raw.get("sample_size")),
             "Params": params,
             "Metric": raw.get("metric"),
-            "Clique Method Score": float(raw.get("value", 0.0)),
+            "Clique Method Score": float(raw.get("value")),
         }
 
 
@@ -906,19 +905,19 @@ class CleverScoreMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_clever(ctx)
-        return {"value": float(m.get("clever_score_mean", 0.0)), **m}
+        return {"value": float(m.get("clever_score_mean")), **m}
 
     def build_properties(self, raw: dict) -> dict:
-        params = raw.get("params", {}) if isinstance(raw.get("params"), dict) else {}
+        params = raw.get("params") if isinstance(raw.get("params"), dict) else {}
         return {
             "Metric Description": "Mean CLEVER score for a gradient-capable classifier. Higher values indicate greater robustness.",
             "Depends on": "Gradient-Capable Model and Test Data",
             "Formula": "CLEVER = estimate of minimum adversarial perturbation norm via local Lipschitz constants",
-            "CLEVER Std": float(raw.get("clever_score_std", 0.0)),
-            "N Eval": int(raw.get("n_eval", 0.0)),
+            "CLEVER Std": float(raw.get("clever_score_std")),
+            "N Eval": int(raw.get("n_eval")),
             "Params": params,
             "Metric": raw.get("metric"),
-            "CLEVER Mean": float(raw.get("value", 0.0)),
+            "CLEVER Mean": float(raw.get("value")),
         }
 
 
@@ -939,7 +938,7 @@ class ConfidenceScoreMetric(BaseMetric):
             "Formula": "Confidence Score = mean_t Jaccard(y_true_bin(t), y_pred_bin(t))",
             "Metric": raw.get("metric"),
             "Thresholds": raw.get("thresholds"),
-            "Confidence Score (%)": float(raw.get("value", 0.0)),
+            "Confidence Score (%)": float(raw.get("value")),
         }
 
     
@@ -959,7 +958,7 @@ class LossSensitivityMetric(BaseMetric):
             "Depends on": "Gradient-Capable Model and Test Data",
             "Formula": "Loss Sensitivity = expected norm of gradient of loss with respect to input",
             "Metric": raw.get("metric"),
-            "Loss Sensitivity": float(raw.get("value", 0.0)),
+            "Loss Sensitivity": float(raw.get("value")),
         }
 
 
@@ -974,7 +973,7 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ece(ctx)
-        return {"value": float(m.get("ece", 0.0)), **m}
+        return {"value": float(m.get("ece")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         return {
@@ -984,5 +983,5 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
             "Number of Bins": raw.get("n_bins"),
             "Bins stats": raw.get("bins"),
             "Metric": raw.get("metric"),
-            "Expected Calibration Error": float(raw.get("value", 0.0)),
+            "Expected Calibration Error": float(raw.get("value")),
         }

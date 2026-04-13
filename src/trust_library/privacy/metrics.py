@@ -20,9 +20,9 @@ class EpsilonMetric(BaseMetric):
 
         epsilon = (
             ctx.factsheet
-            .get("privacy", {})
-            .get("epsilon", {})
-            .get("value", None)
+            .get("privacy")
+            .get("epsilon")
+            .get("value")
         )
 
         return core.epsilon_dp(
@@ -109,9 +109,9 @@ class AttributeInferenceMetric(BaseMetric):
 
         sensitive: List[str] = (
             ctx.factsheet
-            .get("privacy", {})
-            .get("sensitive_attribute", {})
-            .get("value", [])
+            .get("privacy")
+            .get("sensitive_attribute")
+            .get("value")
         )
 
         if not sensitive:
@@ -208,9 +208,9 @@ class KAnonymityMetric(BaseMetric):
 
         quasi = (
             ctx.factsheet
-            .get("privacy", {})
-            .get("quasi_identifiers", {})
-            .get("value", [])
+            .get("privacy")
+            .get("quasi_identifiers")
+            .get("value")
         )
 
         df = pd.concat([ctx.train_data, ctx.test_data], ignore_index=True)
@@ -243,16 +243,16 @@ class LDiversityMetric(BaseMetric):
 
         quasi = (
             ctx.factsheet
-            .get("privacy", {})
-            .get("quasi_identifiers", {})
-            .get("value", [])
+            .get("privacy")
+            .get("quasi_identifiers")
+            .get("value")
         )
 
         sensitive = (
             ctx.factsheet
-            .get("privacy", {})
-            .get("sensitive_attribute", {})
-            .get("value", [])
+            .get("privacy")
+            .get("sensitive_attribute")
+            .get("value")
         )
 
         df = pd.concat([ctx.train_data, ctx.test_data], ignore_index=True)
@@ -287,16 +287,16 @@ class TClosenessMetric(BaseMetric):
 
         quasi = (
             ctx.factsheet
-            .get("privacy", {})
-            .get("quasi_identifiers", {})
-            .get("value", [])
+            .get("privacy")
+            .get("quasi_identifiers")
+            .get("value")
         )
 
         sensitive = (
             ctx.factsheet
-            .get("privacy", {})
-            .get("sensitive_attribute", {})
-            .get("value", [])
+            .get("privacy")
+            .get("sensitive_attribute")
+            .get("value")
         )
 
         df = pd.concat([ctx.train_data, ctx.test_data], ignore_index=True)

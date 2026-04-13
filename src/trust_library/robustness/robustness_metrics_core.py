@@ -859,6 +859,9 @@ def confidence_score_metrics(*, model, X_test, y_test, thresholds=None):
         raise ValueError("The model must implement predict_proba() method to compute confidence scores.")
         
     probas = model.predict_proba(X_test)
+
+    if probas is None:
+        raise ValueError("Model's predict_proba() returned None. Cannot compute confidence scores.")
     
     #We assume binary classification and take the probability of the positive class. For multi-class, this can be adapted to compute per-class confidence scores.
     pos_probas = probas[:, 1] if probas.shape[1] > 1 else probas
@@ -998,6 +1001,10 @@ def ece_metrics(
         raise RuntimeError("ECE requires model.predict_proba().")
 
     probs = np.asarray(model.predict_proba(X_df))
+
+    if probs is None:
+        raise RuntimeError("Model's predict_proba() returned None. Cannot compute ECE.")
+    
     confidences = np.max(probs, axis=1)
     # predictions = np.argmax(probs, axis=1)
     indices = np.argmax(probs, axis=1)

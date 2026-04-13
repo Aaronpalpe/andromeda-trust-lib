@@ -67,21 +67,24 @@ class RobustnessPillar(Pillar):
 
     def prepare(self, context: EvaluationContext, config: dict[str, Any]) -> None:
         # Optional parameters under mappings.robustness.params
-        params = (config or {}).get("params", {})
+        params = (config or {}).get("params")
         if not isinstance(params, dict):
             params = {}
 
         # -------------------------------
         # HSJ (black-box) params
         # -------------------------------
-        n_samples = int(params.get("n_samples", 30))
-        seed = int(params.get("seed", 42))
+        n_samples = int(params.get("n_samples"))
+        seed = int(params.get("seed"))
 
-        max_iter = int(params.get("max_iter", 10))
-        max_eval = int(params.get("max_eval", 1000))
-        init_eval = int(params.get("init_eval", 10))
-        init_size = int(params.get("init_size", 10))
-        norm = params.get("norm", 2)
+        max_iter = int(params.get("max_iter"))
+        max_eval = int(params.get("max_eval"))
+        init_eval = int(params.get("init_eval"))
+        init_size = int(params.get("init_size"))
+        norm = params.get("norm")
+        hsj_beta = float(params.get("hsj_beta"))
+        fgm_epsilon = float(params.get("fgm_epsilon"))
+        ece_n_bins = int(params.get("ece_n_bins"))
 
         context.extras["robustness_params"] = {
             "n_samples": n_samples,
@@ -91,41 +94,44 @@ class RobustnessPillar(Pillar):
             "init_eval": init_eval,
             "init_size": init_size,
             "norm": norm,
+            "beta": hsj_beta,
+            "eps": fgm_epsilon,
+            "n_bins": ece_n_bins,
         }
 
         # -------------------------------
         # Clique Method params (tree-only)
         # (lazy compute in metric)
         # -------------------------------
-        clique_params = params.get("clique", {}) # NOT in "params" by default
+        clique_params = params.get("clique") # NOT in "params" by default
         if not isinstance(clique_params, dict):
             clique_params = {}
 
         context.extras["robustness_clique_params"] = {
-            "n_samples": int(clique_params.get("n_samples", 200)),
-            "seed": int(clique_params.get("seed", seed)),
-            "eps_init": float(clique_params.get("eps_init", 0.1)),
-            "norm": float(clique_params.get("norm", float("inf"))),
-            "nb_search_steps": int(clique_params.get("nb_search_steps", 10)),
-            "max_clique": int(clique_params.get("max_clique", 2)),
-            "max_level": int(clique_params.get("max_level", 2)),
+            "n_samples": int(clique_params.get("n_samples")),
+            "seed": int(clique_params.get("seed")),
+            "eps_init": float(clique_params.get("eps_init")),
+            "norm": float(clique_params.get("norm")),
+            "nb_search_steps": int(clique_params.get("nb_search_steps")),
+            "max_clique": int(clique_params.get("max_clique")),
+            "max_level": int(clique_params.get("max_level")),
         }
 
         # -------------------------------
         # CLEVER params (requires gradients)
         # (lazy compute in metric)
         # -------------------------------
-        clever_params = params.get("clever", {}) # NOT in "params" by default
+        clever_params = params.get("clever") # NOT in "params" by default
         if not isinstance(clever_params, dict):
             clever_params = {}
 
         context.extras["robustness_clever_params"] = {
-            "n_samples": int(clever_params.get("n_samples", 5)),
-            "seed": int(clever_params.get("seed", seed)),
-            "nb_batches": int(clever_params.get("nb_batches", 10)),
-            "batch_size": int(clever_params.get("batch_size", 32)),
-            "radius": float(clever_params.get("radius", 0.5)),
-            "norm": int(clever_params.get("norm", 2)),
+            "n_samples": int(clever_params.get("n_samples")),
+            "seed": int(clever_params.get("seed")),
+            "nb_batches": int(clever_params.get("nb_batches")),
+            "batch_size": int(clever_params.get("batch_size")),
+            "radius": float(clever_params.get("radius")),
+            "norm": int(clever_params.get("norm")),
         }
 
         # --------------------------------------------

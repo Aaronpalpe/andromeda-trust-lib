@@ -310,7 +310,7 @@ class CalibrationGapMetric(BaseMetric):
             "Depends on": "Model, Test Data, Probabilistic Scores, Factsheet (Definition of Protected Group)",
             "Formula": "Calibration Gap = Mean_b(|P(y=1|score bin b, protected) - P(y=1|score bin b, unprotected)|)",
             "Bins Used": f"{raw['n_bins']}",
-            "Calibration by Bin": raw.get("bins", {}),
+            "Calibration by Bin": raw.get("bins"),
             "Mean Calibration Gap": f"{raw['value']:.4f}",
         }
 
@@ -338,7 +338,7 @@ class WellCalibrationMetric(BaseMetric):
             "Depends on": "Model, Test Data, Probabilistic Scores",
             "Formula": "Well Calibration Error = Mean_b(|Mean(y in b) - Mean(score in b)|)",
             "Bins Used": f"{raw['n_bins']}",
-            "Difference by Bin": raw.get("bins-scores", {}),
+            "Difference by Bin": raw.get("bins-scores"),
             "Mean Calibration Error": f"{raw['value']:.4f}",
         }
 
