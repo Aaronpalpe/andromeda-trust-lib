@@ -738,6 +738,26 @@ class AdversarialAccuracyMetric(BaseMetric):
             "Most Effective Attack": raw.get("most_effective_attack"),
             "Adversarial Accuracy (%)": float(raw.get("value")),
         }
+
+
+class IndividualAttackResultsMetric(BaseMetric):
+    """Detailed results from all individual attacks in the ensemble."""
+
+    def __init__(self):
+        super().__init__("individual_attack_results", "score_accuracy_drop")
+
+    def compute(self, ctx: EvaluationContext) -> dict:
+        m = _get_or_compute_ensemble(ctx)
+        return {"value": float('nan'), **m}
+
+    def build_properties(self, raw: dict) -> dict:
+        return {
+            "Metric Description": "Detailed outputs from each successful attack in the robustness ensemble.",
+            "Depends on": "Model, Test Data, and Attack Results",
+            "Results from Individual Attacks": raw.get("attacks"),
+            "Failed Attacks": raw.get("failed_attacks"),
+            "Most Effective Attack": raw.get("most_effective_attack"),
+        }
     
 class AccuracyDropMetric(BaseMetric):
     """Worst-case accuracy drop across the ensemble of attacks."""
@@ -755,7 +775,6 @@ class AccuracyDropMetric(BaseMetric):
             "Depends on": "Model, Test Data, and Attack Results",
             "Formula": "Accuracy Drop = Clean Accuracy - Adversarial Accuracy",
             "Average Drop (%)": float(raw.get("average_accuracy_drop")),
-            "Results from Individual Attacks": raw.get("attacks"),
             "Most Effective Attack": raw.get("most_effective_attack"),
             "Accuracy Drop (%)": float(raw.get("value")),
         }
@@ -777,7 +796,7 @@ class RobustnessRatioMetric(BaseMetric):
             "Formula": "Robustness Ratio = Adversarial Accuracy / Clean Accuracy",
             "Average Robustness Ratio": float(raw.get("average_robustness_ratio")),
             "Most Effective Attack": raw.get("most_effective_attack"),
-            "Robustness Ratio": float(raw.get("value")),
+            "Worst Robustness Ratio": float(raw.get("value")),
         }
 
 
@@ -798,7 +817,7 @@ class AdversarialAccuracyCorrectOnlyMetric(BaseMetric):
             "Formula": "Adversarial Accuracy (Correct-Only) = Accuracy on adversarial examples generated from originally correct samples",
             "Average Adv Accuracy (Correct Only) (%)": float(raw.get("average_adv_accuracy_correct_only")),
             "Most Effective Attack": raw.get("most_effective_attack"),
-            "Adversarial Accuracy (Correct Only) (%)": float(raw.get("value")),
+            "Worst Adversarial Accuracy (Correct Only) (%)": float(raw.get("value")),
         }
     
 
@@ -819,7 +838,7 @@ class ASRMetric(BaseMetric):
             "Formula": "ASR = Successful Attacks / Attacks Attempted",
             "Average ASR (%)": float(raw.get("average_asr")),
             "Most Effective Attack": raw.get("most_effective_attack"),
-            "Attack Success Rate (%)": float(raw.get("value")),
+            "Worst Attack Success Rate (%)": float(raw.get("value")),
         }
 
 
@@ -840,7 +859,7 @@ class EmpiricalRobustnessL2Metric(BaseMetric):
             "Formula": "ER-L2 = mean(||x_adv - x||_2) over successful attacks",
             "Average ER L2": float(raw.get("average_er_l2_success")),
             "Most Effective Attack": raw.get("most_effective_attack"),
-            "Empirical Robustness L2": float(raw.get("value")),
+            "Worst Empirical Robustness L2": float(raw.get("value")),
         }
 
 
@@ -861,7 +880,7 @@ class EmpiricalRobustnessLinfMetric(BaseMetric):
             "Formula": "ER-Linf = mean(||x_adv - x||_inf) over successful attacks",
             "Average ER Linf": float(raw.get("average_er_linf_success")),
             "Most Effective Attack": raw.get("most_effective_attack"),
-            "Empirical Robustness Linf": float(raw.get("value")),
+            "Worst Empirical Robustness Linf": float(raw.get("value")),
         }
     
 # ============================================================

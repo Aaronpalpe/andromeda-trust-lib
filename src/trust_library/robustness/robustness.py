@@ -13,6 +13,7 @@ from .metrics import (
     # DeepFoolAttackMetric,
     # EnsembleRobustnessMetric,
 
+    IndividualAttackResultsMetric,
     AccuracyDropMetric,
     ASRMetric,
     AdversarialAccuracyMetric,
@@ -40,6 +41,7 @@ class RobustnessPillar(Pillar):
     
     def get_metrics(self) -> List[Any]:
         return [
+            IndividualAttackResultsMetric(),         # individual_attack_results
             # HSJ grouped metric
             # HopSkipJumpAttackMetric(),
             # FastGradientAttackMetric(),                # fgsm_success

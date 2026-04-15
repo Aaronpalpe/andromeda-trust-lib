@@ -152,12 +152,12 @@
         },
         "score_disparate_impact": {
             "thresholds": {
-                "value": [0.6, 0.8, 0.9, 0.95],
+                "value": [0.7, 0.8, 0.9, 0.95],
                 "description": "Ratio of favorable prediction rates between protected and unprotected groups.",
                 "label": "Disparate Impact Thresholds"
             },
             "normalized": {
-                "min_val": 0.6,
+                "min_val": 0.7,
                 "max_val": 1.0,
                 "higher_is_better": true
             }
@@ -563,7 +563,7 @@
                     "label": "Faithfulness Thresholds"
                 },
                 "normalized": {
-                    "min_val": -1.0,
+                    "min_val": -0.2,
                     "max_val": 1.0,
                     "higher_is_better": true
                 }

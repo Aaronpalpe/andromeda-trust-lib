@@ -1292,7 +1292,12 @@ def weighted_tree_gini(tree_model) -> Dict[str, float]: # ALGO DIFERENTE
             if node_samples > 0:
                 node_value = tree_obj.value[node_index, 0, :]
                 if is_classification:
-                    impurity = 1.0 - np.sum((node_value / node_samples)**2)
+                    #impurity = 1.0 - np.sum((node_value / node_samples)**2)
+                    total_node_weight = np.sum(node_value)
+                    if total_node_weight > 0:
+                        impurity = 1.0 - np.sum((node_value / total_node_weight)**2)
+                    else:
+                        impurity = 0.0
                 else:
                     impurity = np.sum((node_value - np.mean(node_value)) ** 2) / node_samples
                 weighted_impurity += (node_samples / total_samples) * impurity
@@ -1573,8 +1578,9 @@ def xai_consistency(model, global_importances, pdp_std, X, k=5, mode='classifica
         raise ValueError(f"Failed to compute LIME importances: {e}")
 
     rankings['SHAP']= global_importances
-        
-    rankings['PDP'] = pdp_std
+    
+    if pdp_std is not None:
+        rankings['PDP'] = pdp_std
 
     matrix = calculate_consistency_matrix(rankings, k=k)
     score = get_aggregated_score(matrix)

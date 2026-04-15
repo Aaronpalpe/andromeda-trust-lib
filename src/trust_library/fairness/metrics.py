@@ -44,7 +44,7 @@ class OverfittingMetric(BaseMetric):
 
     def compute_score(self, raw, config):
         if raw["test_accuracy"] < 0.6:
-            return None # Don't penalize overfitting if the model is performing poorly on the test set (i.e. likely underfitting)
+            return  float('nan') # Don't penalize overfitting if the model is performing poorly on the test set (i.e. likely underfitting) retun not a number
         return super().compute_score(raw, config)
 
     def build_properties(self, raw):
@@ -134,7 +134,7 @@ class DisparateImpactMetric(BaseMetric):
         return {
             "Metric Description": "Ratio of favorable prediction rates between protected and unprotected groups.",
             "Depends on": "Model, Test Data, Factsheet (Definition of Protected Group and Favorable Outcome)",
-            "Formula": "Protected Favored Ratio / Unprotected Favored Ratio",
+            "Formula": "Protected Favored Ratio / Unprotected Favored Ratio or its inverse if >1 to always be in [0,1] where 1 is ideal and lower is worse.",
             "Number Protected": raw["n_protected"],
             "Number Protected Favored": raw["n_protected_favored"],
             "Protected Favored Ratio": f"P(y_hat=favorable|protected=True) = {raw['favored_ratio_protected']:.2%}",
@@ -142,6 +142,7 @@ class DisparateImpactMetric(BaseMetric):
             "Number Unprotected Favored": raw["n_unprotected_favored"],
             "Unprotected Favored Ratio": f"P(y_hat=favorable|protected=False) = {raw['favored_ratio_unprotected']:.2%}",
             "Disparate Impact": f"{raw['value']:.4f}",
+            "Favored Group": raw.get("favored_group"),
         }
 
 

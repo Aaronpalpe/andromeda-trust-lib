@@ -188,7 +188,7 @@ def disparate_impact(
     """
     Disparate Impact (DI).
 
-    DI = P(ŷ=1 | protected) / P(ŷ=1 | unprotected)
+    DI = P(ŷ=1 | protected) / P(ŷ=1 | unprotected) or its inverse if >1 to always be in [0,1] where 1 is ideal and lower is worse.
 
     Ideal value: 1  (< 0.8 is the common legal threshold)
 
@@ -215,6 +215,10 @@ def disparate_impact(
     prot  = _favored_ratio(y_pred, group_mask)
     unprot = _favored_ratio(y_pred, ~group_mask)
     val = _safe_div(prot, unprot, default=np.inf)
+    favored_group = "unprotected"
+    if val > 1:
+        val = 1/val  # flip ratio if >1 to always be in [0,1] where 1 is ideal and lower is worse
+        favored_group= "protected"
     return {
         "value": val,
         "favored_ratio_protected": prot,
@@ -223,6 +227,7 @@ def disparate_impact(
         "n_unprotected": int((~group_mask).sum()),
         "n_protected_favored": int((y_pred[group_mask] == 1).sum()),
         "n_unprotected_favored": int((y_pred[~group_mask] == 1).sum()),
+        "favored_group": favored_group,
     }
 
 
@@ -811,7 +816,7 @@ def class_imbalance(group_mask: np.ndarray) -> dict:
     n_unprot = int((~group_mask).sum())
     val = _safe_div(n_unprot - n_prot, n_unprot + n_prot, default=0.0)
     return {
-        "value": float(val),
+        "value": float(abs(val)),
         "n_protected": n_prot,
         "n_unprotected": n_unprot,
         "balanced": bool(abs(val) < 0.1),
