@@ -70,6 +70,19 @@ def _favored_ratio(y_pred: np.ndarray, mask: np.ndarray) -> float:
     return float(y_pred[mask].mean())
 
 
+def _positive_gap_with_favored_group(value: float) -> tuple[float, str] | tuple[float, None]:
+    """Return absolute gap and favored group inferred from the original sign.
+
+    Assumes the original metric follows the convention:
+    metric = protected - unprotected.
+    """
+    if value < 0:
+        return float(-value), "unprotected"
+    if value > 0:
+        return float(value), "protected"
+    return 0.0, None
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Model Performance & Fit Metrics (not fairness-specific, but included for context)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -169,7 +182,8 @@ def statistical_parity_difference(
     prot  = _favored_ratio(y_pred, group_mask)
     unprot = _favored_ratio(y_pred, ~group_mask)
     
-    val = prot - unprot
+    raw_val = prot - unprot
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
     return {
         "value": val,
         "favored_ratio_protected": prot,
@@ -178,6 +192,7 @@ def statistical_parity_difference(
         "n_unprotected": int((~group_mask).sum()),
         "n_protected_favored": int((y_pred[group_mask] == 1).sum()),
         "n_unprotected_favored": int((y_pred[~group_mask] == 1).sum()),
+        "favored_group": favored_group,
     }
 
 
@@ -263,11 +278,13 @@ def equal_opportunity_difference(
     """
     tpr_prot   = _tpr(y_true, y_pred, group_mask)
     tpr_unprot = _tpr(y_true, y_pred, ~group_mask)
-    val = tpr_prot - tpr_unprot
+    raw_val = tpr_prot - tpr_unprot
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
     return {
         "value": val,
         "tpr_protected": tpr_prot,
         "tpr_unprotected": tpr_unprot,
+        "favored_group": favored_group,
     }
 
 
@@ -307,13 +324,15 @@ def average_odds_difference(
     tpr_unprot = _tpr(y_true, y_pred, ~group_mask)
     fpr_prot   = _fpr(y_true, y_pred, group_mask)
     fpr_unprot = _fpr(y_true, y_pred, ~group_mask)
-    val = 0.5 * ((tpr_prot - tpr_unprot) + (fpr_prot - fpr_unprot))
+    raw_val = 0.5 * ((tpr_prot - tpr_unprot) + (fpr_prot - fpr_unprot))
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
     return {
         "value": val,
         "tpr_protected": tpr_prot,
         "tpr_unprotected": tpr_unprot,
         "fpr_protected": fpr_prot,
         "fpr_unprotected": fpr_unprot,
+        "favored_group": favored_group,
     }
 
 
@@ -348,10 +367,13 @@ def accuracy_parity(
     """
     acc_prot   = _accuracy(y_true, y_pred, group_mask)
     acc_unprot = _accuracy(y_true, y_pred, ~group_mask)
+    raw_val = acc_prot - acc_unprot
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
     return {
-        "value": acc_prot - acc_unprot,
+        "value": val,
         "accuracy_protected": acc_prot,
         "accuracy_unprotected": acc_unprot,
+        "favored_group": favored_group,
     }
 
 
@@ -391,13 +413,15 @@ def predictive_parity(
     ppv_unprot = _ppv(y_true, y_pred, ~group_mask)
     npv_prot   = _npv(y_true, y_pred, group_mask)
     npv_unprot = _npv(y_true, y_pred, ~group_mask)
-    val = 0.5 * ((ppv_prot - ppv_unprot) + (npv_prot - npv_unprot))
+    raw_val = 0.5 * ((ppv_prot - ppv_unprot) + (npv_prot - npv_unprot))
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
     return {
         "value": val,
         "ppv_protected": ppv_prot,
         "ppv_unprotected": ppv_unprot,
         "npv_protected": npv_prot,
         "npv_unprotected": npv_unprot,
+        "favored_group": favored_group,
     }
 
 
@@ -445,14 +469,17 @@ def treatment_equality(
 
     if np.isnan(ratio_p) or np.isinf(ratio_p) or np.isnan(ratio_u) or np.isinf(ratio_u):
         raise ValueError("Treatment Equality computation resulted in NaN or Inf. Check if your data has enough samples in each group and class.")
+    raw_val = ratio_p - ratio_u
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
     return {
-        "value": ratio_p - ratio_u,
+        "value": val,
         "fn_protected": fn_p,
         "fp_protected": fp_p,
         "fn_fp_ratio_protected": ratio_p,
         "fn_unprotected": fn_u,
         "fp_unprotected": fp_u,
         "fn_fp_ratio_unprotected": ratio_u,
+        "favored_group": favored_group,
     }
 
 
@@ -815,11 +842,16 @@ def class_imbalance(group_mask: np.ndarray) -> dict:
     n_prot   = int(group_mask.sum())
     n_unprot = int((~group_mask).sum())
     val = _safe_div(n_unprot - n_prot, n_unprot + n_prot, default=0.0)
+    favored_group = "unprotected"
+    if val < 0:
+        val = -val  # flip to always be positive, where 0 is ideal and higher is more imbalanced
+        favored_group = "protected"
     return {
         "value": float(abs(val)),
         "n_protected": n_prot,
         "n_unprotected": n_unprot,
         "balanced": bool(abs(val) < 0.1),
+        "favored_group": favored_group,
     }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -913,14 +945,17 @@ def conditional_demographic_disparity(
     else:
         cdd = (n_prot * dd_prot + n_unprot * dd_unprot) / n_total
 
+    val, favored_group = _positive_gap_with_favored_group(float(cdd))
+
     return {
-        "value": float(cdd),
+        "value": val,
         "n_protected": n_prot,
         "n_unprotected": n_unprot,
         "total_positive": total_pos,
         "total_negative": total_neg,
         "dd_protected": dd_prot,
         "dd_unprotected": dd_unprot,
+        "favored_group": favored_group,
     }
 
 # def smoothed_edf(
@@ -1164,12 +1199,14 @@ def cohens_d(
     if len(g1) == 0 or len(g2) == 0:
         raise ValueError("Cohen's D requires samples in both protected and unprotected groups.")
     sigma = float(np.sqrt((g1.var() + g2.var()) / 2))
-    val = float((g1.mean() - g2.mean()) / sigma) if sigma > 0 else 0.0
+    raw_val = float((g1.mean() - g2.mean()) / sigma) if sigma > 0 else 0.0
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
     return {
         "value": val,
         "mean_protected": float(g1.mean()),
         "mean_unprotected": float(g2.mean()),
         "pooled_std": sigma,
+        "favored_group": favored_group,
     }
 
 
@@ -1220,7 +1257,8 @@ def z_test_diff(
 
     denom = np.sqrt((sr_tot * (1 - sr_tot)) / (n_tot * p_prot * (1 - p_prot)))
     
-    val = 0.0 if denom == 0 else (sr_prot - sr_unprot) / denom
+    raw_val = 0.0 if denom == 0 else (sr_prot - sr_unprot) / denom
+    val, favored_group = _positive_gap_with_favored_group(raw_val)
 
     if np.isnan(val) or np.isinf(val):
         raise ValueError("Z-test computation resulted in NaN or Inf. Check if your data has enough samples in each group and that success rates are not 0 or 1 for either group.")
@@ -1233,6 +1271,7 @@ def z_test_diff(
         "total_success_rate": sr_tot,
         "n_protected": n_prot,
         "n_unprotected": n_unprot,
+        "favored_group": favored_group,
     }
 
 

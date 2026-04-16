@@ -60,7 +60,7 @@ class SparsityMetric(BaseMetric):
 
     def build_properties(self, raw: dict) -> dict:
         return {
-            "Metric Description": "Fraction of features whose SHAP importance is above the configured threshold.",
+            "Metric Description": "For each sample, fraction of features whose SHAP importance is above the configured threshold, then averaged across samples. Lower values indicate that fewer features have significant importance.",
             "Depends on": "Model and Test Data",
             "Formula": "Sparsity = (# features with |importance| > threshold) / (# features)",
             "N Features": int(raw.get("n_features")),
@@ -231,11 +231,11 @@ class FeatureRelevanceMetric(BaseMetric):
         return {
             "Metric Description": "Percentage of features considered irrelevant because their importance is below the configured threshold.",
             "Depends on": "Model or Global Feature Importances",
-            "Formula": "Feature Relevance = (# features with importance > threshold) / (# features)",
+            "Formula": "Feature Relevance = (# features with importance < threshold) / (# features)",
             "Threshold for irrelevance": f"{raw.get('threshold'):.2f}",
             "Number of irrelevant features": raw.get("n_outliers"),
             "Importances": raw.get("importances"),
-            "Percentage of features whose importance contributes is greater than threshold": f"{raw['value']:.6f}",
+            "Percentage of features whose importance contributes is lower than threshold": f"{raw['value']:.6f}",
         }
 
 

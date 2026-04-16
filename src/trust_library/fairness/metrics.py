@@ -87,6 +87,7 @@ class StatisticalParityMetric(BaseMetric):
             "Number Unprotected": raw["n_unprotected"],
             "Number Unprotected Favored": raw["n_unprotected_favored"],
             "Favored Unprotected Ratio": f"{raw['favored_ratio_unprotected']:.2%}",
+            "Favored Group": raw.get("favored_group"),
             "Statistical Parity Difference": f"{raw['value']:.4f}",
         }
 
@@ -141,8 +142,8 @@ class DisparateImpactMetric(BaseMetric):
             "Number Unprotected": raw["n_unprotected"],
             "Number Unprotected Favored": raw["n_unprotected_favored"],
             "Unprotected Favored Ratio": f"P(y_hat=favorable|protected=False) = {raw['favored_ratio_unprotected']:.2%}",
-            "Disparate Impact": f"{raw['value']:.4f}",
             "Favored Group": raw.get("favored_group"),
+            "Disparate Impact": f"{raw['value']:.4f}",
         }
 
 
@@ -170,6 +171,7 @@ class EqualOpportunityMetric(BaseMetric):
             "Formula": "Equal Opportunity Difference = TPR Protected - TPR Unprotected",
             "TPR Unprotected Group": f"{raw['tpr_unprotected']:.2%}",
             "TPR Protected Group": f"{raw['tpr_protected']:.2%}",
+            "Favored Group": raw.get("favored_group"),
             "Equal Opportunity Difference": f"{raw['value']*100:.2f}%",
         }
 
@@ -200,6 +202,7 @@ class AverageOddsMetric(BaseMetric):
             "FPR Protected Group": f"{raw['fpr_protected']:.2%}",
             "TPR Unprotected Group": f"{raw['tpr_unprotected']:.2%}",
             "TPR Protected Group": f"{raw['tpr_protected']:.2%}",
+            "Favored Group": raw.get("favored_group"),
             "Average Odds Difference": f"{raw['value']*100:.2f}%",
         }
 
@@ -225,6 +228,7 @@ class AccuracyParityMetric(BaseMetric):
             "Formula": "Accuracy Parity = Accuracy Protected - Accuracy Unprotected",
             "Accuracy Unprotected Group": f"{raw['accuracy_unprotected']:.2%}",
             "Accuracy Protected Group": f"{raw['accuracy_protected']:.2%}",
+            "Favored Group": raw.get("favored_group"),
             "Accuracy Parity Difference": f"{raw['value']*100:.2f}%",
         }
 
@@ -252,6 +256,7 @@ class PredictiveParityMetric(BaseMetric):
             "PPV Protected": f"{raw['ppv_protected']:.2%}",
             "NPV Unprotected": f"{raw['npv_unprotected']:.2%}",
             "NPV Protected": f"{raw['npv_protected']:.2%}",
+            "Favored Group": raw.get("favored_group"),
             "Predictive Parity Difference": f"{raw['value']*100:.2f}%",
         }
 
@@ -281,6 +286,7 @@ class TreatmentEqualityMetric(BaseMetric):
             "FP Protected":   raw["fp_protected"],
             "FN/FP Unprotected": f"{raw['fn_fp_ratio_unprotected']:.4f}",
             "FN/FP Protected":   f"{raw['fn_fp_ratio_protected']:.4f}",
+            "Favored Group": raw.get("favored_group"),
             "Treatment Equality Difference": f"{raw['value']:.4f}",
         }
 
@@ -456,6 +462,7 @@ class ClassImbalanceMetric(BaseMetric):
             "Formula": "Class Imbalance = (N_unprotected - N_protected) / (N_unprotected + N_protected)",
             "N Protected": f"{raw['n_protected']}",
             "N Unprotected": f"{raw['n_unprotected']}",
+            "Favored Group": raw.get("favored_group"),
             "Class Imbalance": f"{raw['value']:.4f}",
         }
 
@@ -518,6 +525,7 @@ class ConditionalDemographicDisparityMetric(BaseMetric):
             props["Total Positive"] = f"{raw['total_positive']}"
             props["Total Negative"] = f"{raw['total_negative']}"
 
+        props["Favored Group"] = raw.get("favored_group")
         props["Conditional Demographic Disparity"] = f"{raw['value']:.4f}"
             
         return props
@@ -624,6 +632,7 @@ class CohensDMetric(BaseMetric):
             "Mean Unprotected": f"{raw['mean_unprotected']:.4f}",
             "Mean Protected": f"{raw['mean_protected']:.4f}",
             "Pooled Std Dev": f"{raw['pooled_std']:.4f}",
+            "Favored Group": raw.get("favored_group"),
             "Cohen's D": f"{raw['value']:.4f}",
         }
     
@@ -650,5 +659,6 @@ class ZTestDiffMetric(BaseMetric):
             "Total Success Rate": f"{raw['total_success_rate']:.2%}",
             "N Protected": f"{raw['n_protected']}",
             "N Unprotected": f"{raw['n_unprotected']}",
+            "Favored Group": raw.get("favored_group"),
             "Z-Test Score": f"{raw['value']:.4f}",
         }
