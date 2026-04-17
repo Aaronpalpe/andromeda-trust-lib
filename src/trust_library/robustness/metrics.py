@@ -6,6 +6,9 @@ from typing import Dict, Any
 
 from . import robustness_metrics_core as core
 
+_BINARY = BaseMetric.ProblemType.BINARY
+_BOTH = BaseMetric.ProblemType.BOTH
+
 # ============================================================
 # CACHE SYSTEM
 # ============================================================
@@ -723,7 +726,7 @@ class AdversarialAccuracyMetric(BaseMetric):
     """Worst-case adversarial accuracy across the ensemble."""
     
     def __init__(self):
-        super().__init__("adversarial_accuracy", "score_adversarial_accuracy")
+        super().__init__("adversarial_accuracy", "score_adversarial_accuracy", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -744,7 +747,7 @@ class IndividualAttackResultsMetric(BaseMetric):
     """Detailed results from all individual attacks in the ensemble."""
 
     def __init__(self):
-        super().__init__("individual_attack_results", "score_accuracy_drop")
+        super().__init__("individual_attack_results", "score_accuracy_drop", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -763,7 +766,7 @@ class AccuracyDropMetric(BaseMetric):
     """Worst-case accuracy drop across the ensemble of attacks."""
     
     def __init__(self):
-        super().__init__("accuracy_drop", "score_accuracy_drop")
+        super().__init__("accuracy_drop", "score_accuracy_drop", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -783,7 +786,7 @@ class RobustnessRatioMetric(BaseMetric):
     """Worst-case robustness ratio (adv/clean) across the ensemble."""
     
     def __init__(self):
-        super().__init__("robustness_ratio", "score_robustness_ratio")
+        super().__init__("robustness_ratio", "score_robustness_ratio", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -804,7 +807,11 @@ class AdversarialAccuracyCorrectOnlyMetric(BaseMetric):
     """Worst-case adversarial accuracy (correct-only) across the ensemble."""
     
     def __init__(self):
-        super().__init__("adversarial_accuracy_correct_only", "score_adversarial_accuracy_correct_only")
+        super().__init__(
+            "adversarial_accuracy_correct_only",
+            "score_adversarial_accuracy_correct_only",
+            problem_type=_BOTH,
+        )
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -825,7 +832,7 @@ class ASRMetric(BaseMetric):
     """Worst-case Attack Success Rate (ASR) across the ensemble."""
     
     def __init__(self):
-        super().__init__("asr", "score_asr")
+        super().__init__("asr", "score_asr", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -846,7 +853,7 @@ class EmpiricalRobustnessL2Metric(BaseMetric):
     """Worst-case empirical robustness (L2 norm) across the ensemble."""
     
     def __init__(self):
-        super().__init__("empirical_robustness_l2", "score_empirical_robustness_l2")
+        super().__init__("empirical_robustness_l2", "score_empirical_robustness_l2", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -867,7 +874,7 @@ class EmpiricalRobustnessLinfMetric(BaseMetric):
     """Worst-case empirical robustness (Linf norm) across the ensemble."""
     
     def __init__(self):
-        super().__init__("empirical_robustness_linf", "score_empirical_robustness_linf")
+        super().__init__("empirical_robustness_linf", "score_empirical_robustness_linf", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ensemble(ctx)
@@ -891,7 +898,7 @@ class CliqueMethodMetric(BaseMetric):
     """Clique Method verification error (lower is better)."""
 
     def __init__(self):
-        super().__init__("clique_method", "score_clique_method")
+        super().__init__("clique_method", "score_clique_method", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_clique(ctx)
@@ -920,7 +927,7 @@ class CleverScoreMetric(BaseMetric):
     """CLEVER score mean (higher is better). Requires gradient-capable ART classifier."""
 
     def __init__(self):
-        super().__init__("clever_score", "score_clever_score")
+        super().__init__("clever_score", "score_clever_score", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_clever(ctx)
@@ -944,7 +951,7 @@ class ConfidenceScoreMetric(BaseMetric):
     """Model confidence metric based on confusion matrix diagonal."""
     
     def __init__(self):
-        super().__init__("confidence_score", "score_confidence_score")
+        super().__init__("confidence_score", "score_confidence_score", problem_type=_BINARY)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_confidence(ctx)
@@ -965,7 +972,7 @@ class LossSensitivityMetric(BaseMetric):
     """Loss sensitivity metric via gradient-based estimations."""
     
     def __init__(self):
-        super().__init__("loss_sensitivity", "score_loss_sensitivity")
+        super().__init__("loss_sensitivity", "score_loss_sensitivity", problem_type=_BOTH)
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_loss(ctx)
@@ -988,7 +995,11 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
     """
 
     def __init__(self):
-        super().__init__("expected_calibration_error", "score_expected_calibration_error")
+        super().__init__(
+            "expected_calibration_error",
+            "score_expected_calibration_error",
+            problem_type=_BOTH,
+        )
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_ece(ctx)

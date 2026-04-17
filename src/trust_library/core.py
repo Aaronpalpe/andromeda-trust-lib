@@ -518,6 +518,14 @@ class TrustEvaluator:
         except Exception as e:
             raise RuntimeError(f"Error during model prediction: {e}")
 
+        is_classification, problem_type, class_labels = utils.infer_problem_type(
+            model=self.model,
+            y_train=y_train,
+            y_test=y_test,
+            y_prob_train=y_prob_train,
+            y_prob_test=y_prob_test,
+        )
+
         return utils.EvaluationContext(
             model=self.model,
             train_data=self.train_data,
@@ -529,6 +537,9 @@ class TrustEvaluator:
             y_prob_train=y_prob_train,
             y_prob_test=y_prob_test,
             factsheet=self.factsheet,
+            is_classification=is_classification,
+            problem_type=problem_type,
+            class_labels=class_labels,
         )
 
     def _predict(self, X):

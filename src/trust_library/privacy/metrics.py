@@ -6,6 +6,8 @@ import pandas as pd
 from trust_library.base_metric import BaseMetric
 from . import privacy_metrics_core as core
 
+_BOTH = BaseMetric.ProblemType.BOTH
+
 
 # =============================================================================
 # Epsilon DP Leakage
@@ -44,7 +46,7 @@ class EpsilonMetric(BaseMetric):
 class EpsilonStarMetric(BaseMetric):
 
     def __init__(self) -> None:
-        super().__init__("epsilon_star", "score_epsilon_star")
+        super().__init__("epsilon_star", "score_epsilon_star", problem_type=_BOTH)
 
     def compute(self, ctx) -> Dict[str, float]:
 
@@ -73,7 +75,7 @@ class EpsilonStarMetric(BaseMetric):
 class SHAPRMetric(BaseMetric):
 
     def __init__(self) -> None:
-        super().__init__("shapr", "score_shapr")
+        super().__init__("shapr", "score_shapr", problem_type=_BOTH)
 
     def compute(self, ctx) -> Dict[str, float]:
 
@@ -145,7 +147,7 @@ class AttributeInferenceMetric(BaseMetric):
 class PrivacyRiskMetric(BaseMetric):
 
     def __init__(self) -> None:
-        super().__init__("privacy_risk", "score_privacy_risk")
+        super().__init__("privacy_risk", "score_privacy_risk", problem_type=_BOTH)
 
     def compute(self, ctx) -> Dict[str, float]:
 
@@ -172,7 +174,7 @@ class PrivacyRiskMetric(BaseMetric):
 class AccuracyRatioMetric(BaseMetric):
 
     def __init__(self) -> None:
-        super().__init__("accuracy_ratio", "score_accuracy_ratio")
+        super().__init__("accuracy_ratio", "score_accuracy_ratio", problem_type=_BOTH)
 
     def compute(self, ctx) -> Dict[str, float]:
 

@@ -3,6 +3,9 @@
 from trust_library.base_metric import BaseMetric
 from . import fairness_metrics_core as core
 
+_BINARY = BaseMetric.ProblemType.BINARY
+_BOTH = BaseMetric.ProblemType.BOTH
+
 
 # ─────────────────────────────────────────────────────────────
 # Underfitting
@@ -11,7 +14,7 @@ from . import fairness_metrics_core as core
 class UnderfittingMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("underfitting", "score_underfitting")
+        super().__init__("underfitting", "score_underfitting", problem_type=_BOTH)
 
     def compute(self, ctx):
         return core.underfitting(ctx.y_test, ctx.y_pred_test)
@@ -32,7 +35,7 @@ class UnderfittingMetric(BaseMetric):
 class OverfittingMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("overfitting", "score_overfitting")
+        super().__init__("overfitting", "score_overfitting", problem_type=_BOTH)
 
     def compute(self, ctx):
         return core.overfitting(
@@ -67,7 +70,8 @@ class StatisticalParityMetric(BaseMetric):
     def __init__(self):
         super().__init__(
             "statistical_parity_difference",
-            "score_statistical_parity_difference"
+            "score_statistical_parity_difference",
+            problem_type=_BINARY,
         )
 
     def compute(self, ctx):
@@ -99,7 +103,7 @@ class StatisticalParityMetric(BaseMetric):
 class ClassBalanceMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("class_balance", None)
+        super().__init__("class_balance", None, problem_type=_BOTH)
 
     def compute(self, ctx):
         return core.class_balance(
@@ -126,7 +130,7 @@ class ClassBalanceMetric(BaseMetric):
 class DisparateImpactMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("disparate_impact", "score_disparate_impact")
+        super().__init__("disparate_impact", "score_disparate_impact", problem_type=_BINARY)
 
     def compute(self, ctx):
         return core.disparate_impact(ctx.y_pred_test, ctx.group_mask)
@@ -157,6 +161,7 @@ class EqualOpportunityMetric(BaseMetric):
         super().__init__(
             "equal_opportunity_difference",
             "score_equal_opportunity_difference",
+            problem_type=_BINARY,
         )
 
     def compute(self, ctx):
@@ -186,6 +191,7 @@ class AverageOddsMetric(BaseMetric):
         super().__init__(
             "average_odds_difference",
             "score_average_odds_difference",
+            problem_type=_BINARY,
         )
 
     def compute(self, ctx):
@@ -214,7 +220,7 @@ class AverageOddsMetric(BaseMetric):
 class AccuracyParityMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("accuracy_parity", "score_accuracy_parity")
+        super().__init__("accuracy_parity", "score_accuracy_parity", problem_type=_BOTH)
 
     def compute(self, ctx):
         return core.accuracy_parity(
@@ -240,7 +246,7 @@ class AccuracyParityMetric(BaseMetric):
 class PredictiveParityMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("predictive_parity", "score_predictive_parity")
+        super().__init__("predictive_parity", "score_predictive_parity", problem_type=_BINARY)
 
     def compute(self, ctx):
         return core.predictive_parity(
@@ -268,7 +274,7 @@ class PredictiveParityMetric(BaseMetric):
 class TreatmentEqualityMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("treatment_equality", "score_treatment_equality")
+        super().__init__("treatment_equality", "score_treatment_equality", problem_type=_BINARY)
 
     def compute(self, ctx):
         return core.treatment_equality(
@@ -298,7 +304,7 @@ class TreatmentEqualityMetric(BaseMetric):
 class CalibrationGapMetric(BaseMetric):
 
     def __init__(self, n_bins: int = 10):
-        super().__init__("calibration_gap", "score_calibration_gap")
+        super().__init__("calibration_gap", "score_calibration_gap", problem_type=_BINARY)
         self.n_bins = n_bins
 
     def compute(self, ctx):
@@ -329,7 +335,7 @@ class CalibrationGapMetric(BaseMetric):
 class WellCalibrationMetric(BaseMetric):
 
     def __init__(self, n_bins: int = 10):
-        super().__init__("well_calibration_error", "score_well_calibration_error")
+        super().__init__("well_calibration_error", "score_well_calibration_error", problem_type=_BINARY)
         self.n_bins = n_bins
 
     def compute(self, ctx):
@@ -360,6 +366,7 @@ class GeneralizedEntropyMetric(BaseMetric):
         super().__init__(
             "generalized_entropy_index",
             "score_generalized_entropy_index",
+            problem_type=_BINARY,
         )
         self.alpha = alpha
 
@@ -401,6 +408,7 @@ class CoefficientVariationMetric(BaseMetric):
         super().__init__(
             "coefficient_of_variation",
             "score_coefficient_of_variation",
+            problem_type=_BINARY,
         )
 
     def compute(self, ctx):
@@ -424,7 +432,7 @@ class CoefficientVariationMetric(BaseMetric):
 class ConsistencyMetric(BaseMetric):
 
     def __init__(self, k: int = 5):
-        super().__init__("individual_consistency", "score_individual_consistency")
+        super().__init__("individual_consistency", "score_individual_consistency", problem_type=_BOTH)
         self.k = k
 
     def compute(self, ctx):
@@ -447,7 +455,7 @@ class ConsistencyMetric(BaseMetric):
 class ClassImbalanceMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("class_imbalance", None)
+        super().__init__("class_imbalance", None, problem_type=_BOTH)
 
     def compute(self, ctx):
         return core.class_imbalance(ctx.group_mask)
@@ -474,7 +482,7 @@ class ClassImbalanceMetric(BaseMetric):
 class KLDivergenceMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("kl_divergence", "score_kl_divergence")
+        super().__init__("kl_divergence", "score_kl_divergence", problem_type=_BOTH)
 
     def compute(self, ctx):
         return core.kl_divergence(ctx.y_test, ctx.group_mask)
@@ -496,7 +504,8 @@ class ConditionalDemographicDisparityMetric(BaseMetric):
     def __init__(self):
         super().__init__(
             "conditional_demographic_disparity", 
-            "score_conditional_demographic_disparity"
+            "score_conditional_demographic_disparity",
+            problem_type=_BINARY,
         )
 
     def compute(self, ctx):
@@ -537,7 +546,7 @@ class ConditionalDemographicDisparityMetric(BaseMetric):
 class SmoothedEDFMetric(BaseMetric):
 
     def __init__(self, alpha: float = 1.0):
-        super().__init__("smoothed_edf", "score_smoothed_edf")
+        super().__init__("smoothed_edf", "score_smoothed_edf", problem_type=_BINARY)
         self.alpha = alpha
 
     def compute(self, ctx):
@@ -564,7 +573,7 @@ class SmoothedEDFMetric(BaseMetric):
 class BiasAmplificationMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("bias_amplification", "score_bias_amplification")
+        super().__init__("bias_amplification", "score_bias_amplification", problem_type=_BINARY)
 
     def compute(self, ctx):
         return core.bias_amplification(
@@ -590,7 +599,8 @@ class BetweenGroupGeneralizedEntropyMetric(BaseMetric):
     def __init__(self, alpha: float = 2):
         super().__init__(
             "between_group_generalized_entropy_error", 
-            "score_between_group_generalized_entropy_error"
+            "score_between_group_generalized_entropy_error",
+            problem_type=_BINARY,
         )
         self.alpha = alpha
 
@@ -619,7 +629,7 @@ class BetweenGroupGeneralizedEntropyMetric(BaseMetric):
 class CohensDMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("cohens_d", "score_cohens_d")
+        super().__init__("cohens_d", "score_cohens_d", problem_type=_BINARY)
 
     def compute(self, ctx):
         return core.cohens_d(ctx.y_pred_test, ctx.group_mask)
@@ -644,7 +654,7 @@ class CohensDMetric(BaseMetric):
 class ZTestDiffMetric(BaseMetric):
 
     def __init__(self):
-        super().__init__("z_test_diff", "score_z_test_diff")
+        super().__init__("z_test_diff", "score_z_test_diff", problem_type=_BINARY)
 
     def compute(self, ctx):
         return core.z_test_diff(ctx.y_pred_test, ctx.group_mask)

@@ -5,6 +5,8 @@ import numpy as np
 from dataclasses import dataclass, field
 import pandas as pd
 
+from trust_library.base_metric import BaseMetric
+
 # Result structure
 Result = collections.namedtuple('result', 'score properties')
 
@@ -266,6 +268,88 @@ def load_fairness_config(factsheet: dict) -> tuple:
     return protected_feature, protected_values, target_column, favorable_outcomes
 
 
+def _coerce_label_value(value: Any) -> Any:
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _collect_unique_labels(*arrays: Any) -> list[Any]:
+    labels: list[Any] = []
+    for array in arrays:
+        if array is None:
+            continue
+        flat = np.asarray(array, dtype=object).reshape(-1)
+        for value in flat.tolist():
+            coerced = _coerce_label_value(value)
+            if pd.isna(coerced):
+                continue
+            if coerced not in labels:
+                labels.append(coerced)
+    return labels
+
+
+def _infer_n_classes_from_probabilities(*probability_arrays: Any) -> int | None:
+    for probability_array in probability_arrays:
+        if probability_array is None:
+            continue
+        probabilities = np.asarray(probability_array)
+        if probabilities.ndim == 1:
+            return 2
+        if probabilities.ndim >= 2 and probabilities.shape[1] > 0:
+            return max(2, int(probabilities.shape[1]))
+    return None
+
+
+def infer_problem_type(
+    *,
+    model: Any,
+    y_train: Any,
+    y_test: Any,
+    y_prob_train: Any = None,
+    y_prob_test: Any = None,
+) -> tuple[bool, BaseMetric.ProblemType | None, list[Any]]:
+    """
+    Infer whether the evaluation looks like a classification problem and, if so,
+    whether it is binary or multiclass.
+
+    This first version intentionally uses conservative heuristics centered on the
+    runtime capabilities exposed by the model (`predict_proba`, `classes_`) and
+    on the observed label/probability outputs.
+    """
+    class_labels: list[Any] = []
+
+    if hasattr(model, "classes_"):
+        try:
+            classes = np.asarray(getattr(model, "classes_"), dtype=object).reshape(-1)
+            class_labels = [_coerce_label_value(value) for value in classes.tolist()]
+        except Exception:
+            class_labels = []
+
+    if not class_labels:
+        class_labels = _collect_unique_labels(y_train, y_test)
+
+    has_probability_outputs = y_prob_train is not None or y_prob_test is not None
+    is_classification = bool(
+        has_probability_outputs
+        or hasattr(model, "predict_proba")
+        or hasattr(model, "classes_")
+    )
+
+    if not is_classification:
+        return False, None, class_labels
+
+    n_classes = len(class_labels)
+    if n_classes == 0:
+        inferred_n_classes = _infer_n_classes_from_probabilities(y_prob_train, y_prob_test)
+        n_classes = inferred_n_classes or 0
+
+    if n_classes > 2:
+        return True, BaseMetric.ProblemType.MULTICLASS, class_labels
+
+    return True, BaseMetric.ProblemType.BINARY, class_labels
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # EvaluationContext
 # ─────────────────────────────────────────────────────────────────────────────
@@ -285,6 +369,9 @@ class EvaluationContext:
     y_prob_train: np.ndarray | pd.DataFrame | None
     y_prob_test: np.ndarray | pd.DataFrame | None
     factsheet: dict[str, Any]
+    is_classification: bool = False
+    problem_type: BaseMetric.ProblemType | None = None
+    class_labels: list[Any] = field(default_factory=list)
     extras: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -318,4 +405,20 @@ class EvaluationContext:
         ''' Returns the predicted probabilities for the positive class, if available. '''
         if self.y_prob_test is None:
             return None
-        return np.asarray(self.y_prob_test)[:, 1]
+        if self.problem_type != BaseMetric.ProblemType.BINARY:
+            return None
+
+        probabilities = np.asarray(self.y_prob_test)
+        if probabilities.ndim == 1:
+            return probabilities
+        if probabilities.ndim >= 2 and probabilities.shape[1] > 1:
+            return probabilities[:, 1]
+        return None
+
+    @property
+    def is_binary_classification(self) -> bool:
+        return self.problem_type == BaseMetric.ProblemType.BINARY
+
+    @property
+    def is_multiclass_classification(self) -> bool:
+        return self.problem_type == BaseMetric.ProblemType.MULTICLASS

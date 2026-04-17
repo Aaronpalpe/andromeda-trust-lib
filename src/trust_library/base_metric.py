@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-import numpy as np
-from trust_library.utils import Result, calculate_score, calculate_score_normalized
+from enum import Enum
 import warnings
+
+import numpy as np
 
 #_DEFAULT_THRESHOLDS = [0.1, 0.2, 0.3, 0.4]
 
@@ -19,13 +21,20 @@ class BaseMetric(ABC):
         - Result construction
     """
 
+    class ProblemType(Enum):
+        BINARY = "binary"
+        MULTICLASS = "multiclass"
+        BOTH = "both"
+
     def __init__(
         self,
         metric_key: str,
         score_config_key: str | None,
-    ):
+        problem_type: "BaseMetric.ProblemType | None" = None,
+    ) -> None:
         self.metric_key = metric_key
         self.score_config_key = score_config_key
+        self.problem_type = problem_type
 
     # ─────────────────────────────────────────────────────────────
     # Public API
@@ -35,6 +44,20 @@ class BaseMetric(ABC):
         """
         Safe wrapper executing compute -> scoring -> property building.
         """
+        from trust_library.utils import Result
+
+        if not self.is_compatible_with(context):
+            return Result(
+                np.nan,
+                {
+                    "Status": "SKIPPED",
+                    "Reason": self.incompatibility_reason(context),
+                    "Supported Problem Type": (
+                        self.problem_type.value if self.problem_type is not None else "agnostic"
+                    ),
+                    "Detected Problem Type": self._context_problem_type_label(context),
+                },
+            )
 
         try:
             raw = self.compute(context)
@@ -46,6 +69,64 @@ class BaseMetric(ABC):
 
         except Exception as e:
             return Result(np.nan, {"Error": str(e)})
+
+    def is_compatible_with(self, context) -> bool:
+        """
+        Return whether the metric can run for the inferred evaluation problem type.
+
+        Metrics with ``problem_type=None`` are treated as task-agnostic in this
+        first version and always run.
+        """
+        if self.problem_type is None:
+            return True
+
+        if not getattr(context, "is_classification", False):
+            return False
+
+        detected_problem_type = getattr(context, "problem_type", None)
+        if detected_problem_type is None:
+            return False
+
+        if self.problem_type == BaseMetric.ProblemType.BOTH:
+            return detected_problem_type in {
+                BaseMetric.ProblemType.BINARY,
+                BaseMetric.ProblemType.MULTICLASS,
+            }
+
+        return detected_problem_type == self.problem_type
+
+    def incompatibility_reason(self, context) -> str:
+        if self.problem_type is None:
+            return "Metric is task-agnostic."
+
+        if not getattr(context, "is_classification", False):
+            return (
+                "Metric requires a classification problem, but the evaluation "
+                "context was not inferred as classification."
+            )
+
+        detected_problem_type = getattr(context, "problem_type", None)
+        if detected_problem_type is None:
+            return "Metric requires a binary or multiclass classification problem, but the problem type could not be inferred."
+
+        if self.problem_type == BaseMetric.ProblemType.BOTH:
+            return (
+                "Metric supports binary and multiclass classification, but the "
+                "evaluation context does not expose a compatible classification mode."
+            )
+
+        return (
+            f"Metric supports {self.problem_type.value} classification, but the "
+            f"evaluation context was inferred as {detected_problem_type.value}."
+        )
+
+    def _context_problem_type_label(self, context) -> str:
+        detected_problem_type = getattr(context, "problem_type", None)
+        if detected_problem_type is None:
+            return "unknown"
+        if isinstance(detected_problem_type, BaseMetric.ProblemType):
+            return detected_problem_type.value
+        return str(detected_problem_type)
 
     # ─────────────────────────────────────────────────────────────
     # Core metric logic (to implement)
@@ -82,6 +163,7 @@ class BaseMetric(ABC):
                     max_val: 1.0
                     higher_is_better: true
         """
+        from trust_library.utils import calculate_score, calculate_score_normalized
 
         if self.score_config_key is None:
             return self.custom_score(raw)
