@@ -6,14 +6,16 @@ classDiagram
     +model
     +train_data
     +test_data
-    +factsheet
+    +factsheet: dict | Factsheet
     +output_path: str
     +config: dict
     +context: EvaluationContext
     +result: dict | None
+    +set_global_seed(seed: int)
     +evaluate(pillars: list[str], show_nan: bool) dict
     +plot_results() None
     +plot_radar() None
+    +print_results_summary(decimals: int) None
     +compare_all_bars(results: dict[str, dict]) None
     +compare_radar(results: dict[str, dict]) None
     -_load_config(config_path: str | None) dict
@@ -24,7 +26,19 @@ classDiagram
     -_compute_trust_score(pillar_scores: dict) float
     -_build_score_explanation(pillar_results: dict, show_nan: bool) dict
     -_save_result() None
+    -_save_updated_factsheet() None
+    -_validate_pillars(pillars: list[str]) None
     -_is_nan(value)
+  }
+
+  class Factsheet {
+    +to_dict() dict
+    +save(path: str)
+    +create_factsheet_interactive(output_path: str)$ Factsheet
+    +__getitem__(key)
+    +get(key, default)
+    -_load_template()
+    -_apply_section(section_name: str, values: dict)
   }
 
   class BaseMetric {
@@ -34,9 +48,10 @@ classDiagram
     +evaluate(context, config: dict | None) Result
     +compute(context) dict
     +build_properties(raw: dict) dict
-    +compute_score(raw: dict, config: dict | None) int
+    +compute_score(raw: dict, config: dict | None) float
     +custom_score(raw: dict)
     -_get_thresholds(config: dict | None)
+    -_get_normalized_config(config: dict | None)
   }
 
   class Pillar {
@@ -72,7 +87,7 @@ classDiagram
   }
 
   class Result {
-    <<NamedTuple>>
+    <<namedtuple>>
     +score
     +properties
   }
@@ -113,7 +128,111 @@ classDiagram
     +get_metrics() List~BaseMetric~
   }
 
+  class FairnessMetrics {
+    <<metrics>>
+    +UnderfittingMetric
+    +OverfittingMetric
+    +ClassBalanceMetric
+    +StatisticalParityMetric
+    +DisparateImpactMetric
+    +EqualOpportunityMetric
+    +AverageOddsMetric
+    +AccuracyParityMetric
+    +PredictiveParityMetric
+    +TreatmentEqualityMetric
+    +CalibrationGapMetric
+    +WellCalibrationMetric
+    +GeneralizedEntropyMetric
+    +TheilIndexMetric
+    +CoefficientVariationMetric
+    +ConsistencyMetric
+    +ClassImbalanceMetric
+    +KLDivergenceMetric
+    +ConditionalDemographicDisparityMetric
+    +SmoothedEDFMetric
+    +BiasAmplificationMetric
+    +BetweenGroupGeneralizedEntropyMetric
+    +CohensDMetric
+    +ZTestDiffMetric
+  }
+
+  class AccountabilityMetrics {
+    <<metrics>>
+    +TrainTestSplitMetric
+    +MissingDataMetric
+    +NormalizationMetric
+    +RegularizationMetric
+    +FactsheetCompletenessMetric
+  }
+
+  class PrivacyMetrics {
+    <<metrics>>
+    +EpsilonMetric
+    +EpsilonStarMetric
+    +SHAPRMetric
+    +AttributeInferenceMetric
+    +AccuracyRatioMetric
+    +PrivacyRiskMetric
+    +KAnonymityMetric
+    +LDiversityMetric
+    +TClosenessMetric
+  }
+
+  class SustainabilityMetrics {
+    <<metrics>>
+    +EnergyConsumptionMetric
+    +EmissionsMetric
+    +CarbonIntensityMetric
+  }
+
+  class ExplainabilityMetrics {
+    <<metrics>>
+    +SparsityMetric
+    +FeatureEntropyMetric
+    +TopKConcentrationMetric
+    +AlgorithmClassMetric
+    +CorrelatedFeaturesMetric
+    +ModelSizeMetric
+    +FeatureRelevanceMetric
+    +AlphaImportanceScoreMetric
+    +XAIEaseScoreMetric
+    +PositionParityMetric
+    +RankAlignmentMetric
+    +SpreadRatioMetric
+    +SpreadDivergenceMetric
+    +FaithfulnessMetric
+    +MonotonicityMetric
+    +InfidelityMetric
+    +NumberOfRulesMetric
+    +AverageRuleLengthMetric
+    +TreeDepthMetric
+    +WeightedAverageDepthMetric
+    +WeightedAverageExplainabilityScoreMetric
+    +WeightedTreeGiniMetric
+    +TreeDepthVarianceMetric
+    +TreeNumberOfFeaturesMetric
+    +XAIConsistencyScoreMetric
+  }
+
+  class RobustnessMetrics {
+    <<metrics>>
+    +IndividualAttackResultsMetric
+    +AccuracyDropMetric
+    +ASRMetric
+    +AdversarialAccuracyMetric
+    +AdversarialAccuracyCorrectOnlyMetric
+    +RobustnessRatioMetric
+    +EmpiricalRobustnessL2Metric
+    +EmpiricalRobustnessLinfMetric
+    +CliqueMethodMetric
+    +CleverScoreMetric
+    +LossSensitivityMetric
+    +ConfidenceScoreMetric
+    +ExpectedCalibrationErrorMetric
+  }
+
   TrustEvaluator *-- EvaluationContext : builds
+  TrustEvaluator ..> Factsheet : accepts/updates
   TrustEvaluator ..> FairnessPillar : _PILLARS
   TrustEvaluator ..> AccountabilityPillar : _PILLARS
   TrustEvaluator ..> PrivacyPillar : _PILLARS
@@ -133,6 +252,13 @@ classDiagram
   SustainabilityPillar --|> Pillar
   ExplainabilityPillar --|> Pillar
   RobustnessPillar --|> Pillar
+
+  FairnessPillar ..> FairnessMetrics : get_metrics()
+  AccountabilityPillar ..> AccountabilityMetrics : get_metrics()
+  PrivacyPillar ..> PrivacyMetrics : get_metrics()
+  SustainabilityPillar ..> SustainabilityMetrics : get_metrics()
+  ExplainabilityPillar ..> ExplainabilityMetrics : get_metrics()
+  RobustnessPillar ..> RobustnessMetrics : get_metrics()
 
 
 ```

@@ -566,11 +566,13 @@ class TrustEvaluator:
         pillar_weights   = self.config.get("pillars", {})
         trust_formula_parts = []
         trust_value      = 0
+        total_weight = 0
 
         for pillar_name, data in pillar_results.items():
             p_weight = pillar_weights.get(pillar_name, 1)
             p_score  = data["score"]
             trust_value += p_weight * p_score
+            total_weight += p_weight
             trust_formula_parts.append(f"{p_weight}*{pillar_name.capitalize()}({p_score})")
 
             metric_weights = self.config.get("weights", {}).get(pillar_name, {})
@@ -587,7 +589,7 @@ class TrustEvaluator:
 
         explanation["trust_score"] = {
             "formula":     " + ".join(trust_formula_parts),
-            "final_score": trust_value,
+            "final_score": trust_value / total_weight if total_weight else 0,
         }
         return explanation
 

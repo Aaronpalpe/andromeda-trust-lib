@@ -895,12 +895,12 @@ class CliqueMethodMetric(BaseMetric):
 
     def compute(self, ctx: EvaluationContext) -> dict:
         m = _get_or_compute_clique(ctx)
-        return {"value": float(m.get("verification_error")), **m}
+        return {"value": float(m.get("robustness_bound")), **m}
 
     def build_properties(self, raw: dict) -> dict:
         params = raw.get("params") if isinstance(raw.get("params"), dict) else {}
         return {
-            "Metric Description": "Clique Method verification error for tree-based models. Lower indicates stronger verified robustness.",
+            "Metric Description": "Clique Method verification error for tree-based models. Higher values of robustness bound indicate better robustness.",
             "Depends on": "Tree-Based Model and Test Data",
             "Formula": "Clique Method Score = verification error from ART tree robustness verification",
             "Robustness Bound": float(raw.get("robustness_bound")),

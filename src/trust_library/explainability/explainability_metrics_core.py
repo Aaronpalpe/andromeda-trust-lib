@@ -211,6 +211,7 @@ def shap_based_metrics(
     base_values = np.mean(X_eval.values, axis=0)
     local_importances = shap_values
 
+
     return {
         "n_features": float(n_features),
         "explainer": "PermutationExplainer",

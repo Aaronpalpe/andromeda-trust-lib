@@ -359,7 +359,7 @@ class XAIEaseScoreMetric(BaseMetric):
             "Metric Description": "Ease of interpreting top features based on similarity of PDP curve tangents across sections.",
             "Depends on": "PDP Averages and Global Ranked Features",
             "Formula": "XAI Ease Score = mean pairwise similarity of PDP tangent profiles over top-ranked features",
-            "PDP Averages": raw.get("pdp_averages"),
+            #"PDP Averages": raw.get("pdp_averages"),
             "Global Ranked Features": raw.get("global_ranked_features"),
             "XAI Ease Score": f"{raw['value']:.4f}",
         }

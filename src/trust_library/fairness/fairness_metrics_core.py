@@ -757,7 +757,7 @@ def individual_consistency(X: np.ndarray, y_pred: np.ndarray, k: int = 5) -> dic
     X : np.ndarray
         Input features.
     y_pred : np.ndarray
-        Predicted labels (binary).
+        Predicted labels.
     k : int, optional
         Number of nearest neighbors to consider, by default 5
 

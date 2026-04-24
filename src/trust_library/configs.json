@@ -676,18 +676,6 @@
                     "higher_is_better": false
                 }
             },
-            "score_tree_number_of_rules": {
-                "thresholds": {
-                    "value": [100, 50, 20, 10],
-                    "description": "Total leaves/rules in the surrogate tree model. Lower is better.",
-                    "label": "Tree Number of Rules Thresholds"
-                },
-                "normalized": {
-                    "min_val": 1.0,
-                    "max_val": 100.0,
-                    "higher_is_better": false
-                }
-            },
             "score_tree_number_of_features": {
                 "thresholds": {
                     "value": [50, 25, 10, 5],
@@ -919,14 +907,14 @@
             },
             "score_clique_method": {
                 "thresholds": {
-                    "value": [0.5, 0.25, 0.1, 0.01],
+                    "value": [0.01, 0.1, 0.25, 0.5],
                     "description": "Clique-method verification error thresholds for tree ensembles. Lower is better.",
                     "label": "Clique Method Error Thresholds"
                 },
                 "normalized": {
                     "min_val": 0.01,
-                    "max_val": 1.0,
-                    "higher_is_better": false
+                    "max_val": 0.5,
+                    "higher_is_better": true
                 }
             },
             "score_clever_score": {
