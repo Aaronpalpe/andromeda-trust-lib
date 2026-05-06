@@ -249,7 +249,7 @@ def algorithm_class(model, model_type: str | None = None) -> dict:
     Dict with the following keys:
     - model_type: the identified class of the model (e.g., "RandomForest", "SVM", "NeuralNetwork")
     '''
-    model_name = model_type if model_type is not None else type(model).__name__
+    model_name = model_type if model_type is not None and model_type != "" else type(model).__name__
     return {
         "model_type": model_name,
     }

@@ -38,12 +38,12 @@ class Pillar(ABC):
         properties: dict[str, dict[str, Any]] = {}
 
         for metric in metrics:
-            start_time = time.time()
+            #start_time = time.time()
             result = metric.evaluate(context, config)
             scores[metric.metric_key] = result.score
             properties[metric.metric_key] = result.properties
-            elapsed_time = time.time() - start_time
-            print(f"Metric '{metric.metric_key}' computed in {elapsed_time:.2f} seconds.")
+            #elapsed_time = time.time() - start_time
+            #print(f"Metric '{metric.metric_key}' computed in {elapsed_time:.2f} seconds.")
 
         return Result(score=scores, properties=properties)
 

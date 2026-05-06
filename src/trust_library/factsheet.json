@@ -6,7 +6,7 @@
         },
         "model_type": {
             "description": "Model type (LogisticRegression, LinearRegression, DecisionTreeClassifier, RandomForestClassifier... see algorithm_class in configs.json)",
-            "value": "DecisionTreeClassifier"
+            "value": ""
         },
         "purpose_description": {
             "description": "Intended purpose of the AI system",
