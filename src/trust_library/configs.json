@@ -442,7 +442,8 @@
                         "QuadraticDiscriminantAnalysis": 3,
                         "LogisticRegression": 4,
                         "LinearRegression": 3.5,
-                        "Sequential": 1
+                        "Sequential": 1,
+                        "GradientBoostingRegressor": 2.5
                     },
                     "description": "Mapping from model families to explainability scores based on interpretability literature.",
                     "label": "Algorithm Class Mapping"

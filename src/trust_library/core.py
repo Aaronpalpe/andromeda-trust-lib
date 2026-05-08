@@ -175,7 +175,8 @@ class TrustEvaluator:
         fig_pillars.update_traces(
             marker_color=df_pillars["Color"],
             texttemplate="%{text:.2f}",
-            textposition="outside"
+            textposition="outside",
+            cliponaxis=False
         )
 
         fig_pillars.show()
@@ -208,6 +209,7 @@ class TrustEvaluator:
             fig.update_traces(
                 texttemplate="%{text:.2f}",
                 textposition="outside",
+                cliponaxis=False
             )
 
             fig.show()
@@ -250,7 +252,7 @@ class TrustEvaluator:
             range_y=[0, 5],
             title="Trust Score Comparison"
         )
-        fig_trust.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+        fig_trust.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
         fig_trust.show()
 
         # ────────────────
@@ -276,7 +278,7 @@ class TrustEvaluator:
             #range_y=[0, 5],
             title="Pillar Score Comparison"
         )
-        fig_pillars.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+        fig_pillars.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
         fig_pillars.show()
 
         # ────────────────
@@ -312,7 +314,7 @@ class TrustEvaluator:
                 #range_y=[0, 5],
                 title=f"{pillar.capitalize()} Metrics Comparison"
             )
-            fig_metrics.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+            fig_metrics.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
             fig_metrics.show()
 
     def plot_radar(self) -> None:
