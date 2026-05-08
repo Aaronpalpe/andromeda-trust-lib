@@ -168,7 +168,7 @@ class TrustEvaluator:
             x="Pillar",
             y="Score",
             text="Score",
-            #range_y=[0, 5],
+            range_y=[0, 5.5],
             title="Trust Pillar Scores",
         )
 
@@ -199,7 +199,7 @@ class TrustEvaluator:
                 text="Score",
                 color="Score",
                 color_continuous_scale="Viridis",
-                range_x=[0, 5],
+                range_x=[0, 5.125],
                 title=f"{pillar.capitalize()} Metrics"
             )
 
@@ -249,7 +249,7 @@ class TrustEvaluator:
             y="Trust Score",
             color="Model",
             text="Trust Score",
-            range_y=[0, 5],
+            range_y=[0, 5.5],
             title="Trust Score Comparison"
         )
         fig_trust.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
@@ -275,7 +275,7 @@ class TrustEvaluator:
             color="Model",
             barmode="group",
             text="Score",
-            #range_y=[0, 5],
+            range_y=[0, 5.5],
             title="Pillar Score Comparison"
         )
         fig_pillars.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
@@ -311,7 +311,7 @@ class TrustEvaluator:
                 color="Model",
                 barmode="group",
                 text="Score",
-                #range_y=[0, 5],
+                range_y=[0, 5.5],
                 title=f"{pillar.capitalize()} Metrics Comparison"
             )
             fig_metrics.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
