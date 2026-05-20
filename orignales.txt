@@ -131,20 +131,20 @@
             "group_fairness": {
                 "weight": 0.59,
                 "metrics": {
-                    "statistical_parity_difference": 0.127,
-                    "disparate_impact": 0.127,
-                    "equal_opportunity_difference": 0.127,
-                    "average_odds_difference": 0.127,
-                    "accuracy_parity": 0.0849,
-                    "predictive_parity": 0.0849,
-                    "treatment_equality": 0.0849,
-                    "kl_divergence": 0.0339,
-                    "conditional_demographic_disparity": 0.0339,
-                    "smoothed_edf": 0.0339,
-                    "bias_amplification": 0.0339,
-                    "between_group_generalized_entropy_error": 0.0339,
-                    "cohens_d": 0.0339,
-                    "z_test_diff": 0.0339
+                    "statistical_parity_difference": 0.1271186441,
+                    "disparate_impact": 0.1271186441,
+                    "equal_opportunity_difference": 0.1271186441,
+                    "average_odds_difference": 0.1271186441,
+                    "accuracy_parity": 0.0847457627,
+                    "predictive_parity": 0.0847457627,
+                    "treatment_equality": 0.0847457627,
+                    "kl_divergence": 0.0338983051,
+                    "conditional_demographic_disparity": 0.0338983051,
+                    "smoothed_edf": 0.0338983051,
+                    "bias_amplification": 0.0338983051,
+                    "between_group_generalized_entropy_error": 0.0338983051,
+                    "cohens_d": 0.0338983051,
+                    "z_test_diff": 0.0338983051
                 }
             },
             "individual_fairness": {
@@ -161,14 +161,14 @@
             "feature_importance_distribution_and_global_model_complexity": {
                 "weight": 0.42,
                 "metrics": {
-                    "sparsity": 0.095,
-                    "feature_entropy": 0.095,
-                    "topk_concentration": 0.095,
-                    "feature_relevance": 0.144,
-                    "alpha_score": 0.095,
-                    "correlated_features": 0.144,
-                    "model_size": 0.047,
-                    "algorithm_class": 0.285
+                    "sparsity": 0.0952380952,
+                    "feature_entropy": 0.0952380952,
+                    "topk_concentration": 0.0952380952,
+                    "feature_relevance": 0.1428571429,
+                    "alpha_score": 0.0952380952,
+                    "correlated_features": 0.1428571429,
+                    "model_size": 0.0476190476,
+                    "algorithm_class": 0.2857142857
                 }
             },
             "tree_and_rule_based_models": {
@@ -187,11 +187,11 @@
             "fidelity_and_quality_of_explanations": {
                 "weight": 0.26,
                 "metrics": {
-                    "faithfulness": 0.23,
-                    "monotonicity": 0.23,
-                    "infidelity": 0.155,
-                    "xai_ease_score": 0.155,
-                    "xai_consistency_score": 0.23
+                    "faithfulness": 0.2307692308,
+                    "monotonicity": 0.2307692308,
+                    "infidelity": 0.1538461538,
+                    "xai_ease_score": 0.1538461538,
+                    "xai_consistency_score": 0.2307692308
                 }
             },
             "stability_and_alignment_of_explanation_rankings": {
@@ -215,10 +215,10 @@
             "inference_risk_and_attack_risk": {
                 "weight": 0.38,
                 "metrics": {
-                    "attribute_inference": 0.33,
-                    "shapr": 0.26,
-                    "accuracy_ratio": 0.15,
-                    "privacy_risk": 0.26
+                    "attribute_inference": 0.3157894737,
+                    "shapr": 0.2631578947,
+                    "accuracy_ratio": 0.1578947368,
+                    "privacy_risk": 0.2631578947
                 }
             },
             "anonymization": {
@@ -250,10 +250,10 @@
             "robustness_bounds_and_mathematical_certification": {
                 "weight": 0.44,
                 "metrics": {
-                    "empirical_robustness_l2": 0.34,
-                    "empirical_robustness_linf": 0.34,
-                    "clique_method": 0.16,
-                    "clever_score": 0.16
+                    "empirical_robustness_l2": 0.3409090909,
+                    "empirical_robustness_linf": 0.3409090909,
+                    "clique_method": 0.1590909091,
+                    "clever_score": 0.1590909091
                 }
             },
             "model_confidence_and_calibration": {

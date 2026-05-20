@@ -90,6 +90,7 @@ class TrustEvaluator:
 
         clean_metrics = {}
         clean_properties = {}
+        # clean_notions = {}
 
         for pillar, data in pillar_results.items():
 
@@ -105,11 +106,31 @@ class TrustEvaluator:
             clean_metrics[pillar] = metrics
             clean_properties[pillar] = properties
 
+            # notions = data.get("notions", {})
+            # notion_payload = {}
+            # for notion_name, notion_data in notions.items():
+            #     notion_metric_details = {
+            #         m_name: m_data
+            #         for m_name, m_data in notion_data.get("metrics", {}).items()
+            #         if show_nan or not self._is_nan(m_data.get("score"))
+            #     }
+
+            #     if show_nan or not self._is_nan(notion_data.get("score")):
+            #         notion_payload[notion_name] = {
+            #             "weight": notion_data.get("weight"),
+            #             "score": notion_data.get("score"),
+            #             "available_weight": notion_data.get("available_weight"),
+            #             "metrics": notion_metric_details,
+            #         }
+
+            # clean_notions[pillar] = notion_payload
+
         self.result = {
             "trust_score":  trust_score,
             "pillar_score": pillar_scores,
             "details":      clean_metrics,
             "properties":   clean_properties,
+            # "notions":      clean_notions,
             "explanation":  explanation,
         }
 
@@ -549,11 +570,12 @@ class TrustEvaluator:
         results = {}
         for name, pillar in items:
             print(f"Computing {name.capitalize()} metrics...")
-            aggregated_score, result_obj = pillar.score(self.context, self.config)
+            aggregated_score, result_obj = pillar.score(self.context, self.config) #, notion_obj 
             results[name] = {
                 "score":      aggregated_score,
                 "metrics":    result_obj.score,
                 "properties": result_obj.properties,
+                #"notions":    notion_obj,
             }
         return results
 
@@ -578,13 +600,47 @@ class TrustEvaluator:
             trust_formula_parts.append(f"{p_weight}*{pillar_name.capitalize()}({p_score})")
 
             metric_weights = self.config.get("weights", {}).get(pillar_name, {})
-            metric_parts   = [
+            # notion_data = data.get("notions", {})
+
+            # if notion_data:
+            #     notion_parts = []
+            #     notions_explanation = {}
+            #     for notion_name, notion_info in notion_data.items():
+            #         notion_score = notion_info.get("score")
+            #         notion_weight = notion_info.get("weight", 0)
+            #         if self._is_nan(notion_score) and not show_nan:
+            #             continue
+
+            #         metric_parts = []
+            #         for metric_name, metric_info in notion_info.get("metrics", {}).items():
+            #             metric_score = metric_info.get("score")
+            #             rel_weight = metric_info.get("relative_weight", 0)
+            #             if self._is_nan(metric_score) and not show_nan:
+            #                 continue
+            #             metric_parts.append(
+            #                 f"{rel_weight}*{metric_name}({metric_score})"
+            #             )
+
+            #         notion_parts.append(f"{notion_weight}*{notion_name}({notion_score})")
+            #         notions_explanation[notion_name] = {
+            #             "weight": notion_weight,
+            #             "score": notion_score,
+            #             "formula": " + ".join(metric_parts),
+            #         }
+
+            #     explanation[pillar_name] = {
+            #         "formula": " + ".join(notion_parts),
+            #         "score": p_score,
+            #         "notions": notions_explanation,
+            #     }
+            # else:
+            metric_parts   = [ # Poner una identación para notions
                 f"{metric_weights.get(metric_name, 1)}*{metric_name}({metric_value})"
                 for metric_name, metric_value in data["metrics"].items()
                 if not self._is_nan(metric_value) or show_nan
             ]
 
-            explanation[pillar_name] = {
+            explanation[pillar_name] = { # Poner una identación para notions
                 "formula": " + ".join(metric_parts),
                 "score":   p_score,
             }
