@@ -112,6 +112,146 @@ def _make_predict_fn(model, *, columns: list[str], classes: np.ndarray):
     return predict_fn
 
 
+def load_feature_constraints(factsheet_or_dict) -> dict[str, dict[str, object]]:
+    """Load per-feature robustness constraints from a factsheet-like object."""
+    if factsheet_or_dict is None:
+        return {}
+
+    factsheet = factsheet_or_dict
+    if hasattr(factsheet_or_dict, "to_dict"):
+        try:
+            factsheet = factsheet_or_dict.to_dict()
+        except Exception:
+            factsheet = factsheet_or_dict
+
+    if hasattr(factsheet, "get"):
+        robustness_section = factsheet.get("robustness", {})
+    else:
+        robustness_section = {}
+
+    if not isinstance(robustness_section, dict):
+        return {}
+
+    feature_constraints_section = robustness_section.get("feature_constraints", {})
+    if not isinstance(feature_constraints_section, dict):
+        return {}
+
+    raw_constraints = feature_constraints_section.get("value", {})
+    if isinstance(raw_constraints, dict):
+        items = raw_constraints.items()
+    elif isinstance(raw_constraints, list):
+        items = []
+        for entry in raw_constraints:
+            if not isinstance(entry, dict):
+                continue
+            feature_name = entry.get("name") or entry.get("feature") or entry.get("column")
+            if not feature_name:
+                continue
+            payload = {
+                key: value
+                for key, value in entry.items()
+                if key not in {"name", "feature", "column"}
+            }
+            items.append((feature_name, payload))
+    else:
+        return {}
+
+    normalized: dict[str, dict[str, object]] = {}
+    for feature_name, spec in items:
+        if isinstance(spec, dict):
+            normalized[feature_name] = _normalize_feature_constraint(spec)
+    return normalized
+
+
+def _normalize_feature_constraint(spec: dict) -> dict[str, object]:
+    normalized: dict[str, object] = {}
+
+    constraint_type = spec.get("type")
+    if constraint_type is not None:
+        normalized["type"] = str(constraint_type).lower()
+
+    for key in ("min", "max"):
+        if spec.get(key) is not None:
+            normalized[key] = float(spec.get(key))
+
+    allowed_values = spec.get("allowed_values", spec.get("values"))
+    if allowed_values is not None:
+        if isinstance(allowed_values, (list, tuple, set)):
+            normalized["allowed_values"] = list(allowed_values)
+        else:
+            normalized["allowed_values"] = [allowed_values]
+
+    for key in ("integer", "immutable"):
+        if key in spec:
+            normalized[key] = bool(spec.get(key))
+
+    return normalized
+
+
+def _scalar_equal(left, right, atol: float = 1e-6) -> bool:
+    if left is None and right is None:
+        return True
+    if pd.isna(left) and pd.isna(right):
+        return True
+
+    try:
+        left_num = float(left)
+        right_num = float(right)
+    except Exception:
+        return left == right
+
+    return bool(np.isclose(left_num, right_num, atol=atol, rtol=0.0, equal_nan=True))
+
+
+def _apply_feature_constraints(
+    X_clean: pd.DataFrame,
+    X_adv: pd.DataFrame,
+    feature_constraints: dict[str, dict[str, object]] | None,
+) -> np.ndarray:
+    if not feature_constraints:
+        return np.ones(len(X_adv), dtype=bool)
+
+    valid_mask = np.ones(len(X_adv), dtype=bool)
+
+    for feature_name, spec in feature_constraints.items():
+        if feature_name not in X_clean.columns or feature_name not in X_adv.columns:
+            raise ValueError(f"Feature constraint defined for unknown feature '{feature_name}'.")
+
+        clean_values = X_clean[feature_name].to_numpy()
+        adv_values = X_adv[feature_name].to_numpy()
+
+        if spec.get("immutable"):
+            valid_mask &= np.array(
+                [_scalar_equal(c_value, a_value) for c_value, a_value in zip(clean_values, adv_values)],
+                dtype=bool,
+            )
+
+        if "allowed_values" in spec:
+            allowed_values = set(spec["allowed_values"])
+            valid_mask &= np.array([value in allowed_values for value in adv_values], dtype=bool)
+
+        if "min" in spec or "max" in spec or spec.get("integer"):
+            numeric_values = pd.to_numeric(pd.Series(adv_values), errors="coerce").to_numpy(dtype=float)
+            valid_mask &= np.isfinite(numeric_values)
+
+            if "min" in spec:
+                valid_mask &= numeric_values >= float(spec["min"])
+            if "max" in spec:
+                valid_mask &= numeric_values <= float(spec["max"])
+            if spec.get("integer"):
+                valid_mask &= np.isclose(numeric_values, np.round(numeric_values), atol=1e-6, rtol=0.0)
+    return valid_mask
+
+
+def _filter_valid_adversarial_samples(
+    X_clean: pd.DataFrame,
+    X_adv: pd.DataFrame,
+    feature_constraints: dict[str, dict[str, object]] | None,
+) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
+    valid_mask = _apply_feature_constraints(X_clean, X_adv, feature_constraints)
+    return X_clean.loc[valid_mask].copy(), X_adv.loc[valid_mask].copy(), valid_mask
+
+
 def _featurewise_clip_values(X_train: pd.DataFrame | np.ndarray):
     X_df = _ensure_dataframe(X_train)
     mins = np.asarray(X_df.min(axis=0), dtype=np.float32)
@@ -134,6 +274,7 @@ def _attack_metrics_core(
     n_samples=50,
     seed=42,
     attack_name="attack",
+    feature_constraints: dict[str, dict[str, object]] | None = None,
 ):
     X_df = _ensure_dataframe(X_test)
     y = np.asarray(y_test).reshape(-1)
@@ -169,19 +310,45 @@ def _attack_metrics_core(
     # Attack only correct samples 
     X_correct = _to_numpy_float(X_eval.iloc[correct_mask]) # BEFORE X_eval
     y_correct = y_eval[correct_mask]
+    X_correct_df = X_eval.iloc[correct_mask].copy()
 
     X_adv = attack.generate(X_correct)
 
     X_adv_df = _ensure_dataframe(X_adv, columns=X_eval.columns) 
-    y_pred_adv_correct = np.asarray(model.predict(X_adv_df)).reshape(-1) # BEFORE model
+    X_correct_valid_df, X_adv_valid_df, valid_mask = _filter_valid_adversarial_samples(
+        X_correct_df,
+        X_adv_df,
+        feature_constraints,
+    )
+
+    if len(X_adv_valid_df) == 0:
+        return {
+            "clean_accuracy": clean_acc * 100.0,
+            "adv_accuracy": clean_acc * 100.0,
+            "accuracy_drop_pct (effective_robustness)": 0.0,
+            "robustness_ratio (adv/clean)": 1.0,
+            "adv_accuracy_correct_only": clean_acc * 100.0,
+            "attack_success_rate_pct (correct_only)": 0.0,
+            "sample_size (n_eval)": float(n_total),
+            "n_attacked": float(n_correct),
+            "n_valid_attacked": 0.0,
+            "attack": attack_name,
+            "note": "All adversarial samples violated feature constraints and were discarded.",
+        }
+
+    y_correct_valid = y_correct[valid_mask]
+    y_pred_clean_valid = y_pred_clean[correct_mask][valid_mask]
+    y_pred_adv_correct = np.asarray(model.predict(X_adv_valid_df)).reshape(-1) # BEFORE model
 
     # Metrics
-    adv_acc_correct = float((y_pred_adv_correct == y_correct).mean())
-    asr = float((y_pred_adv_correct != y_correct).mean())
+    adv_acc_correct = float((y_pred_adv_correct == y_correct_valid).mean())
+    asr = float((y_pred_adv_correct != y_pred_clean_valid).mean())
 
     # Reconstruct full predictions
     y_pred_adv_full = y_pred_clean.copy()
-    y_pred_adv_full[correct_mask] = y_pred_adv_correct
+    correct_indices = np.where(correct_mask)[0]
+    valid_correct_indices = correct_indices[valid_mask]
+    y_pred_adv_full[valid_correct_indices] = y_pred_adv_correct
 
     adv_acc_full = float((y_pred_adv_full == y_eval).mean())
     drop_pct = max(0.0, clean_acc - adv_acc_full) * 100.0
@@ -195,13 +362,16 @@ def _attack_metrics_core(
         "attack_success_rate_pct (correct_only)": asr * 100.0,
         "sample_size (n_eval)": float(n_total),
         "n_attacked": float(n_correct),
+        "n_valid_attacked": float(len(X_adv_valid_df)),
         "attack": attack_name,
     }
 
-    success_mask = (y_pred_adv_correct != y_correct)
+    success_mask = (y_pred_adv_correct != y_correct_valid)
     if np.sum(success_mask) > 0:
-        l2 = np.linalg.norm((X_adv[success_mask] - X_correct[success_mask]).reshape(np.sum(success_mask), -1), ord=2, axis=1)
-        linf = np.max(np.abs((X_adv[success_mask] - X_correct[success_mask]).reshape(np.sum(success_mask), -1)), axis=1)
+        X_adv_success = X_adv_valid_df.to_numpy(dtype=np.float32, copy=False)[success_mask]
+        X_correct_success = X_correct_valid_df.to_numpy(dtype=np.float32, copy=False)[success_mask]
+        l2 = np.linalg.norm((X_adv_success - X_correct_success).reshape(np.sum(success_mask), -1), ord=2, axis=1)
+        linf = np.max(np.abs((X_adv_success - X_correct_success).reshape(np.sum(success_mask), -1)), axis=1)
         result.update({
             "er_l2_success": float(np.mean(l2)),
             "er_linf_success": float(np.mean(linf)),
@@ -239,6 +409,7 @@ def hopskipjump_metrics(
     init_size: int = 10,
     norm: int | float | str = 2,
     beta: float = 1.0,
+    feature_constraints: dict[str, dict[str, object]] | None = None,
 ) -> dict:
     '''
     For a given model this function calculates the HopSkipJump attack metrics.
@@ -382,20 +553,58 @@ def hopskipjump_metrics(
         X_adv = attack.generate(x=X_correct)
 
     X_adv_df = _ensure_dataframe(X_adv, columns=columns)
-    y_pred_adv_correct = np.asarray(model.predict(X_adv_df)).reshape(-1)
+    X_correct_valid_df, X_adv_valid_df, valid_mask = _filter_valid_adversarial_samples(
+        X_correct_df,
+        X_adv_df,
+        feature_constraints,
+    )
+
+    if len(X_adv_valid_df) == 0:
+        return {
+            "clean_accuracy": clean_acc_full,
+            "adv_accuracy": clean_acc_full,
+            "accuracy_drop_pct (effective_robustness)": 0.0,
+            "robustness_ratio (adv/clean)": 1.0,
+            "adv_accuracy_correct_only": 0.0,
+            "attack_success_rate_pct (correct_only)": 0.0,
+            "er_l2_success": 0.0,
+            "er_linf_success": 0.0,
+            "mean_l2": 0.0,
+            "mean_linf": 0.0,
+            "sample_size (n_eval)": float(n_total),
+            "n_attacked": float(n_correct),
+            "n_valid_attacked": 0.0,
+            "attack": "HopSkipJump",
+            "note": "All adversarial samples violated feature constraints and were discarded.",
+            "params": {
+                "max_iter": int(max_iter),
+                "max_eval": int(max_eval),
+                "init_eval": int(init_eval),
+                "init_size": int(init_size),
+                "norm": norm,
+                "seed": int(seed),
+                "beta": float(beta),
+            },
+        }
+
+    y_pred_clean_valid = y_pred_clean_full[correct_mask][valid_mask]
+    y_correct_valid = y_correct[valid_mask]
+    y_pred_adv_correct = np.asarray(model.predict(X_adv_valid_df)).reshape(-1)
 
     # Correct-only metrics
-    adv_acc_correct_only = float((y_pred_adv_correct == y_correct).mean())
-    asr = float((y_pred_adv_correct != y_pred_clean_correct).mean())
+    adv_acc_correct_only = float((y_pred_adv_correct == y_correct_valid).mean())
+    asr = float((y_pred_adv_correct != y_pred_clean_valid).mean())
     asr_pct = asr * 100.0
 
     # Full-subset adversarial accuracy (replace attacked preds only)
     y_pred_adv_full = y_pred_clean_full.copy()
-    y_pred_adv_full[correct_mask] = y_pred_adv_correct
+    correct_indices = np.where(correct_mask)[0]
+    valid_correct_indices = correct_indices[valid_mask]
+    y_pred_adv_full[valid_correct_indices] = y_pred_adv_correct
     adv_acc_full = float((y_pred_adv_full == y_eval).mean())
     accuracy_drop_pct = float(max(0.0, clean_acc_full - adv_acc_full*beta) * 100.0)
 
-    # Perturbation magnitudes
+    # Magnitude metrics (L2 and Linf) on successful attacks (correct-only subset)
     delta = np.asarray(X_adv, dtype=np.float32) - np.asarray(X_correct, dtype=np.float32)
     flat = delta.reshape(delta.shape[0], -1)
     l2 = np.linalg.norm(flat, ord=2, axis=1)
@@ -404,10 +613,28 @@ def hopskipjump_metrics(
     mean_l2 = float(np.mean(l2))
     mean_linf = float(np.mean(linf))
 
-    success_mask = (y_pred_adv_correct != y_correct)
+    success_mask = (y_pred_adv_correct != y_correct_valid)
     if np.any(success_mask):
-        er_l2_success = float(np.mean(l2[success_mask]))
-        er_linf_success = float(np.mean(linf[success_mask]))
+        # Filter L2 and Linf to only successful attacks that also satisfy feature constraints
+        l2_valid = l2[valid_mask]
+        linf_valid = linf[valid_mask]
+        
+        er_l2_success = float(np.mean(l2_valid[success_mask]))
+        er_linf_success = float(np.mean(linf_valid[success_mask]))
+
+        #Imprimimos la muestra original, la muestra adversarial y la predicción para cada ataque exitoso
+        for i in np.where(success_mask)[0]:
+            original_sample = X_correct_valid_df.iloc[i].to_dict()
+            adversarial_sample = X_adv_valid_df.iloc[i].to_dict()
+            original_pred = y_pred_clean_valid[i]
+            adversarial_pred = y_pred_adv_correct[i]
+            # print(f"Successful Attack {i+1}:")
+            # print(f"  Original Sample: {original_sample}")
+            # print(f"  Adversarial Sample: {adversarial_sample}")
+            # print(f"  Original Prediction: {original_pred}")
+            # print(f"  Adversarial Prediction: {adversarial_pred}")
+            # print(f"  L2 Perturbation: {l2_valid[i]:.4f}")
+            # print(f"  Linf Perturbation: {linf_valid[i]:.4f}")
     else:
         er_l2_success = 0.0
         er_linf_success = 0.0
@@ -424,6 +651,7 @@ def hopskipjump_metrics(
         "mean_linf": mean_linf, # average Linf perturbation on all attacked samples
         "sample_size (n_eval)": float(n_total), # total samples evaluated
         "n_attacked": float(n_correct), # total samples attacked (correctly classified subset)
+        "n_valid_attacked": float(len(X_adv_valid_df)),
         "attack": "HopSkipJump",
         "note": "HSJ attack metrics on correctly classified subset. Full subset adv accuracy also reported.",
         "params": {
@@ -437,7 +665,7 @@ def hopskipjump_metrics(
     }
 
 # Only for NN, LG, SVM models (GRADIENT-BASED - REQUIRES NN)
-def fgm_attack_metrics(*, art_clf, X_test, y_test, eps=0.2, n_samples=50, seed=42):
+def fgm_attack_metrics(*, art_clf, X_test, y_test, eps=0.2, n_samples=50, seed=42, feature_constraints=None):
     """For a given model this function calculates the fast gradient attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
@@ -490,10 +718,11 @@ def fgm_attack_metrics(*, art_clf, X_test, y_test, eps=0.2, n_samples=50, seed=4
         n_samples=n_samples,
         seed=seed,
         attack_name="FGM",
+        feature_constraints=feature_constraints,
     )
 
 # Only for NN models (GRADIENT-BASED). # Only for NN, LG, SVM models
-def carlini_wagner_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
+def carlini_wagner_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42, feature_constraints=None):
     """For a given model this function calculates the CW attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
@@ -541,10 +770,11 @@ def carlini_wagner_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
         n_samples=n_samples,
         seed=seed,
         attack_name="CarliniWagner",
+        feature_constraints=feature_constraints,
     )
 
 # Only for NN models (GRADIENT-BASED). Only for NN, LG, SVM models
-def deepfool_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
+def deepfool_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42, feature_constraints=None):
     """For a given model this function calculates the deepfool attack score.
     First from the test data selects a random small test subset.
     Then measures the accuracy of the model on this subset.
@@ -594,6 +824,7 @@ def deepfool_metrics(*, art_clf, X_test, y_test, n_samples=10, seed=42):
         n_samples=n_samples,
         seed=seed,
         attack_name="DeepFool",
+        feature_constraints=feature_constraints,
     )
 
 # Only for DT, RF, GBDT models

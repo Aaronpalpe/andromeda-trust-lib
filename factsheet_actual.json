@@ -128,6 +128,12 @@
             ]
         }
     },
+    "robustness": {
+        "feature_constraints": {
+            "description": "Per-feature validity constraints used to reject adversarial samples that violate dataset semantics. Supported keys per feature: type, min, max, allowed_values/values, integer, immutable.",
+            "value": {}
+        }
+    },
     "sustainability": {
         "use_codecarbon": {
             "description": "Use CodeCarbon for energy and emissions tracking",

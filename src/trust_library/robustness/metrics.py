@@ -126,6 +126,7 @@ def _get_or_compute_hsj(ctx: EvaluationContext) -> dict:
         init_size=int(params.get("init_size")),
         norm=params.get("norm"),
         beta=float(params.get("beta")),
+        feature_constraints=core.load_feature_constraints(ctx.factsheet),
     )
 
 
@@ -144,6 +145,7 @@ def _get_or_compute_fgm(ctx: EvaluationContext) -> dict:
         eps=float(params.get("eps")),
         n_samples=int(params.get("n_samples")),
         seed=int(params.get("seed")),
+        feature_constraints=core.load_feature_constraints(ctx.factsheet),
     )
 
 
@@ -161,6 +163,7 @@ def _get_or_compute_cw(ctx: EvaluationContext) -> dict:
         y_test=ctx.y_test,
         n_samples=int(params.get("n_samples")),
         seed=int(params.get("seed")),
+        feature_constraints=core.load_feature_constraints(ctx.factsheet),
     )
 
 
@@ -178,6 +181,7 @@ def _get_or_compute_df(ctx: EvaluationContext) -> dict:
         y_test=ctx.y_test,
         n_samples=int(params.get("n_samples")),
         seed=int(params.get("seed")),
+        feature_constraints=core.load_feature_constraints(ctx.factsheet),
     )
 
 

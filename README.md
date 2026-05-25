@@ -24,3 +24,23 @@ To make the trust microservice consume the library without linking this reposito
 `andromeda-trust` pins the library version in its own `pyproject.toml`, so the wheel version must match that pinned dependency.
 
 If you use an external package index instead of the local wheelhouse, publish the generated artifacts from `dist/` there and keep the same pinned version in `andromeda-trust`.
+
+## Robustness Constraints
+
+The robustness pillar can reject adversarial examples that violate dataset semantics. Define the allowed range or category for each input feature in the factsheet under `robustness.feature_constraints.value`.
+
+Example:
+
+```json
+"robustness": {
+	"feature_constraints": {
+		"value": {
+			"age": {"type": "numeric", "min": 18, "max": 90, "integer": true},
+			"sex": {"allowed_values": [0, 1]},
+			"income": {"immutable": true}
+		}
+	}
+}
+```
+
+Supported keys per feature: `type`, `min`, `max`, `allowed_values` or `values`, `integer`, `immutable`.

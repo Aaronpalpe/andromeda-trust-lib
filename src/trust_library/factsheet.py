@@ -56,6 +56,7 @@ class Factsheet:
         redressability: dict = None,
         fairness: dict = None,
         privacy: dict = None,
+        robustness: dict = None,
         sustainability: dict = None,
         load_path: str = None, 
         save_path: str = None
@@ -75,6 +76,7 @@ class Factsheet:
         self._apply_section("redressability", redressability)
         self._apply_section("fairness", fairness)
         self._apply_section("privacy", privacy)
+        self._apply_section("robustness", robustness)
         self._apply_section("sustainability", sustainability)
 
         if save_path:
