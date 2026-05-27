@@ -1,46 +1,62 @@
-# Andromeda Trust Library
+# Andrómeda Lib
 
-Versioned trust-evaluation library consumed by `andromeda-trust` as an external dependency.
+Librería para evaluar la confianza de modelos de machine learning a partir de varios pilares. El proyecto agrupa métricas y utilidades para analizar:
 
-## Build a Versioned Package
+- Fairness
+- Accountability
+- Privacy
+- Sustainability
+- Explainability
+- Robustness
 
-1. Update `version` in `pyproject.toml`.
-2. Build the package:
+El punto de entrada principal es `TrustEvaluator`, que calcula una puntuación global de confianza, el desglose por pilar, el detalle de métricas y una explicación del resultado. El proyecto también incluye un wrapper para usar modelos de distintos frameworks como estimadores tipo scikit-learn.
+
+## Estructura principal
+
+- `src/trust_library/`: código de la librería
+- `main.ipynb`: notebook principal de trabajo y reproducción
+- `models_and_data/`: datasets, particiones y modelos guardados usados en los experimentos
+- `UniversarSklearnWrapper.py`: adaptador para modelos de scikit-learn, PyTorch y TensorFlow
+- `requirements.txt`: dependencias del entorno de ejecución
+
+## Requisitos
+
+Se recomienda usar Python 3.12.1 y crear un entorno aislado con Conda.
+
+## Instalación y reproducción de experimentos
+
+Desde la raíz del repositorio:
 
 ```bash
-./scripts/build-package.sh
+conda create --name environment python=3.12.1 --no-default-packages
+conda activate environment
+pip install -r requirements.txt
 ```
 
-This generates the distributable artifacts in `dist/`.
+Si quieres trabajar con la librería localmente desde notebooks o scripts, abre el proyecto desde la raíz del repositorio para que `src/` y los ficheros del proyecto queden accesibles.
 
-## Publish a Wheel for the Trust Microservice
+## Uso básico
 
-To make the trust microservice consume the library without linking this repository, build the wheel straight into its local wheelhouse:
+```python
+from trust_library import TrustEvaluator
+from UniversarSklearnWrapper import UniversalSklearnWrapper
 
-```bash
-./scripts/build-package.sh ../andromeda-trust/.wheels
+# model: modelo ya entrenado
+# train_data / test_data: pandas.DataFrame o estructuras compatibles
+# factsheet: instancia Factsheet con la información del modelo
+
+evaluator = TrustEvaluator(
+    model=model,
+    train_data=train_data,
+    test_data=test_data,
+    factsheet=factsheet,
+)
+
+result = evaluator.evaluate()
+evaluator.plot_results()
 ```
 
-`andromeda-trust` pins the library version in its own `pyproject.toml`, so the wheel version must match that pinned dependency.
+## Notas
 
-If you use an external package index instead of the local wheelhouse, publish the generated artifacts from `dist/` there and keep the same pinned version in `andromeda-trust`.
-
-## Robustness Constraints
-
-The robustness pillar can reject adversarial examples that violate dataset semantics. Define the allowed range or category for each input feature in the factsheet under `robustness.feature_constraints.value`.
-
-Example:
-
-```json
-"robustness": {
-	"feature_constraints": {
-		"value": {
-			"age": {"type": "numeric", "min": 18, "max": 90, "integer": true},
-			"sex": {"allowed_values": [0, 1]},
-			"income": {"immutable": true}
-		}
-	}
-}
-```
-
-Supported keys per feature: `type`, `min`, `max`, `allowed_values` or `values`, `integer`, `immutable`.
+- Los experimentos y ejemplos dependen de los datos y modelos almacenados en `models_and_data/`.
+- La librería está pensada para evaluar modelos sobre datos tabulares o clasificadores ya entrenados.
