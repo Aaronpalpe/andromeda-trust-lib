@@ -21,7 +21,12 @@ El punto de entrada principal es `TrustEvaluator`, que calcula una puntuación g
 
 ## Requisitos
 
-Se recomienda usar Python 3.12.1 y crear un entorno aislado con Conda.
+Se recomienda usar Python 3.12.1 y crear un entorno aislado con Conda. 
+
+**Importante**
+
+Aunque la librería sigue en desarrollo y está pensada para ser utilizada de forma independiente del sistema operativo, actualmente algunas dependencias presentan incompatibilidades de versiones de Python en entornos Linux.
+Para poder ejecutar los notebooks y reproducir fielmente los experimentos, se recomienda utilizar Windows.
 
 ## Instalación y reproducción de experimentos
 
